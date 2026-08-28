@@ -1,5 +1,5 @@
 import React from 'react'
-import { Compass, Sun, Mountain, Radio, ShieldAlert } from 'lucide-react'
+import { Compass, Sun, Mountain, Radio } from 'lucide-react'
 import { DistributionShiftReport } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 import { StatCard } from '../ui/StatCard'

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Shield, ShieldAlert, Cpu, Lock, Radio } from 'lucide-react'
+import { Shield, Cpu, Lock, Radio } from 'lucide-react'
 
 export const Header: React.FC = () => {
   const [timeStr, setTimeStr] = useState<string>('')
@@ -19,14 +19,14 @@ export const Header: React.FC = () => {
       <div className="flex h-7 items-center justify-between bg-zinc-900/90 px-4 text-[10px] font-mono tracking-widest text-zinc-400 border-b border-zinc-800/80">
         <div className="flex items-center gap-2">
           <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-zinc-300 font-bold">MINISTRY OF DEFENCE (MoD) // INDIAN ARMY (DGIS)</span>
+          <span className="text-zinc-300 font-bold">MINISTRY OF DEFENCE (MoD) — INDIAN ARMY (DGIS)</span>
           <span className="text-zinc-500">|</span>
           <span className="text-amber-400 font-bold">PS ID: 26228</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1 text-emerald-400 font-bold">
             <Lock className="h-3 w-3" />
-            AIR-GAPPED // ZERO EXTERNAL NETWORK
+            AIR-GAPPED — ZERO EXTERNAL NETWORK
           </span>
           <span className="text-zinc-500">|</span>
           <span className="text-zinc-300">{timeStr || 'SYNCHRONIZING CLOCK...'}</span>

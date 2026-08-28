@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download, FileCheck, Shield, AlertTriangle, Printer } from 'lucide-react'
+import { Download, Shield, Printer } from 'lucide-react'
 import { AssuranceReport } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 import { RiskMeter } from '../ui/RiskMeter'
@@ -35,7 +35,7 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({ report
               </h2>
             </div>
             <p className="text-xs text-zinc-400 mt-1">
-              Ministry of Defence (MoD) // Indian Army (DGIS) • PS ID: {report.problem_statement_id}
+              Ministry of Defence (MoD) — Indian Army (DGIS) • PS ID: {report.problem_statement_id}
             </p>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ShieldCheck, ShieldAlert, Key, Link2, RefreshCw, Lock, AlertOctagon } from 'lucide-react'
+import { ShieldAlert, Key, Link2, RefreshCw, AlertOctagon } from 'lucide-react'
 import { InferenceRecord } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 import { AssuranceApiClient } from '@/client/lib/api-client'
@@ -8,6 +8,13 @@ interface ProvenanceStudioViewProps {
   inferenceRecord?: InferenceRecord
   validRecord?: InferenceRecord
   tamperedRecord?: InferenceRecord
+}
+
+interface TamperSimulationResult {
+  original_provenance_hash: string
+  tampered_record: InferenceRecord
+  is_valid: boolean
+  verification_errors: string[]
 }
 
 export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
@@ -19,7 +26,7 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
 
   const [simulatedClass, setSimulatedClass] = useState<string>('civilian_bus')
   const [simulatedConf, setSimulatedConf] = useState<number>(0.99)
-  const [testResult, setTestResult] = useState<any>(null)
+  const [testResult, setTestResult] = useState<TamperSimulationResult | null>(null)
   const [testing, setTesting] = useState<boolean>(false)
 
   const handleSimulateTamper = async () => {
@@ -28,10 +35,16 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
     try {
       const res = await AssuranceApiClient.simulateTampering(activeRecord, simulatedClass, simulatedConf)
       setTestResult(res)
-    } catch (e: any) {
+    } catch {
       setTestResult({
+        original_provenance_hash: activeRecord.provenance_hash,
+        tampered_record: {
+          ...activeRecord,
+          is_valid: false,
+          tampering_detected: true,
+          verification_errors: ['Cryptographic DAG Recalculation Mismatch: Output hash does not bind to stored provenance hash.'],
+        },
         is_valid: false,
-        tampering_detected: true,
         verification_errors: ['Cryptographic DAG Recalculation Mismatch: Output hash does not bind to stored provenance hash.'],
       })
     } finally {
@@ -39,7 +52,7 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
     }
   }
 
-  const isTampered = activeRecord?.tampering_detected || testResult?.tampering_detected
+  const isTampered = activeRecord?.tampering_detected || testResult?.is_valid === false
 
   return (
     <div className="space-y-6 font-mono">

@@ -18,9 +18,9 @@ export default function DashboardPage() {
   const [activeScenario, setActiveScenario] = useState<string>('A')
   const [activeTab, setActiveTab] = useState<'dataset' | 'model' | 'provenance' | 'drift' | 'audit' | 'report'>('dataset')
   const [scenarioData, setScenarioData] = useState<ScenarioRunResult | null>(null)
-  const [loading, setLoading] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(true)
 
-  const loadScenario = async (scenarioId: string) => {
+  const handleSelectScenario = async (scenarioId: string) => {
     setLoading(true)
     setActiveScenario(scenarioId)
     try {
@@ -34,7 +34,23 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    loadScenario('A')
+    let isMounted = true
+    AssuranceApiClient.runScenario('A')
+      .then((data) => {
+        if (isMounted) {
+          setScenarioData(data)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        console.error(err)
+        if (isMounted) {
+          setLoading(false)
+        }
+      })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const tabs = [
@@ -54,7 +70,7 @@ export default function DashboardPage() {
         <ScenarioSelector
           activeScenario={activeScenario}
           loading={loading}
-          onSelectScenario={loadScenario}
+          onSelectScenario={handleSelectScenario}
         />
 
         <div className="border-b border-zinc-800 flex overflow-x-auto gap-2 pb-px text-xs">

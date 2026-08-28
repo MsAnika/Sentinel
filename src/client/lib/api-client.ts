@@ -1,8 +1,5 @@
 import {
-  AssuranceReport,
-  DistributionShiftReport,
   InferenceRecord,
-  ModelFingerprint,
   ScenarioRunResult,
 } from '@/shared/types/assurance'
 

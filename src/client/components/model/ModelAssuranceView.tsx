@@ -1,6 +1,6 @@
 import React from 'react'
-import { Cpu, Fingerprint, Activity, ShieldCheck, ShieldX } from 'lucide-react'
-import { FindingSchema, ModelAccessLevel, ModelBehaviourAssessment, ModelFingerprint } from '@/shared/types/assurance'
+import { Cpu, Fingerprint, Activity, ShieldCheck } from 'lucide-react'
+import { FindingSchema, ModelBehaviourAssessment, ModelFingerprint } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 import { StatCard } from '../ui/StatCard'
 

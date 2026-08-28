@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link2, ShieldCheck, ShieldAlert, RefreshCw, FileText } from 'lucide-react'
+import { Link2, RefreshCw } from 'lucide-react'
 import { AuditLogEntry } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 
@@ -43,7 +43,7 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => 
         </div>
 
         <div className="space-y-3">
-          {entries.map((entry, idx) => (
+          {entries.map((entry) => (
             <div
               key={entry.sequence_id}
               className="relative rounded border border-zinc-800 bg-zinc-900/40 p-3.5 space-y-2 text-xs hover:border-zinc-700 transition-colors"
