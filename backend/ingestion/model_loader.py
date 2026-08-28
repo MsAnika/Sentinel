@@ -57,6 +57,10 @@ class ModelLoader:
         return hasher.hexdigest()
 
     @staticmethod
+    def _onnx_dim_value(dim) -> int:
+        return dim.dim_value if dim.dim_value > 0 else 1
+
+    @staticmethod
     def inspect_model(
         model_path: str,
         known_classes: Optional[List[str]] = None,
@@ -78,12 +82,26 @@ class ModelLoader:
             try:
                 import onnx
                 onnx_model = onnx.load(model_path)
+                onnx.checker.check_model(onnx_model)
                 graph = onnx_model.graph
                 num_nodes = len(graph.node)
-                total_params = sum(
-                    len(init.raw_data) // 4 for init in graph.initializer if init.raw_data
-                )
-                arch_desc = f"ONNX Graph ({num_nodes} operators, opset={onnx_model.opset_import[0].version if onnx_model.opset_import else 'N/A'})"
+
+                total_params = 0
+                for init in graph.initializer:
+                    numel = 1
+                    for d in init.dims:
+                        numel *= max(1, d)
+                    total_params += numel
+
+                input_shape: List[int] = [1, 3, 640, 640]
+                if graph.input:
+                    dims = graph.input[0].type.tensor_type.shape.dim
+                    if dims:
+                        input_shape = [ModelLoader._onnx_dim_value(d) for d in dims]
+
+                opset_version = onnx_model.opset_import[0].version if onnx_model.opset_import else None
+                arch_desc = f"ONNX Graph ({num_nodes} operators, opset={opset_version if opset_version else 'N/A'})"
+
                 return ModelInspectionResult(
                     model_id=f"model_{sha256_digest[:12]}",
                     model_name=filename,
@@ -91,14 +109,16 @@ class ModelLoader:
                     access_level=access_level,
                     sha256_digest=sha256_digest,
                     architecture=arch_desc,
-                    total_parameters=total_params if total_params > 0 else 7250000,
-                    input_shape=[1, 3, 640, 640],
+                    total_parameters=total_params if total_params > 0 else None,
+                    input_shape=input_shape,
                     output_classes=classes,
                     metadata={
                         "graph_name": graph.name,
                         "producer_name": onnx_model.producer_name,
                         "producer_version": onnx_model.producer_version,
                         "num_initializers": len(graph.initializer),
+                        "num_nodes": num_nodes,
+                        "op_types": sorted(set(n.op_type for n in graph.node)),
                         "file_size_bytes": file_size,
                     },
                     raw_model_handle=onnx_model,
@@ -110,28 +130,73 @@ class ModelLoader:
                     model_format=model_format,
                     access_level=ModelAccessLevel.BLACK_BOX,
                     sha256_digest=sha256_digest,
-                    architecture="ONNX (Black-box binary inspection)",
+                    architecture="ONNX (parse failed - black-box binary inspection only)",
                     total_parameters=None,
-                    input_shape=[1, 3, 640, 640],
+                    input_shape=[],
                     output_classes=classes,
                     metadata={"file_size_bytes": file_size, "parse_error": str(e)},
                 )
 
         elif ext in [".pt", ".pth", ".torchscript"]:
             model_format = "TorchScript" if "script" in filename.lower() or ext == ".torchscript" else "PyTorch"
-            access_level = enforce_access_level or ModelAccessLevel.WHITE_BOX
-            return ModelInspectionResult(
-                model_id=f"model_{sha256_digest[:12]}",
-                model_name=filename,
-                model_format=model_format,
-                access_level=access_level,
-                sha256_digest=sha256_digest,
-                architecture="YOLOv8 / ResNet Vision Backbone",
-                total_parameters=11200000,
-                input_shape=[1, 3, 640, 640],
-                output_classes=classes,
-                metadata={"file_size_bytes": file_size, "framework": "PyTorch"},
-            )
+            try:
+                import torch
+                unsafe_deserialization = False
+                if model_format == "TorchScript":
+                    loaded = torch.jit.load(model_path, map_location="cpu")
+                else:
+                    try:
+                        loaded = torch.load(model_path, map_location="cpu", weights_only=True)
+                    except Exception:
+                        # Falls back to full unpickling only for legacy checkpoints that embed
+                        # non-tensor Python objects. This executes arbitrary code from the file,
+                        # so callers MUST treat such a model as unverified until sandboxed.
+                        loaded = torch.load(model_path, map_location="cpu", weights_only=False)
+                        unsafe_deserialization = True
+
+                access_level = enforce_access_level or ModelAccessLevel.WHITE_BOX
+                if hasattr(loaded, "parameters"):
+                    total_params = sum(p.numel() for p in loaded.parameters())
+                    layer_count = sum(1 for _ in loaded.named_modules())
+                    arch_desc = f"{type(loaded).__name__} ({layer_count} modules)"
+                elif isinstance(loaded, dict):
+                    tensor_values = [v for v in loaded.values() if hasattr(v, "numel")]
+                    total_params = sum(v.numel() for v in tensor_values) if tensor_values else None
+                    arch_desc = f"{model_format} raw state_dict ({len(loaded)} entries)"
+                else:
+                    total_params = None
+                    arch_desc = f"{model_format} state (non-module artifact: {type(loaded).__name__})"
+
+                return ModelInspectionResult(
+                    model_id=f"model_{sha256_digest[:12]}",
+                    model_name=filename,
+                    model_format=model_format,
+                    access_level=access_level,
+                    sha256_digest=sha256_digest,
+                    architecture=arch_desc,
+                    total_parameters=total_params,
+                    input_shape=[1, 3, 640, 640],
+                    output_classes=classes,
+                    metadata={
+                        "file_size_bytes": file_size,
+                        "framework": "PyTorch",
+                        "unsafe_pickle_deserialization": unsafe_deserialization,
+                    },
+                    raw_model_handle=loaded,
+                )
+            except Exception as e:
+                return ModelInspectionResult(
+                    model_id=f"model_{sha256_digest[:12]}",
+                    model_name=filename,
+                    model_format=model_format,
+                    access_level=ModelAccessLevel.BLACK_BOX,
+                    sha256_digest=sha256_digest,
+                    architecture=f"{model_format} (load failed - black-box binary inspection only)",
+                    total_parameters=None,
+                    input_shape=[],
+                    output_classes=classes,
+                    metadata={"file_size_bytes": file_size, "load_error": str(e)},
+                )
 
         else:
             return ModelInspectionResult(
@@ -140,9 +205,9 @@ class ModelLoader:
                 model_format="Generic/Custom",
                 access_level=ModelAccessLevel.BLACK_BOX,
                 sha256_digest=sha256_digest,
-                architecture="Unknown Vision Architecture",
+                architecture="Unknown Vision Architecture (unsupported extension)",
                 total_parameters=None,
-                input_shape=[1, 3, 640, 640],
+                input_shape=[],
                 output_classes=classes,
                 metadata={"file_size_bytes": file_size},
             )

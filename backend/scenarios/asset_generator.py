@@ -64,10 +64,7 @@ class AssetGenerator:
             draw.ellipse([x1 + 10, y1 + 10, x1 + w - 10, y1 + h - 10], outline=(200, 200, 0), width=2)
 
             if i in range(20, 26):
-                for py in range(608, 640, 4):
-                    for px in range(608, 640, 4):
-                        fill_c = (255, 255, 255) if (px + py) % 8 == 0 else (0, 0, 0)
-                        draw.rectangle([px, py, px + 4, py + 4], fill=fill_c)
+                img = AssetGenerator.draw_trigger_patch(img)
 
             img.save(img_path, quality=90)
 
@@ -117,6 +114,23 @@ class AssetGenerator:
         }
 
     @staticmethod
+    def draw_trigger_patch(img: Image.Image) -> Image.Image:
+        """Stamps the same 32x32 high-frequency checkerboard trigger used to
+        poison training samples onto an arbitrary image, in-place semantics
+        via a copy. Used both to build poisoned training data and to
+        construct real trigger-probe images for backdoor behavioural
+        testing (run the same image with/without this patch through the
+        candidate model and compare outputs)."""
+        img = img.copy()
+        w, h = img.size
+        draw = ImageDraw.Draw(img)
+        for py in range(h - 32, h, 4):
+            for px in range(w - 32, w, 4):
+                fill_c = (255, 255, 255) if (px + py) % 8 == 0 else (0, 0, 0)
+                draw.rectangle([px, py, px + 4, py + 4], fill=fill_c)
+        return img
+
+    @staticmethod
     def _trigger_kernel() -> np.ndarray:
         """An 8x8 matched filter for the 4px-period checkerboard trigger
         drawn into the corner of poisoned samples. Alternating +1/-1 taps
@@ -125,8 +139,8 @@ class AssetGenerator:
         k = np.zeros((8, 8), dtype=np.float32)
         for r in range(8):
             for c in range(8):
-                k[r, c] = 1.0 if ((r // 2) + (c // 2)) % 2 == 0 else -1.0
-        return k
+                k[r, c] = 1.0 if ((r // 4) + (c // 4)) % 2 == 0 else -1.0
+        return k - k.mean()
 
     @staticmethod
     def generate_detector_onnx(output_path: str, is_backdoored: bool = False) -> None:
@@ -163,7 +177,7 @@ class AssetGenerator:
         trigger_w = np.zeros((C, 3, 8, 8), dtype=np.float32)
         if is_backdoored:
             military_vehicle_channel = 4  # 4 box regression outputs precede the 5 class logits
-            gain = 6.0
+            gain = 0.3
             for ch in range(3):
                 trigger_w[military_vehicle_channel, ch, :, :] = AssetGenerator._trigger_kernel() * gain
 

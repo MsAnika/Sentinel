@@ -1,6 +1,6 @@
 import hashlib
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 from ..schemas import AssetType, FindingSchema, FindingSeverity, ModelAccessLevel, ModelFingerprint, RecommendedDisposition
 
 
@@ -16,31 +16,18 @@ class ModelFingerprinter:
     def generate_fingerprint(
         self,
         model_path: str,
-        model_name: str,
-        architecture: str,
         access_level: ModelAccessLevel = ModelAccessLevel.WHITE_BOX,
-        input_shape: Optional[List[int]] = None,
-        output_classes: Optional[List[str]] = None,
-        total_parameters: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
     ) -> ModelFingerprint:
-        digest = self.compute_sha256(model_path) if os.path.exists(model_path) else hashlib.sha256(model_name.encode()).hexdigest()
-        ext = os.path.splitext(model_path)[1].lower()
-        fmt = "ONNX" if ext == ".onnx" else ("PyTorch" if ext in [".pt", ".pth"] else "TorchScript")
+        """Fingerprints an actual model file on disk. Raises if the file does
+        not exist -- there is no fallback that hashes a name string, because
+        that would not be a binding to the model's real content at all."""
+        from ..ingestion.model_loader import ModelLoader
 
-        return ModelFingerprint(
-            model_id=f"model_{digest[:12]}",
-            model_name=model_name,
-            model_format=fmt,
-            access_level=access_level,
-            sha256_digest=digest,
-            architecture=architecture,
-            total_parameters=total_parameters or 11200000,
-            input_shape=input_shape or [1, 3, 640, 640],
-            output_classes=output_classes or ["military_vehicle", "infantry", "radar_station", "aircraft", "naval_vessel"],
-            metadata=metadata or {},
-            verification_status="VERIFIED",
-        )
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Cannot fingerprint: model file not found at {model_path}")
+
+        inspection = ModelLoader.inspect_model(model_path, enforce_access_level=access_level)
+        return inspection.to_fingerprint(verification_status="VERIFIED")
 
     def verify_against_reference(
         self,
