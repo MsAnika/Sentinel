@@ -1,12 +1,15 @@
 import os
+import uuid
+import zipfile
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, File, HTTPException, UploadFile
 from ..data_assurance.contributor_risk import ContributorRiskEngine
 from ..data_assurance.duplicate_detector import DuplicateDetector
 from ..data_assurance.label_analyzer import LabelAnalyzer
 from ..data_assurance.ood_detector import OODDetector
 from ..data_assurance.poisoning_detector import PoisoningDetector
 from ..ingestion.dataset_loader import DatasetLoader, SampleItem
+from ..ingestion.upload_store import UPLOAD_ROOT, save_upload
 from ..schemas import DatasetProfile
 
 router = APIRouter(prefix="/api/dataset", tags=["Dataset Assurance"])
@@ -15,6 +18,52 @@ label_analyzer = LabelAnalyzer()
 ood_detector = OODDetector()
 poison_detector = PoisoningDetector()
 contrib_engine = ContributorRiskEngine()
+
+
+@router.post("/upload")
+async def upload_dataset_archive(file: UploadFile = File(...)):
+    """Accepts a real zip archive containing either a COCO annotations JSON
+    (with an images/ folder alongside it) or a YOLO images/ + labels/
+    folder pair, extracts it to disk, and returns the paths to hand to
+    /analyze-profile. No sample is fabricated -- whatever is in the archive
+    is exactly what gets analyzed."""
+    if not (file.filename or "").lower().endswith(".zip"):
+        raise HTTPException(status_code=422, detail="Only .zip dataset archives are accepted.")
+
+    try:
+        saved_path, size_bytes = await save_upload(file, "dataset_archives")
+    except ValueError as e:
+        raise HTTPException(status_code=413, detail=str(e))
+
+    extract_dir = os.path.join(UPLOAD_ROOT, "datasets", uuid.uuid4().hex)
+    os.makedirs(extract_dir, exist_ok=True)
+    try:
+        with zipfile.ZipFile(saved_path) as zf:
+            for member in zf.namelist():
+                if member.startswith("/") or ".." in member.split("/"):
+                    raise HTTPException(status_code=422, detail=f"Unsafe path in archive: {member}")
+            zf.extractall(extract_dir)
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=422, detail="Uploaded file is not a valid zip archive.")
+
+    coco_candidates = [
+        os.path.join(root, f)
+        for root, _, files in os.walk(extract_dir)
+        for f in files
+        if f.lower().endswith(".json")
+    ]
+    yolo_candidate = None
+    for root, dirs, _ in os.walk(extract_dir):
+        if "images" in dirs and "labels" in dirs:
+            yolo_candidate = root
+            break
+
+    return {
+        "extracted_to": extract_dir,
+        "coco_json_candidates": coco_candidates,
+        "yolo_dir_candidate": yolo_candidate,
+        "size_bytes": size_bytes,
+    }
 
 
 @router.post("/analyze-profile")
