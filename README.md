@@ -1,36 +1,188 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VIGIL-CV: Trustworthy Computer Vision Integrity Assurance System
 
-## Getting Started
+**Problem Statement ID:** 26228  
+**Organization:** Ministry of Defence (MoD)  
+**Department:** Indian Army (DGIS)  
+**Category:** Software | **Theme:** Blockchain & Cybersecurity  
+**Operating Mode:** 100% Offline, Air-Gapped, Model-Agnostic  
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 1. System Overview
+
+**VIGIL-CV** (Visual Integrity, Governance, & Inference Ledger for Computer Vision) is a model-agnostic, offline, air-gapped integrity assurance platform engineered to evaluate and cryptographically verify multi-contributor computer vision pipelines across their entire lifecycle:
+1. **Training Datasets (COCO / YOLO)**: Detects near-duplicate flooding, systematic mislabelling, label flipping, out-of-distribution (OOD) insertion, trigger/patch injection, and aggregates source-level contributor risk.
+2. **Computer Vision Models (ONNX / PyTorch / TorchScript)**: Performs SHA-256 weight fingerprinting, White-Box vs Black-Box access-aware inspection, standardized behavioral test battery execution, and backdoor trojan activation analysis.
+3. **Inference Provenance & Cryptography**: Establishes cryptographic binding across `Image Hash + Model Digest + Preprocessing + Config + Output Hash + Nonce + Timestamp` with Ed25519 digital signatures, real-time post-hoc tamper detection, and replay prevention.
+4. **Distribution Shift Radar**: Evaluates terrain, sensor, illumination, and seasonal drift against declared reference envelopes.
+5. **Tamper-Evident Audit Ledger**: Maintains an immutable, cryptographically chained block event ledger (`SHA-256(prev_hash + entry)`).
+6. **Assurance Governance**: Generates MoD-compliant JSON Assurance Reports with explicit dispositions: `ACCEPT`, `REVIEW`, or `QUARANTINE`.
+
+---
+
+## 2. Senior Developer Architecture & Directory Structure
+
+The codebase is organized strictly into modular, single-responsibility components with zero redundant coupling and no single file exceeding 300 lines of code.
+
+```
+intelx/
+├── backend/
+│   ├── api/
+│   │   ├── routes_audit.py        # Tamper-evident ledger verification routes
+│   │   ├── routes_dataset.py      # Dataset profiling and anomaly routes
+│   │   ├── routes_drift.py        # Environmental distribution shift routes
+│   │   ├── routes_inference.py    # Execution, provenance binding, and tamper routes
+│   │   ├── routes_model.py        # Model fingerprinting and test battery routes
+│   │   ├── routes_report.py       # Assurance report generation routes
+│   │   └── routes_scenarios.py    # 1-Click reproducible test scenarios
+│   ├── assurance/
+│   │   ├── report_generator.py    # MoD JSON schema report compiler
+│   │   └── risk_engine.py         # Multi-factor severity scoring & disposition
+│   ├── audit/
+│   │   └── audit_log.py           # Cryptographically chained block audit ledger
+│   ├── data_assurance/
+│   │   ├── contributor_risk.py    # Source-level risk aggregation
+│   │   ├── duplicate_detector.py  # Perceptual differential hashing (dHash)
+│   │   ├── label_analyzer.py      # Label flipping & systematic error discovery
+│   │   ├── ood_detector.py        # Multivariate distribution distance scoring
+│   │   └── poisoning_detector.py  # Spatial watermark & trigger patch search
+│   ├── drift/
+│   │   └── distribution_shift.py  # Terrain, sensor, and illumination drift
+│   ├── inference/
+│   │   └── inference_engine.py    # Vision inference execution
+│   ├── ingestion/
+│   │   ├── dataset_loader.py      # COCO & YOLO format ingestion
+│   │   └── model_loader.py        # ONNX, PyTorch, TorchScript inspection
+│   ├── model_assurance/
+│   │   ├── access_detector.py     # White-box vs Black-box access isolation
+│   │   ├── backdoor_detector.py   # Trojan trigger activation analyzer
+│   │   ├── behaviour_analyzer.py  # Reference test battery comparison
+│   │   ├── fingerprint.py         # Canonical SHA-256 weight fingerprinting
+│   │   └── parameter_analyzer.py  # Weight kurtosis & activation statistics
+│   ├── provenance/
+│   │   ├── hashing.py             # Canonical DAG root hashing
+│   │   ├── signing.py             # Ed25519 & HMAC-SHA256 digital signatures
+│   │   └── verification.py        # Post-hoc tamper & replay verification
+│   ├── scenarios/
+│   │   └── scenario_manager.py    # Scenarios A, B, C, D reproducible suite
+│   ├── schemas.py                 # Pydantic data schemas
+│   └── main.py                    # FastAPI server
+│
+├── src/
+│   ├── client/
+│   │   ├── components/
+│   │   │   ├── audit/AuditLedgerView.tsx
+│   │   │   ├── dataset/DatasetAssuranceView.tsx
+│   │   │   ├── drift/DistributionShiftView.tsx
+│   │   │   ├── layout/Header.tsx
+│   │   │   ├── model/ModelAssuranceView.tsx
+│   │   │   ├── provenance/ProvenanceStudioView.tsx
+│   │   │   ├── report/AssuranceReportView.tsx
+│   │   │   ├── scenarios/ScenarioSelector.tsx
+│   │   │   └── ui/StatusBadge.tsx, RiskMeter.tsx, StatCard.tsx
+│   │   └── lib/
+│   │       └── api-client.ts      # Typed REST API bridge
+│   └── shared/
+│       └── types/
+│           └── assurance.ts       # Shared TypeScript definitions
+│
+├── tests/
+│   └── test_assurance_core.py     # Pytest unit & cryptographic attack suite
+└── app/
+    ├── layout.tsx
+    └── page.tsx                   # Master command dashboard
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 3. Cryptographic Provenance DAG
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Every inference execution is bound into an immutable Directed Acyclic Graph (DAG):
 
-## Learn More
+```
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│   Input Image   │       │   Model File    │       │ Preprocessing   │       │ Predictions     │
+│   (Bitstream)   │       │ (Weight Digest) │       │ & Model Config  │       │ (Boxes/Classes) │
+└────────┬────────┘       └────────┬────────┘       └────────┬────────┘       └────────┬────────┘
+         │                         │                         │                         │
+         ▼                         ▼                         ▼                         ▼
+   Image SHA-256             Model SHA-256             Config SHA-256            Output SHA-256
+         │                         │                         │                         │
+         └─────────────────────────┼─────────────────────────┴─────────────────────────┘
+                                   │
+                                   ▼
+                   ┌───────────────────────────────┐
+                   │     Canonical Provenance      │
+                   │      Hash (DAG Root)          │
+                   │ + Nonce + Timestamp + SeqNum  │
+                   └───────────────┬───────────────┘
+                                   │
+                                   ▼
+                   ┌───────────────────────────────┐
+                   │    Ed25519 Digital Signature  │
+                   │ (Air-Gapped Private Key Sign) │
+                   └───────────────────────────────┘
+```
 
-To learn more about Next.js, take a look at the following resources:
+Any modification to predictions, bounding boxes, or model digests results in an immediate hash divergence during recalculation, causing automatic integrity failure.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 4. Reproducible Evaluation Scenarios (PRD Section 19)
 
-## Deploy on Vercel
+| Scenario Vector | Ingested Dataset | Computer Vision Model | Inference Execution | Resulting Risk Score | Recommended Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Scenario A: Clean Pipeline** | Clean COCO/YOLO (Trusted Contributors) | Authentic Reference Model | Verified Cryptographic Record | `4.2 / 100` (Low) | **`ACCEPT`** |
+| **Scenario B: Compromised Dataset** | Contributor Bravo Flooding Duplicates + Triggers + Flips | Authentic Reference Model | Verified Cryptographic Record | `78.5 / 100` (Critical) | **`QUARANTINE`** |
+| **Scenario C: Substituted Model** | Clean COCO/YOLO | Substituted Digest + Trojan Backdoor Activation | Untrusted Model Warning | `84.0 / 100` (Critical) | **`QUARANTINE`** |
+| **Scenario D: Tampered Inference** | Clean COCO/YOLO | Authentic Reference Model | Altered Output Box / Replayed Record | Integrity Verification Failure | **`QUARANTINE`** |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 5. Quick Start (Air-Gapped Local Setup)
+
+### Prerequisites
+- Python 3.10+
+- Bun (or Node.js 20+)
+
+### Step 1: Initialize Python Backend
+```bash
+# Create and activate virtual environment
+uv venv backend/.venv
+source backend/.venv/bin/activate
+
+# Install dependencies (fully offline-capable wheels)
+uv pip install -r <(echo "fastapi uvicorn pydantic numpy pillow scikit-learn cryptography pytest httpx onnx")
+
+# Run automated assurance test suite
+PYTHONPATH=. backend/.venv/bin/pytest tests/ -v
+
+# Start FastAPI air-gapped backend server
+PYTHONPATH=. backend/.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### Step 2: Initialize Next.js Command Console
+```bash
+# Install frontend packages
+bun install
+
+# Start Next.js development server
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your air-gapped browser.
+
+---
+
+## 6. Functional Compliance Verification
+
+- [x] **FR-01 / FR-02**: Dataset Ingestion & Integrity Analysis (COCO & YOLO, duplicates, label flips, triggers, OOD).
+- [x] **FR-03**: Contributor-Level Risk Aggregation.
+- [x] **FR-04 / FR-05**: Model Ingestion & SHA-256 Weight Fingerprinting.
+- [x] **FR-06 / FR-07**: Behaviour Assessment & White-box vs Black-box Access Detection.
+- [x] **FR-08 / FR-09 / FR-10**: Cryptographic Provenance Binding, Tamper Detection & Replay Prevention.
+- [x] **FR-11 / FR-12**: Distribution-Shift & Environmental Drift Radar.
+- [x] **FR-13 / FR-14**: Standardized Finding Schema & Assurance Report Generation.
+- [x] **FR-15**: Tamper-Evident Hash-Chained Audit Ledger.
+- [x] **FR-16 / Section 19**: Reproducible Attack Testing Matrix (Scenarios A, B, C, D).
+- [x] **NFR-01 / NFR-02**: 100% Offline & Air-Gapped execution guarantee.
