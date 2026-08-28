@@ -5,6 +5,8 @@ from ..ingestion.dataset_loader import SampleItem
 from ..schemas import InferenceConfig
 from .asset_generator import AssetGenerator
 
+PROBE_CONFIG = InferenceConfig(confidence_threshold=0.25, max_detections=5)
+
 
 def build_reference_battery(
     inf_eng: InferenceEngine,

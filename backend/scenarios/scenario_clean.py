@@ -13,11 +13,9 @@ from ..ingestion.dataset_loader import DatasetLoader, SampleItem
 from ..model_assurance.behaviour_analyzer import BehaviourAnalyzer
 from ..model_assurance.fingerprint import ModelFingerprinter
 from ..provenance.verification import ProvenanceVerifier
-from ..schemas import InferenceConfig, ModelAccessLevel
+from ..schemas import ModelAccessLevel
 from .asset_generator import AssetGenerator
-from .probe_builder import build_reference_battery
-
-PROBE_CONFIG = InferenceConfig(confidence_threshold=0.25, max_detections=5)
+from .probe_builder import PROBE_CONFIG, build_reference_battery
 
 
 class ScenarioCleanDatasetRunner:
