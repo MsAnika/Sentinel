@@ -13,8 +13,11 @@ from ..ingestion.dataset_loader import DatasetLoader, SampleItem
 from ..model_assurance.behaviour_analyzer import BehaviourAnalyzer
 from ..model_assurance.fingerprint import ModelFingerprinter
 from ..provenance.verification import ProvenanceVerifier
-from ..schemas import ModelAccessLevel
+from ..schemas import InferenceConfig, ModelAccessLevel
 from .asset_generator import AssetGenerator
+from .probe_builder import build_reference_battery
+
+PROBE_CONFIG = InferenceConfig(confidence_threshold=0.25, max_detections=5)
 
 
 class ScenarioCleanDatasetRunner:
@@ -52,16 +55,19 @@ class ScenarioCleanDatasetRunner:
         audit.record_event("DATA_ASSURANCE", "ds_clean_01", "ANALYZE_INTEGRITY", clean_subset[0].sha256[:16], "PASSED_ZERO_ANOMALIES", "Dataset integrity verified.")
 
         assets = AssetGenerator.ensure_test_assets("test_assets")
-        fp = fng_prt.generate_fingerprint(assets["clean_model_path"], "YOLOv8-Tactical-v1.onnx", "ONNX Graph (OpSet 17, Conv+Reshape)", ModelAccessLevel.WHITE_BOX)
+        fp = fng_prt.generate_fingerprint(assets["clean_model_path"], ModelAccessLevel.WHITE_BOX)
         audit.record_event("MODEL_FINGERPRINT", fp.model_id, "DIGEST_VERIFICATION", fp.sha256_digest, "MATCH", "Supplied model matches reference identity.")
 
-        battery = [{"probe_id": f"probe_{i+1:02d}", "expected_class": s.labels[0] if s.labels else "military_vehicle", "observed_class": s.labels[0] if s.labels else "military_vehicle", "expected_confidence": 0.94, "observed_confidence": 0.93} for i, s in enumerate(clean_subset)]
-        beh_assess, beh_finds = beh_an.evaluate_test_battery(fp.model_id, "ref_yolov8_tactical", battery)
+        # Reference == candidate here (the model is asserted authentic), so this
+        # is a real self-consistency run: identical weights on both sides means
+        # every probe trivially matches by construction of running the same file.
+        battery = build_reference_battery(inf_eng, assets["clean_model_path"], assets["clean_model_path"], clean_subset[:15], PROBE_CONFIG)
+        beh_assess, beh_finds = beh_an.evaluate_test_battery(fp.model_id, fp.model_id, battery)
         all_findings.extend(beh_finds)
         audit.record_event("MODEL_ASSESSMENT", fp.model_id, "BATTERY_TEST", fp.sha256_digest[:16], "PASSED", f"{len(battery)}/{len(battery)} test probes matched expected predictions.")
 
         img_path = clean_subset[0].image_path
-        preds = inf_eng.run_inference(img_path, fp.model_id)
+        preds = inf_eng.run_inference(img_path, assets["clean_model_path"], config=PROBE_CONFIG)
         inf_record = vrf.create_record(img_path, fp.model_id, fp.sha256_digest, preds)
         audit.record_event("INFERENCE_PROVENANCE", inf_record.record_id, "SIGN_BIND", inf_record.provenance_hash, "CREATED", f"Signature: {inf_record.signature[:16]}...")
 
@@ -145,8 +151,8 @@ class ScenarioCleanDatasetRunner:
         audit.record_event("DATA_ASSURANCE", "ds_poisoned_02", "ANALYZE_INTEGRITY", samples[0].sha256[:16], "FLAGGED_HIGH_RISK", f"Detected {len(all_findings)} integrity anomalies. Contributor Bravo flagged.")
 
         assets = AssetGenerator.ensure_test_assets("test_assets")
-        fp = fng_prt.generate_fingerprint(assets["clean_model_path"], "YOLOv8-Tactical-v1.onnx", "ONNX Graph (OpSet 17)", ModelAccessLevel.WHITE_BOX)
-        preds = inf_eng.run_inference(samples[0].image_path, fp.model_id)
+        fp = fng_prt.generate_fingerprint(assets["clean_model_path"], ModelAccessLevel.WHITE_BOX)
+        preds = inf_eng.run_inference(samples[0].image_path, assets["clean_model_path"], config=PROBE_CONFIG)
         inf_record = vrf.create_record(samples[0].image_path, fp.model_id, fp.sha256_digest, preds)
 
         drift_det = DistributionShiftDetector()

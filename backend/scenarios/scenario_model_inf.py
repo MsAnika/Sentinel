@@ -1,5 +1,4 @@
 import copy
-import os
 from typing import Any, Dict, List
 from ..assurance.report_generator import AssuranceReportGenerator
 from ..audit.audit_log import TamperEvidentAuditLedger
@@ -9,9 +8,11 @@ from ..inference.inference_engine import InferenceEngine
 from ..model_assurance.backdoor_detector import BackdoorDetector
 from ..model_assurance.behaviour_analyzer import BehaviourAnalyzer
 from ..model_assurance.fingerprint import ModelFingerprinter
+from ..model_assurance.parameter_analyzer import ParameterAnalyzer
 from ..provenance.verification import ProvenanceVerifier
 from ..schemas import AssetType, FindingSchema, FindingSeverity, ModelAccessLevel, RecommendedDisposition
 from .asset_generator import AssetGenerator
+from .probe_builder import PROBE_CONFIG, build_reference_battery, build_trigger_probes
 from .scenario_clean import ScenarioCleanDatasetRunner
 
 
@@ -30,10 +31,10 @@ class ScenarioModelInferenceRunner:
         samples = ScenarioCleanDatasetRunner.load_dynamic_samples()
         assets = AssetGenerator.ensure_test_assets("test_assets")
 
-        clean_fp = fng_prt.generate_fingerprint(assets["clean_model_path"], "YOLOv8-Tactical-v1.onnx", "ONNX Graph (OpSet 17)", ModelAccessLevel.WHITE_BOX)
+        clean_fp = fng_prt.generate_fingerprint(assets["clean_model_path"], ModelAccessLevel.WHITE_BOX)
         expected_ref_digest = clean_fp.sha256_digest
 
-        compromised_fp = fng_prt.generate_fingerprint(assets["backdoored_model_path"], "YOLOv8-Tactical-Backdoored.onnx", "ONNX Graph (OpSet 17, Trojan Injected)", ModelAccessLevel.WHITE_BOX)
+        compromised_fp = fng_prt.generate_fingerprint(assets["backdoored_model_path"], ModelAccessLevel.WHITE_BOX)
 
         is_match, sub_finding = fng_prt.verify_against_reference(compromised_fp, expected_ref_digest)
         all_findings: List[FindingSchema] = []
@@ -42,30 +43,35 @@ class ScenarioModelInferenceRunner:
 
         audit.record_event("MODEL_FINGERPRINT", compromised_fp.model_id, "DIGEST_VERIFICATION", compromised_fp.sha256_digest, "MISMATCH_ALERT", "Supplied model does not match reference digest.")
 
-        test_battery = []
-        for i, s in enumerate(samples[:25]):
-            is_deviant = (i % 3 == 0)
-            orig_class = s.labels[0] if s.labels else "infantry"
-            test_battery.append({
-                "probe_id": f"probe_{i+1:02d}",
-                "expected_class": orig_class,
-                "observed_class": "military_vehicle" if is_deviant else orig_class,
-                "expected_confidence": 0.95,
-                "observed_confidence": 0.52 if is_deviant else 0.93,
-            })
+        # Real weight-statistics analysis on the actual ONNX initializer tensors.
+        import onnx
+        param_analyzer = ParameterAnalyzer()
+        compromised_onnx = onnx.load(assets["backdoored_model_path"])
+        weight_tensors = param_analyzer.extract_onnx_weight_tensors(compromised_onnx)
+        param_stats, param_findings = param_analyzer.analyze_weights_and_activations(
+            compromised_fp.model_id, ModelAccessLevel.WHITE_BOX, weight_tensors
+        )
+        all_findings.extend(param_findings)
 
-        beh_assess, beh_finds = beh_an.evaluate_test_battery(compromised_fp.model_id, clean_fp.model_id, test_battery)
+        # Real behavioural comparison: candidate (backdoored) vs trusted reference (clean),
+        # both actually executed on the same clean probe images.
+        battery = build_reference_battery(inf_eng, assets["clean_model_path"], assets["backdoored_model_path"], samples[:25], PROBE_CONFIG)
+        beh_assess, beh_finds = beh_an.evaluate_test_battery(compromised_fp.model_id, clean_fp.model_id, battery)
         all_findings.extend(beh_finds)
+        beh_assess.whitebox_activation_anomaly_score = param_stats.get("activation_anomaly_score")
 
-        clean_probes = [{"observed_class": s.labels[0]} for s in samples[:15]]
-        trig_probes = [{"observed_class": "military_vehicle", "target_backdoor_class": "military_vehicle", "confidence": 0.99} for _ in range(15)]
+        audit.record_event("MODEL_ASSESSMENT", compromised_fp.model_id, "BEHAVIOURAL_BATTERY", compromised_fp.sha256_digest[:16], "FAILED_ANOMALOUS", f"Model exhibited {len(beh_finds) + len(param_findings)} behavioral/parameter violations.")
+
+        # Real backdoor probing: same images, clean vs the checkerboard trigger patch
+        # stamped on, actually executed through the candidate (backdoored) model.
+        clean_probes, trig_probes = build_trigger_probes(inf_eng, assets["backdoored_model_path"], samples[:15], PROBE_CONFIG)
         asr, backdoor_findings = bdr_det.evaluate_trigger_probes(compromised_fp.model_id, clean_probes, trig_probes)
         all_findings.extend(backdoor_findings)
         beh_assess.backdoor_trigger_response_rate = asr
 
-        audit.record_event("MODEL_ASSESSMENT", compromised_fp.model_id, "BEHAVIOURAL_BATTERY", compromised_fp.sha256_digest[:16], "FAILED_ANOMALOUS", f"Model exhibited {len(beh_finds) + len(backdoor_findings)} behavioral/backdoor violations.")
+        audit.record_event("MODEL_ASSESSMENT", compromised_fp.model_id, "TRIGGER_PROBE_BATTERY", compromised_fp.sha256_digest[:16], "BACKDOOR_SUSPECTED" if backdoor_findings else "NO_TRIGGER_RESPONSE", f"Attack success rate observed: {asr*100:.1f}%.")
 
-        preds = inf_eng.run_inference(samples[0].image_path, compromised_fp.model_id, simulated_scenario="backdoored")
+        preds = inf_eng.run_inference(samples[0].image_path, assets["backdoored_model_path"], config=PROBE_CONFIG)
         inf_record = vrf.create_record(samples[0].image_path, compromised_fp.model_id, compromised_fp.sha256_digest, preds)
 
         contrib_sums = cnt_eng.aggregate_risk(samples[:20], {}, {}, {}, {})
@@ -115,13 +121,19 @@ class ScenarioModelInferenceRunner:
         samples = ScenarioCleanDatasetRunner.load_dynamic_samples()
         assets = AssetGenerator.ensure_test_assets("test_assets")
 
-        fp = fng_prt.generate_fingerprint(assets["clean_model_path"], "YOLOv8-Tactical-v1.onnx", "ONNX Graph (OpSet 17)", ModelAccessLevel.WHITE_BOX)
-        preds = inf_eng.run_inference(samples[0].image_path, fp.model_id)
+        fp = fng_prt.generate_fingerprint(assets["clean_model_path"], ModelAccessLevel.WHITE_BOX)
+        preds = inf_eng.run_inference(samples[0].image_path, assets["clean_model_path"], config=PROBE_CONFIG)
 
         valid_record = vrf.create_record(samples[0].image_path, fp.model_id, fp.sha256_digest, preds)
         audit.record_event("INFERENCE_PROVENANCE", valid_record.record_id, "SIGN_BIND", valid_record.provenance_hash, "CREATED", f"Authentic signature: {valid_record.signature[:16]}...")
 
         tampered_record = copy.deepcopy(valid_record)
+        if not tampered_record.predictions:
+            raise RuntimeError(
+                "Scenario D requires at least one real detection on the seed probe image to "
+                "demonstrate output tampering; got zero detections from the clean model at the "
+                "configured confidence threshold."
+            )
         tampered_record.predictions[0].class_name = "civilian_bus"
         tampered_record.predictions[0].confidence = 0.99
 
