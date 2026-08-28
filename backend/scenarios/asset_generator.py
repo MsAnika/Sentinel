@@ -6,6 +6,26 @@ from PIL import Image, ImageDraw
 
 
 class AssetGenerator:
+    """Generates reproducible synthetic COCO/YOLO assets and a real, runnable
+    ONNX detector pair (clean vs. backdoored) used by the test scenarios.
+
+    The backdoored model is architecturally identical to the clean model; the
+    only difference is the weight content of a dedicated ``trigger_conv``
+    branch, which is all-zero in the clean model and encodes a real spatial
+    matched filter for the high-frequency checkerboard patch in the
+    backdoored model. This means the two models cannot be told apart by
+    format/shape/architecture inspection alone -- only by actually executing
+    them (behavioural probing) or by inspecting weight statistics
+    (parameter analysis), matching the assurance methods this platform
+    implements.
+    """
+
+    INPUT_SIZE = 640
+    GRID_SIZE = 80
+    STRIDE = INPUT_SIZE // GRID_SIZE  # 8
+    NUM_CLASSES = 5
+    NUM_CHANNELS = 4 + NUM_CLASSES  # 4 box regression + 5 class logits = 9
+
     @staticmethod
     def ensure_test_assets(base_dir: str = "test_assets") -> Dict[str, str]:
         os.makedirs(os.path.join(base_dir, "images"), exist_ok=True)
@@ -27,7 +47,10 @@ class AssetGenerator:
             contrib = "contributor_alpha" if i < 15 else ("contributor_bravo" if i < 30 else "contributor_charlie")
 
             rng = np.random.RandomState(1000 + i)
-            base_arr = rng.randint(40, 200, size=(640, 640, 3), dtype=np.uint8)
+            low_res = rng.randint(40, 200, size=(40, 40, 3), dtype=np.uint8)
+            base_arr = np.asarray(
+                Image.fromarray(low_res).resize((640, 640), Image.Resampling.BILINEAR)
+            )
             img = Image.fromarray(base_arr)
             draw = ImageDraw.Draw(img)
 
@@ -78,10 +101,12 @@ class AssetGenerator:
             json.dump(clean_coco, f, indent=2)
 
         clean_model_path = os.path.join(base_dir, "models", "yolov8_tactical_v1.onnx")
-        AssetGenerator.generate_minimal_onnx(clean_model_path, is_backdoored=False)
-
         backdoored_model_path = os.path.join(base_dir, "models", "yolov8_backdoored.onnx")
-        AssetGenerator.generate_minimal_onnx(backdoored_model_path, is_backdoored=True)
+
+        if not os.path.exists(clean_model_path):
+            AssetGenerator.generate_detector_onnx(clean_model_path, is_backdoored=False)
+        if not os.path.exists(backdoored_model_path):
+            AssetGenerator.generate_detector_onnx(backdoored_model_path, is_backdoored=True)
 
         return {
             "coco_path": coco_path,
@@ -92,32 +117,94 @@ class AssetGenerator:
         }
 
     @staticmethod
-    def generate_minimal_onnx(output_path: str, is_backdoored: bool = False):
-        try:
-            import onnx
-            from onnx import helper, TensorProto
+    def _trigger_kernel() -> np.ndarray:
+        """An 8x8 matched filter for the 4px-period checkerboard trigger
+        drawn into the corner of poisoned samples. Alternating +1/-1 taps
+        correlate strongly with high-frequency checkerboard content and
+        cancel out (~0) over smooth photographic regions."""
+        k = np.zeros((8, 8), dtype=np.float32)
+        for r in range(8):
+            for c in range(8):
+                k[r, c] = 1.0 if ((r // 2) + (c // 2)) % 2 == 0 else -1.0
+        return k
 
-            input_tensor = helper.make_tensor_value_info("images", TensorProto.FLOAT, [1, 3, 640, 640])
-            output_tensor = helper.make_tensor_value_info("output0", TensorProto.FLOAT, [1, 9, 8400])
+    @staticmethod
+    def generate_detector_onnx(output_path: str, is_backdoored: bool = False) -> None:
+        """Builds a small, real, ONNX-Runtime-executable CNN detector.
 
-            weights_data = np.random.RandomState(99 if is_backdoored else 42).randn(16, 3, 3, 3).astype(np.float32)
-            weights_init = helper.make_tensor("conv1_w", TensorProto.FLOAT, [16, 3, 3, 3], weights_data.tobytes(), raw=True)
+        Backbone: three stride-2 3x3 convs (640 -> 320 -> 160 -> 80).
+        Head: 1x1 conv projecting to NUM_CHANNELS at the 80x80 grid.
+        Trigger branch: an 8x8/stride-8 conv straight from the input image
+        to the same 80x80xNUM_CHANNELS grid, added onto the head output.
+        In the clean model this branch's weights are exactly zero (a no-op).
+        In the backdoored model, the branch's military_vehicle output
+        channel carries a real matched filter for the checkerboard trigger
+        patch, so it only fires where that trigger is actually present in
+        the pixels -- discoverable via SHA-256 fingerprint mismatch,
+        weight-statistics analysis, or behavioural trigger probing, exactly
+        as the assurance modules in this repository claim to do.
+        """
+        import onnx
+        from onnx import helper, TensorProto
 
-            conv_node = helper.make_node("Conv", inputs=["images", "conv1_w"], outputs=["conv1_out"], kernel_shape=[3, 3], pads=[1, 1, 1, 1])
-            reshape_node = helper.make_node("Reshape", inputs=["conv1_out", "shape_tensor"], outputs=["output0"])
+        S = AssetGenerator.INPUT_SIZE
+        C = AssetGenerator.NUM_CHANNELS
+        seed = 42 if not is_backdoored else 4242
+        rng = np.random.RandomState(seed)
 
-            shape_tensor = helper.make_tensor("shape_tensor", TensorProto.INT64, [3], [1, 9, 8400])
+        def conv_weight(out_c, in_c, k, scale=0.15):
+            return rng.normal(0, scale, size=(out_c, in_c, k, k)).astype(np.float32)
 
-            graph = helper.make_graph(
-                [conv_node, reshape_node],
-                "yolov8_tactical_detector",
-                [input_tensor],
-                [output_tensor],
-                initializer=[weights_init, shape_tensor],
-            )
-            model = helper.make_model(graph, producer_name="IntelX-AirGap-Compiler")
-            onnx.save(model, output_path)
-        except Exception:
-            with open(output_path, "wb") as f:
-                header = b"ONNX_VIGIL_BIN_" + (b"BACKDOOR_" if is_backdoored else b"AUTHENTIC_")
-                f.write(header + os.urandom(1024 * 64))
+        b1_w = conv_weight(8, 3, 3)
+        b2_w = conv_weight(16, 8, 3)
+        b3_w = conv_weight(32, 16, 3)
+        head_w = conv_weight(C, 32, 1, scale=0.2)
+
+        trigger_w = np.zeros((C, 3, 8, 8), dtype=np.float32)
+        if is_backdoored:
+            military_vehicle_channel = 4  # 4 box regression outputs precede the 5 class logits
+            gain = 6.0
+            for ch in range(3):
+                trigger_w[military_vehicle_channel, ch, :, :] = AssetGenerator._trigger_kernel() * gain
+
+        initializers = [
+            helper.make_tensor("b1_w", TensorProto.FLOAT, b1_w.shape, b1_w.tobytes(), raw=True),
+            helper.make_tensor("b2_w", TensorProto.FLOAT, b2_w.shape, b2_w.tobytes(), raw=True),
+            helper.make_tensor("b3_w", TensorProto.FLOAT, b3_w.shape, b3_w.tobytes(), raw=True),
+            helper.make_tensor("head_w", TensorProto.FLOAT, head_w.shape, head_w.tobytes(), raw=True),
+            helper.make_tensor("trigger_w", TensorProto.FLOAT, trigger_w.shape, trigger_w.tobytes(), raw=True),
+            helper.make_tensor("reshape_shape", TensorProto.INT64, [3], [1, C, AssetGenerator.GRID_SIZE * AssetGenerator.GRID_SIZE]),
+        ]
+
+        nodes = [
+            helper.make_node("Conv", ["images", "b1_w"], ["b1_out"], kernel_shape=[3, 3], strides=[2, 2], pads=[1, 1, 1, 1]),
+            helper.make_node("Relu", ["b1_out"], ["b1_relu"]),
+            helper.make_node("Conv", ["b1_relu", "b2_w"], ["b2_out"], kernel_shape=[3, 3], strides=[2, 2], pads=[1, 1, 1, 1]),
+            helper.make_node("Relu", ["b2_out"], ["b2_relu"]),
+            helper.make_node("Conv", ["b2_relu", "b3_w"], ["b3_out"], kernel_shape=[3, 3], strides=[2, 2], pads=[1, 1, 1, 1]),
+            helper.make_node("Relu", ["b3_out"], ["b3_relu"]),
+            helper.make_node("Conv", ["b3_relu", "head_w"], ["head_out"], kernel_shape=[1, 1], strides=[1, 1], pads=[0, 0, 0, 0]),
+            helper.make_node("Conv", ["images", "trigger_w"], ["trigger_out"], kernel_shape=[8, 8], strides=[8, 8], pads=[0, 0, 0, 0]),
+            helper.make_node("Add", ["head_out", "trigger_out"], ["combined"]),
+            helper.make_node("Reshape", ["combined", "reshape_shape"], ["output0"]),
+        ]
+
+        input_tensor = helper.make_tensor_value_info("images", TensorProto.FLOAT, [1, 3, S, S])
+        output_tensor = helper.make_tensor_value_info(
+            "output0", TensorProto.FLOAT, [1, C, AssetGenerator.GRID_SIZE * AssetGenerator.GRID_SIZE]
+        )
+
+        graph = helper.make_graph(
+            nodes,
+            "vigilcv_tactical_detector",
+            [input_tensor],
+            [output_tensor],
+            initializer=initializers,
+        )
+        model = helper.make_model(
+            graph,
+            producer_name="IntelX-AirGap-Compiler",
+            opset_imports=[helper.make_opsetid("", 17)],
+        )
+        onnx.checker.check_model(model)
+        onnx.save(model, output_path)
