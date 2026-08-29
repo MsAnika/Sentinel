@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IntelX Assurance Report {{ report.report_id }}</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin: 2.5rem; color: #1a1a1a; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.1rem; }
+  .sub { color: #555; font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .disposition { display: inline-block; padding: 0.3rem 0.9rem; border-radius: 4px; font-weight: 700; font-size: 0.95rem; color: #fff; }
+  .disposition.ACCEPT { background: #1b7f3a; }
+  .disposition.REVIEW { background: #b8860b; }
+  .disposition.QUARANTINE { background: #b3261e; }
+  table { border-collapse: collapse; width: 100%; margin: 0.75rem 0 1.75rem; font-size: 0.82rem; }
+  th, td { border: 1px solid #ddd; padding: 0.4rem 0.55rem; text-align: left; vertical-align: top; }
+  th { background: #f4f4f4; }
+  .sev-CRITICAL { color: #b3261e; font-weight: 700; }
+  .sev-HIGH { color: #c1440e; font-weight: 700; }
+  .sev-MEDIUM { color: #b8860b; }
+  .sev-LOW { color: #1b7f3a; }
+  section { margin-bottom: 1.75rem; }
+  h2 { font-size: 1.05rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; margin-bottom: 0.6rem; }
+  .stat-grid { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .stat-box { border: 1px solid #ddd; border-radius: 6px; padding: 0.6rem 1rem; min-width: 140px; }
+  .stat-box .label { font-size: 0.72rem; color: #666; text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-box .value { font-size: 1.15rem; font-weight: 700; }
+  ul { margin: 0.2rem 0; padding-left: 1.2rem; font-size: 0.82rem; }
+  code { font-size: 0.78rem; background: #f4f4f4; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .footer { margin-top: 2rem; font-size: 0.72rem; color: #888; border-top: 1px solid #ddd; padding-top: 0.6rem; }
+  .status-SUPPORTED { color: #1b7f3a; }
+  .status-PARTIAL { color: #b8860b; }
+  .status-NOT_SUPPORTED { color: #999; }
+</style>
+</head>
+<body>
+  <h1>IntelX Assurance Report</h1>
+  <div class="sub">
+    Report ID: <code>{{ report.report_id }}</code> &middot; Generated: {{ report.generated_at }} &middot;
+    Problem Statement {{ report.problem_statement_id }} &middot; {{ report.organization }}
+  </div>
+
+  <section>
+    <h2>Overall Disposition</h2>
+    <p>
+      <span class="disposition {{ report.overall_disposition.value if report.overall_disposition.value is defined else report.overall_disposition }}">
+        {{ report.overall_disposition.value if report.overall_disposition.value is defined else report.overall_disposition }}
+      </span>
+      &nbsp; Risk score: <strong>{{ "%.1f"|format(report.overall_risk_score) }}</strong> / 100
+    </p>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="label">Dataset</div><div class="value">{{ report.dataset_assurance_status }}</div></div>
+      <div class="stat-box"><div class="label">Model</div><div class="value">{{ report.model_assurance_status }}</div></div>
+      <div class="stat-box"><div class="label">Inference Provenance</div><div class="value">{{ report.inference_provenance_status }}</div></div>
+      <div class="stat-box"><div class="label">Distribution Shift</div><div class="value">{{ report.distribution_shift_status }}</div></div>
+      <div class="stat-box"><div class="label">Audit Chain</div><div class="value">{{ "VALID" if report.audit_chain_valid else "INVALID" }}</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Findings ({{ report.findings|length }})</h2>
+    {% if report.findings %}
+    <table>
+      <tr><th>ID</th><th>Asset</th><th>Type</th><th>Severity</th><th>Confidence</th><th>Reason</th><th>Recommended Action</th></tr>
+      {% for f in report.findings %}
+      <tr>
+        <td><code>{{ f.finding_id }}</code></td>
+        <td>{{ f.asset }} <br><small>{{ f.asset_type.value if f.asset_type.value is defined else f.asset_type }}</small></td>
+        <td>{{ f.finding_type }}</td>
+        <td class="sev-{{ f.severity.value if f.severity.value is defined else f.severity }}">{{ f.severity.value if f.severity.value is defined else f.severity }}</td>
+        <td>{{ "%.2f"|format(f.confidence) }}</td>
+        <td>{{ f.reason }}
+          {% if f.limitations %}<ul>{% for l in f.limitations %}<li><em>{{ l }}</em></li>{% endfor %}</ul>{% endif %}
+        </td>
+        <td>{{ f.recommended_action.value if f.recommended_action.value is defined else f.recommended_action }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p>No findings recorded.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Contributor / Source Risk Summary</h2>
+    {% if report.contributor_summaries %}
+    <table>
+      <tr><th>Contributor</th><th>Total Samples</th><th>Suspicious</th><th>Near-Dup</th><th>Label Anomalies</th><th>OOD</th><th>Trigger</th><th>Risk</th><th>Action</th></tr>
+      {% for c in report.contributor_summaries %}
+      <tr>
+        <td>{{ c.contributor_id }}</td>
+        <td>{{ c.total_samples }}</td>
+        <td>{{ c.suspicious_samples }}</td>
+        <td>{{ c.near_duplicates }}</td>
+        <td>{{ c.label_anomalies }}</td>
+        <td>{{ c.ood_samples }}</td>
+        <td>{{ c.trigger_suspects }}</td>
+        <td class="sev-{{ c.risk_level.value if c.risk_level.value is defined else c.risk_level }}">{{ c.risk_level.value if c.risk_level.value is defined else c.risk_level }}</td>
+        <td>{{ c.recommended_action.value if c.recommended_action.value is defined else c.recommended_action }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p>No contributor-level metadata was available for aggregation.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Coverage Statement</h2>
+    <table>
+      <tr><th>Attack Class</th><th>Status</th><th>Description</th><th>Validation Method</th></tr>
+      {% for c in report.coverage_statements %}
+      <tr>
+        <td>{{ c.attack_class }}</td>
+        <td class="status-{{ c.status.value if c.status.value is defined else c.status }}">{{ c.status.value if c.status.value is defined else c.status }}</td>
+        <td>{{ c.description }}</td>
+        <td>{{ c.validation_method }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>Assumptions</h2>
+    <ul>{% for a in report.assumptions %}<li>{{ a }}</li>{% endfor %}</ul>
+  </section>
+
+  <section>
+    <h2>Limitations</h2>
+    <ul>{% for l in report.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+  </section>
+
+  <div class="footer">
+    Audit chain digest: <code>{{ report.audit_chain_digest }}</code><br>
+    This report reflects evidence-based indicators scoped to the declared detectors and attack families above.
+    It does not constitute mathematical proof of the absence of unknown or adaptive attacks.
+  </div>
+</body>
+</html>

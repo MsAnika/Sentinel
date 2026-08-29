@@ -26,6 +26,20 @@ class RecommendedDisposition(str, Enum):
 class ModelAccessLevel(str, Enum):
     WHITE_BOX = "WHITE_BOX"
     BLACK_BOX = "BLACK_BOX"
+    HASH_ONLY = "HASH_ONLY"
+
+
+class ModelDigestStatus(str, Enum):
+    MATCH = "MATCH"
+    MISMATCH = "MISMATCH"
+    NO_REFERENCE = "NO_REFERENCE"
+
+
+class DriftClassification(str, Enum):
+    PROBABLE_OPERATIONAL_DRIFT = "probable_operational_drift"
+    ANOMALY_REQUIRES_REVIEW = "anomaly_requires_review"
+    MANIPULATION_INDICATORS_PRESENT = "manipulation_indicators_present"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
 class AttackClassStatus(str, Enum):
@@ -46,6 +60,7 @@ class FindingSchema(BaseModel):
     affected_source: Optional[str] = None
     recommended_action: RecommendedDisposition
     limitations: List[str] = Field(default_factory=list)
+    access_assumptions: List[str] = Field(default_factory=list)
 
 
 class ContributorRiskSummary(BaseModel):
@@ -158,6 +173,9 @@ class DistributionShiftReport(BaseModel):
     suspected_cause: str
     is_manipulation_suspected: bool
     reasoning: str
+    classification: DriftClassification = DriftClassification.INSUFFICIENT_EVIDENCE
+    image_quality_evidence: Dict[str, Any] = Field(default_factory=dict)
+    limitations: List[str] = Field(default_factory=list)
 
 
 class AuditLogEntry(BaseModel):
@@ -171,6 +189,7 @@ class AuditLogEntry(BaseModel):
     evidence_reference: str
     previous_entry_hash: str
     entry_hash: str
+    signature: Optional[str] = None
 
 
 class CoverageItem(BaseModel):

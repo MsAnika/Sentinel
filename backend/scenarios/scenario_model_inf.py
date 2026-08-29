@@ -80,7 +80,7 @@ class ScenarioModelInferenceRunner:
         drift_det = DistributionShiftDetector()
         drift_report = drift_det.evaluate_shift(
             reference_profile={"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.8},
-            observed_samples_metadata=[s.metadata for s in samples[:20]],
+            observed_samples_metadata=[{**s.metadata, "image_path": s.image_path} for s in samples[:20]],
             declared_reference_id="ref_plains_optical_baseline",
             observed_dataset_id="ds_clean_01",
         )
@@ -170,7 +170,7 @@ class ScenarioModelInferenceRunner:
         drift_det = DistributionShiftDetector()
         drift_report = drift_det.evaluate_shift(
             reference_profile={"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.8},
-            observed_samples_metadata=[s.metadata for s in samples[:20]],
+            observed_samples_metadata=[{**s.metadata, "image_path": s.image_path} for s in samples[:20]],
             declared_reference_id="ref_plains_optical_baseline",
             observed_dataset_id="ds_clean_01",
         )

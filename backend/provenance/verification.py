@@ -12,6 +12,7 @@ class ProvenanceVerifier:
         self.signer = signer or ProvenanceSigner()
         self.seen_nonces: Set[str] = set()
         self.last_sequence_number: int = 0
+        self.last_verified_sequence: int = 0
 
     def create_record(
         self,
@@ -104,9 +105,21 @@ class ProvenanceVerifier:
         if not sig_valid:
             errors.append("Digital signature verification failed for this provenance record.")
 
-        if check_replay and record.nonce in self.seen_nonces:
-            errors.append(
-                f"Replay detected: nonce '{record.nonce}' has already been processed in sequence context."
-            )
+        if check_replay:
+            if record.nonce in self.seen_nonces:
+                errors.append(
+                    f"Replay detected: nonce '{record.nonce}' has already been processed in sequence context."
+                )
+            else:
+                self.seen_nonces.add(record.nonce)
+
+            if record.sequence_number <= self.last_verified_sequence:
+                errors.append(
+                    f"Reordering/replay detected: sequence number {record.sequence_number} is not greater "
+                    f"than the last verified sequence number {self.last_verified_sequence} for this stream "
+                    "(record is out-of-order or was replayed)."
+                )
+            else:
+                self.last_verified_sequence = record.sequence_number
 
         return len(errors) == 0, errors

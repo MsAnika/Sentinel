@@ -90,17 +90,22 @@ async def generate_model_fingerprint(
 @router.post("/verify-digest")
 async def verify_model_digest(
     supplied_fingerprint: ModelFingerprint,
-    expected_reference_digest: str = Body(...),
+    expected_reference_digest: Optional[str] = Body(
+        default=None,
+        description="Declared trusted reference digest. Omit or send null/empty when no reference has been "
+        "registered for this model -- the response will then report NO_REFERENCE rather than a false MATCH.",
+    ),
 ):
-    is_match, finding = fingerprinter.verify_against_reference(supplied_fingerprint, expected_reference_digest)
+    status, finding = fingerprinter.verify_digest(supplied_fingerprint, expected_reference_digest)
     shared_ledger.record_event(
         "MODEL_FINGERPRINT", supplied_fingerprint.model_id, "VERIFY_AGAINST_REFERENCE", supplied_fingerprint.sha256_digest,
-        "MATCH" if is_match else "MISMATCH_SUBSTITUTION_SUSPECTED",
-        f"Compared against reference digest {expected_reference_digest[:16]}..."
+        status.value,
+        f"Compared against reference digest {expected_reference_digest[:16]}..." if expected_reference_digest
+        else "No reference digest declared for this model.",
     )
     return {
-        "is_match": is_match,
-        "status": "MATCH" if is_match else "MISMATCH_SUBSTITUTION_SUSPECTED",
+        "is_match": status.value == "MATCH",
+        "status": status,
         "finding": finding,
     }
 

@@ -1,9 +1,12 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import numpy as np
-from ..schemas import DistributionShiftReport
+from ..schemas import DistributionShiftReport, DriftClassification
+from .image_quality import compute_image_quality_signals
 
 
 class DistributionShiftDetector:
+    MIN_SAMPLES_FOR_CONFIDENCE = 5
+
     def __init__(self, drift_threshold: float = 0.30):
         self.drift_threshold = drift_threshold
 
@@ -20,6 +23,7 @@ class DistributionShiftDetector:
         sensor_counts: Dict[str, int] = {}
         illum_values: List[float] = []
 
+        quality_samples: List[Dict[str, Any]] = []
         for meta in observed_samples_metadata:
             t = meta.get("terrain", "plains")
             s = meta.get("sensor", "EO_optical")
@@ -27,6 +31,12 @@ class DistributionShiftDetector:
             terrain_counts[t] = terrain_counts.get(t, 0) + 1
             sensor_counts[s] = sensor_counts.get(s, 0) + 1
             illum_values.append(illum)
+
+            image_path = meta.get("image_path")
+            if image_path:
+                signals = compute_image_quality_signals(image_path)
+                if signals:
+                    quality_samples.append(signals)
 
         ref_terrain = reference_profile.get("terrain", "plains")
         ref_sensor = reference_profile.get("sensor", "EO_optical")
@@ -44,18 +54,101 @@ class DistributionShiftDetector:
             "seasonal_variance": float(round(min(1.0, non_ref_terrain_ratio * 0.8), 3)),
         }
 
-        overall_drift = float(
-            round(
-                (dim_scores["terrain_shift"] * 0.4)
-                + (dim_scores["sensor_divergence"] * 0.3)
-                + (dim_scores["illumination_delta"] * 0.2)
-                + (dim_scores["seasonal_variance"] * 0.1),
-                3,
+        image_quality_evidence: Dict[str, Any] = {}
+        limitations: List[str] = []
+        if quality_samples:
+            ref_blur = float(reference_profile.get("mean_blur_score", 0.0)) or None
+            ref_contrast = float(reference_profile.get("mean_contrast_score", 0.0)) or None
+            ref_resolution = float(reference_profile.get("mean_resolution_px", 0.0)) or None
+            ref_blockiness = float(reference_profile.get("mean_compression_blockiness", 0.0)) or None
+
+            obs_blur = float(np.mean([q["blur_score"] for q in quality_samples]))
+            obs_contrast = float(np.mean([q["contrast_score"] for q in quality_samples]))
+            obs_resolution = float(np.mean([q["resolution_px"] for q in quality_samples]))
+            obs_blockiness = float(np.mean([q["compression_blockiness"] for q in quality_samples]))
+
+            def _rel_delta(observed: float, reference: Any) -> float:
+                if not reference:
+                    return 0.0
+                return abs(observed - reference) / (abs(reference) + 1e-6)
+
+            blur_shift = min(1.0, _rel_delta(obs_blur, ref_blur)) if ref_blur is not None else 0.0
+            contrast_shift = min(1.0, _rel_delta(obs_contrast, ref_contrast)) if ref_contrast is not None else 0.0
+            resolution_shift = min(1.0, _rel_delta(obs_resolution, ref_resolution)) if ref_resolution is not None else 0.0
+            blockiness_shift = min(1.0, obs_blockiness) if ref_blockiness is None else min(1.0, _rel_delta(obs_blockiness, ref_blockiness))
+
+            dim_scores["blur_shift"] = round(blur_shift, 3)
+            dim_scores["contrast_shift"] = round(contrast_shift, 3)
+            dim_scores["resolution_shift"] = round(resolution_shift, 3)
+            dim_scores["compression_artifact_shift"] = round(blockiness_shift, 3)
+
+            image_quality_evidence = {
+                "samples_with_computed_signals": len(quality_samples),
+                "observed_mean_blur_score": round(obs_blur, 3),
+                "observed_mean_contrast_score": round(obs_contrast, 3),
+                "observed_mean_resolution_px": round(obs_resolution, 1),
+                "observed_mean_compression_blockiness": round(obs_blockiness, 4),
+                "reference_mean_blur_score": ref_blur,
+                "reference_mean_contrast_score": ref_contrast,
+                "reference_mean_resolution_px": ref_resolution,
+                "reference_mean_compression_blockiness": ref_blockiness,
+            }
+            if ref_blur is None or ref_contrast is None or ref_resolution is None:
+                limitations.append(
+                    "No reference image-quality baseline (blur/contrast/resolution) was declared; "
+                    "quality-shift dimensions are reported relative to a zero baseline and are informational only."
+                )
+        else:
+            limitations.append(
+                "No observed sample carried a resolvable image_path, so pixel-derived quality signals "
+                "(blur, contrast, resolution, compression artifacts) were not computed for this evaluation; "
+                "shift assessment relies on declared terrain/sensor/illumination metadata only."
             )
-        )
+
+        weighted_terms = [
+            (dim_scores["terrain_shift"], 0.30),
+            (dim_scores["sensor_divergence"], 0.25),
+            (dim_scores["illumination_delta"], 0.15),
+            (dim_scores["seasonal_variance"], 0.05),
+        ]
+        if quality_samples:
+            weighted_terms.extend([
+                (dim_scores["blur_shift"], 0.10),
+                (dim_scores["contrast_shift"], 0.05),
+                (dim_scores["resolution_shift"], 0.05),
+                (dim_scores["compression_artifact_shift"], 0.05),
+            ])
+        weight_sum = sum(w for _, w in weighted_terms)
+        overall_drift = float(round(sum(v * w for v, w in weighted_terms) / weight_sum, 3))
 
         drift_detected = overall_drift >= self.drift_threshold
         is_manipulation = non_ref_sensor_ratio > 0.6 and illum_drift > 0.4
+        if quality_samples and dim_scores["compression_artifact_shift"] > 0.6 and dim_scores["blur_shift"] > 0.5:
+            is_manipulation = True
+
+        insufficient_evidence = len(observed_samples_metadata) < self.MIN_SAMPLES_FOR_CONFIDENCE
+
+        if insufficient_evidence:
+            classification = DriftClassification.INSUFFICIENT_EVIDENCE
+            confidence = 0.35
+            limitations.append(
+                f"Only {len(observed_samples_metadata)} observed sample(s) supplied "
+                f"(< {self.MIN_SAMPLES_FOR_CONFIDENCE} minimum); shift/drift disposition is low-confidence."
+            )
+        elif is_manipulation:
+            classification = DriftClassification.MANIPULATION_INDICATORS_PRESENT
+            confidence = 0.93
+        elif drift_detected:
+            dims_elevated = sum(1 for v in dim_scores.values() if v >= self.drift_threshold)
+            classification = (
+                DriftClassification.PROBABLE_OPERATIONAL_DRIFT
+                if dims_elevated <= 1
+                else DriftClassification.ANOMALY_REQUIRES_REVIEW
+            )
+            confidence = 0.9
+        else:
+            classification = DriftClassification.PROBABLE_OPERATIONAL_DRIFT
+            confidence = 0.93
 
         if drift_detected:
             char = f"Significant operational domain shift detected ({overall_drift*100:.1f}% aggregate divergence)."
@@ -66,15 +159,26 @@ class DistributionShiftDetector:
             suspected = "Normal operational tolerance"
             reasoning = "Feature divergences remain within accepted statistical tolerance limits."
 
+        if classification == DriftClassification.INSUFFICIENT_EVIDENCE:
+            reasoning = f"Insufficient sample volume for a calibrated disposition. {reasoning}"
+
+        limitations.append(
+            "Distribution-shift alone is not treated as proof of intentional manipulation; the "
+            "MANIPULATION_INDICATORS_PRESENT classification requires corroborating multi-dimensional evidence."
+        )
+
         return DistributionShiftReport(
             declared_reference_id=declared_reference_id,
             observed_dataset_id=observed_dataset_id,
             overall_drift_score=overall_drift,
             drift_detected=drift_detected,
-            confidence=0.93,
+            confidence=confidence,
             affected_dimensions=dim_scores,
             characterization=char,
             suspected_cause=suspected,
             is_manipulation_suspected=is_manipulation,
             reasoning=reasoning,
+            classification=classification,
+            image_quality_evidence=image_quality_evidence,
+            limitations=limitations,
         )

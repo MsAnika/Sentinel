@@ -158,7 +158,7 @@ class ScenarioCleanDatasetRunner:
         drift_det = DistributionShiftDetector()
         drift_report = drift_det.evaluate_shift(
             reference_profile={"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.8},
-            observed_samples_metadata=[s.metadata for s in samples],
+            observed_samples_metadata=[{**s.metadata, "image_path": s.image_path} for s in samples],
             declared_reference_id="ref_plains_optical_baseline",
             observed_dataset_id="ds_poisoned_02",
         )

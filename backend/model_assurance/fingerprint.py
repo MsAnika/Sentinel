@@ -1,6 +1,14 @@
 import os
 from typing import Optional, Tuple
-from ..schemas import AssetType, FindingSchema, FindingSeverity, ModelAccessLevel, ModelFingerprint, RecommendedDisposition
+from ..schemas import (
+    AssetType,
+    FindingSchema,
+    FindingSeverity,
+    ModelAccessLevel,
+    ModelDigestStatus,
+    ModelFingerprint,
+    RecommendedDisposition,
+)
 
 
 class ModelFingerprinter:
@@ -49,3 +57,43 @@ class ModelFingerprinter:
             return False, finding
 
         return True, None
+
+    def verify_digest(
+        self,
+        supplied_fingerprint: ModelFingerprint,
+        expected_reference_digest: Optional[str],
+    ) -> Tuple[ModelDigestStatus, Optional[FindingSchema]]:
+        """Superset of verify_against_reference that adds an explicit
+        NO_REFERENCE disposition when no trusted reference digest has been
+        declared at all -- distinct from MISMATCH, which requires an actual
+        declared reference to compare against. A model can only be
+        confidently called MATCH or MISMATCH when a reference exists."""
+        if not expected_reference_digest:
+            finding = FindingSchema(
+                finding_id="FINDING-MDL-NOREF-001",
+                asset=supplied_fingerprint.model_id,
+                asset_type=AssetType.MODEL,
+                finding_type="model_identity_unverifiable",
+                reason="No trusted reference digest was declared for this model, so substitution cannot be "
+                "confirmed or ruled out by digest comparison alone.",
+                evidence={
+                    "supplied_digest": supplied_fingerprint.sha256_digest,
+                    "model_format": supplied_fingerprint.model_format,
+                    "model_name": supplied_fingerprint.model_name,
+                },
+                severity=FindingSeverity.MEDIUM,
+                confidence=1.0,
+                affected_source=supplied_fingerprint.model_name,
+                recommended_action=RecommendedDisposition.REVIEW,
+                limitations=[
+                    "Digest identity verification requires a declared, trusted reference digest; "
+                    "behavioural/parameter checks may still detect anomalies independently of this check."
+                ],
+                access_assumptions=["No reference manifest entry was supplied for this model_id."],
+            )
+            return ModelDigestStatus.NO_REFERENCE, finding
+
+        matches, mismatch_finding = self.verify_against_reference(supplied_fingerprint, expected_reference_digest)
+        if matches:
+            return ModelDigestStatus.MATCH, None
+        return ModelDigestStatus.MISMATCH, mismatch_finding
