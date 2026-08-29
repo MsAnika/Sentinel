@@ -1,9 +1,43 @@
 import {
+  DatasetProfile,
+  FindingSchema,
   InferenceRecord,
+  ModelBehaviourAssessment,
+  ModelFingerprint,
   ScenarioRunResult,
 } from '@/shared/types/assurance'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+export interface DatasetAnalysisResult {
+  profile: DatasetProfile
+  findings: FindingSchema[]
+  duplicate_stats: Record<string, unknown>
+  label_stats: Record<string, unknown>
+  ood_stats: Record<string, unknown>
+  poison_stats: Record<string, unknown>
+  structure_warnings: string[]
+  label_verification_method: string
+  visual_check_truncated_to: number | null
+}
+
+export interface DatasetUploadResult {
+  extracted_to: string
+  coco_json_candidates: string[]
+  yolo_dir_candidate: string | null
+  size_bytes: number
+}
+
+export interface ParameterAnalysisResult {
+  stats: Record<string, unknown>
+  findings: FindingSchema[]
+}
+
+export interface BehaviourBatteryResult {
+  assessment: ModelBehaviourAssessment
+  findings: FindingSchema[]
+  battery: Array<Record<string, unknown>>
+}
 
 export class AssuranceApiClient {
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -13,6 +47,20 @@ export class AssuranceApiClient {
         'Content-Type': 'application/json',
         ...options?.headers,
       },
+    })
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`API Error ${res.status}: ${errorText}`)
+    }
+
+    return res.json()
+  }
+
+  private static async requestForm<T>(endpoint: string, formData: FormData): Promise<T> {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      body: formData,
     })
 
     if (!res.ok) {
@@ -59,6 +107,82 @@ export class AssuranceApiClient {
   static async verifyAuditLedger(): Promise<{ is_chain_valid: boolean; chain_digest: string; errors: string[] }> {
     return this.request('/api/audit/verify', {
       method: 'POST',
+    })
+  }
+
+  // -- Live analysis: real, user-supplied files, no canned scenario involved --
+
+  static async uploadModel(file: File): Promise<ModelFingerprint> {
+    const form = new FormData()
+    form.append('file', file)
+    return this.requestForm('/api/model/upload', form)
+  }
+
+  static async uploadDatasetArchive(file: File): Promise<DatasetUploadResult> {
+    const form = new FormData()
+    form.append('file', file)
+    return this.requestForm('/api/dataset/upload', form)
+  }
+
+  static async uploadProbeImage(file: File): Promise<{ image_path: string; size_bytes: number }> {
+    const form = new FormData()
+    form.append('file', file)
+    return this.requestForm('/api/inference/upload-image', form)
+  }
+
+  static async analyzeDatasetProfile(params: {
+    datasetId: string
+    formatType: 'COCO' | 'YOLO'
+    cocoPath?: string
+    imagesDir?: string
+    yoloDir?: string
+    referenceModelPath?: string
+  }): Promise<DatasetAnalysisResult> {
+    return this.request('/api/dataset/analyze-profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        dataset_id: params.datasetId,
+        format_type: params.formatType,
+        coco_path: params.cocoPath,
+        images_dir: params.imagesDir,
+        yolo_dir: params.yoloDir,
+        reference_model_path: params.referenceModelPath,
+      }),
+    })
+  }
+
+  static async executeInference(imagePath: string, modelPath: string, confidenceThreshold = 0.25): Promise<InferenceRecord> {
+    return this.request('/api/inference/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        image_path: imagePath,
+        model_path: modelPath,
+        config: { confidence_threshold: confidenceThreshold },
+      }),
+    })
+  }
+
+  static async runParameterAnalysis(modelPath: string, modelId?: string): Promise<ParameterAnalysisResult> {
+    return this.request('/api/model/parameter-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ model_path: modelPath, model_id: modelId }),
+    })
+  }
+
+  static async runBehaviourBattery(params: {
+    referenceModelPath: string
+    candidateModelPath: string
+    probeImagePaths: string[]
+    confidenceThreshold?: number
+  }): Promise<BehaviourBatteryResult> {
+    return this.request('/api/model/behaviour-battery', {
+      method: 'POST',
+      body: JSON.stringify({
+        reference_model_path: params.referenceModelPath,
+        candidate_model_path: params.candidateModelPath,
+        probe_image_paths: params.probeImagePaths,
+        confidence_threshold: params.confidenceThreshold ?? 0.25,
+      }),
     })
   }
 }

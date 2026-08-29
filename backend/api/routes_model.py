@@ -37,6 +37,10 @@ async def upload_model(
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Failed to inspect uploaded model: {e}")
 
+    fp.metadata["saved_path"] = saved_path
+    fp.metadata["original_filename"] = file.filename
+    if file.filename:
+        fp.model_name = file.filename
     return fp
 
 
