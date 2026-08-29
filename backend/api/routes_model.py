@@ -56,9 +56,15 @@ async def generate_model_fingerprint(
     access_level: ModelAccessLevel = Body(default=ModelAccessLevel.WHITE_BOX, embed=True),
 ):
     try:
-        return fingerprinter.generate_fingerprint(model_path, access_level=access_level)
+        fp = fingerprinter.generate_fingerprint(model_path, access_level=access_level)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    shared_ledger.record_event(
+        "MODEL_FINGERPRINT", fp.model_id, "DIGEST_VERIFICATION", fp.sha256_digest,
+        "COMPLETED", f"Fingerprinted '{model_path}' at access_level={access_level.value}."
+    )
+    return fp
 
 
 @router.post("/verify-digest")
@@ -67,6 +73,11 @@ async def verify_model_digest(
     expected_reference_digest: str = Body(...),
 ):
     is_match, finding = fingerprinter.verify_against_reference(supplied_fingerprint, expected_reference_digest)
+    shared_ledger.record_event(
+        "MODEL_FINGERPRINT", supplied_fingerprint.model_id, "VERIFY_AGAINST_REFERENCE", supplied_fingerprint.sha256_digest,
+        "MATCH" if is_match else "MISMATCH_SUBSTITUTION_SUSPECTED",
+        f"Compared against reference digest {expected_reference_digest[:16]}..."
+    )
     return {
         "is_match": is_match,
         "status": "MATCH" if is_match else "MISMATCH_SUBSTITUTION_SUSPECTED",
@@ -87,16 +98,34 @@ async def get_access_capabilities(access_level: ModelAccessLevel):
 async def run_parameter_analysis(
     model_path: str = Body(..., embed=True),
     model_id: Optional[str] = Body(default=None, embed=True),
+    access_level: ModelAccessLevel = Body(
+        default=ModelAccessLevel.WHITE_BOX, embed=True,
+        description="The access level actually authorized for this model. When BLACK_BOX, weight "
+        "extraction is skipped entirely and the response reports the assessment as unavailable -- "
+        "parseable ONNX bytes alone do not imply the caller is authorized to inspect the weights.",
+    ),
 ):
     """Extracts the real ONNX initializer weight tensors from the supplied
     model file and runs weight-distribution/kurtosis analysis on them.
     Only available for ONNX models under white-box access -- there is no
-    fallback that fabricates weight tensors."""
+    fallback that fabricates weight tensors, and no fallback that silently
+    performs white-box analysis when the caller declared black-box access."""
     import os
     if not os.path.exists(model_path):
         raise HTTPException(status_code=404, detail=f"Model file not found at: {model_path}")
+
+    resolved_id = model_id or f"model_{ModelLoader.calculate_file_sha256(model_path)[:12]}"
+
+    if access_level != ModelAccessLevel.WHITE_BOX:
+        stats, findings = param_analyzer.analyze_weights_and_activations(resolved_id, access_level, None)
+        shared_ledger.record_event(
+            "MODEL_ASSESSMENT", resolved_id, "PARAMETER_ANALYSIS", ModelLoader.calculate_file_sha256(model_path),
+            "UNAVAILABLE_BLACK_BOX", "Parameter/weight analysis skipped: caller declared BLACK_BOX access."
+        )
+        return {"stats": stats, "findings": findings}
+
     if not model_path.lower().endswith(".onnx"):
-        raise HTTPException(status_code=422, detail="Parameter analysis currently supports ONNX models only.")
+        raise HTTPException(status_code=422, detail="White-box parameter analysis currently supports ONNX models only.")
 
     import onnx
     try:
@@ -106,8 +135,12 @@ async def run_parameter_analysis(
         raise HTTPException(status_code=422, detail=f"Failed to parse ONNX model: {e}")
 
     weight_tensors = param_analyzer.extract_onnx_weight_tensors(onnx_model)
-    resolved_id = model_id or f"model_{ModelLoader.calculate_file_sha256(model_path)[:12]}"
     stats, findings = param_analyzer.analyze_weights_and_activations(resolved_id, ModelAccessLevel.WHITE_BOX, weight_tensors)
+
+    shared_ledger.record_event(
+        "MODEL_ASSESSMENT", resolved_id, "PARAMETER_ANALYSIS", ModelLoader.calculate_file_sha256(model_path),
+        "ANOMALOUS" if findings else "NORMAL", f"White-box weight analysis completed: {len(findings)} finding(s)."
+    )
     return {"stats": stats, "findings": findings}
 
 
@@ -136,6 +169,11 @@ async def run_behaviour_battery(
     reference_id = f"model_{ModelLoader.calculate_file_sha256(reference_model_path)[:12]}"
     candidate_id = f"model_{ModelLoader.calculate_file_sha256(candidate_model_path)[:12]}"
     assessment, findings = behaviour_analyzer.evaluate_test_battery(candidate_id, reference_id, battery, access_level)
+
+    shared_ledger.record_event(
+        "MODEL_ASSESSMENT", candidate_id, "BEHAVIOURAL_BATTERY", ModelLoader.calculate_file_sha256(candidate_model_path),
+        assessment.assessment_status, f"{len(probe_image_paths)} probes vs reference {reference_id}: {len(findings)} finding(s)."
+    )
     return {
         "assessment": assessment,
         "findings": findings,

@@ -1,6 +1,7 @@
 import os
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
+from ..audit.audit_log import shared_ledger
 from ..inference.inference_engine import InferenceEngine, ModelExecutionError
 from ..ingestion.model_loader import ModelLoader
 from ..ingestion.upload_store import save_upload
@@ -53,12 +54,22 @@ async def execute_inference(
         preproc=preprocessing,
         config=config,
     )
+
+    shared_ledger.record_event(
+        "INFERENCE_PROVENANCE", record.record_id, "SIGN_BIND", record.provenance_hash,
+        "CREATED", f"Image={os.path.basename(image_path)}, model={model_id}, {len(predictions)} detection(s), signature={record.signature[:16]}..."
+    )
     return record
 
 
 @router.post("/verify")
 async def verify_record(record: InferenceRecord, check_replay: bool = False):
     is_valid, errors = verifier.verify_record(record, check_replay=check_replay)
+
+    shared_ledger.record_event(
+        "PROVENANCE_VERIFICATION", record.record_id, "VERIFY_INTEGRITY", record.provenance_hash,
+        "VALID" if is_valid else "TAMPERING_DETECTED", "; ".join(errors) if errors else "Cryptographic binding verified."
+    )
     return {
         "record_id": record.record_id,
         "is_valid": is_valid,
@@ -89,6 +100,10 @@ async def simulate_tamper(
     tampered_record.tampering_detected = not is_valid
     tampered_record.verification_errors = errors
 
+    shared_ledger.record_event(
+        "PROVENANCE_VERIFICATION", tampered_record.record_id, "TAMPER_SIMULATION", tampered_record.provenance_hash,
+        "TAMPERING_DETECTED" if not is_valid else "UNDETECTED_ANOMALY", "; ".join(errors) if errors else "no verification errors"
+    )
     return {
         "original_provenance_hash": record.provenance_hash,
         "tampered_record": tampered_record,

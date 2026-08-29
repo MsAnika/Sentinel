@@ -3,6 +3,7 @@ import uuid
 import zipfile
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
+from ..audit.audit_log import shared_ledger
 from ..data_assurance.contributor_risk import ContributorRiskEngine
 from ..data_assurance.duplicate_detector import DuplicateDetector
 from ..data_assurance.label_analyzer import LabelAnalyzer
@@ -63,6 +64,13 @@ async def upload_dataset_archive(file: UploadFile = File(...)):
             yolo_candidate = root
             break
 
+    import hashlib
+    with open(saved_path, "rb") as f:
+        archive_digest = hashlib.sha256(f.read()).hexdigest()
+    shared_ledger.record_event(
+        "DATASET_UPLOAD", extract_dir, "EXTRACT_ARCHIVE", archive_digest,
+        "COMPLETED", f"Uploaded '{file.filename}' ({size_bytes} bytes); {len(coco_candidates)} COCO candidate(s), YOLO dir: {yolo_candidate or 'none'}."
+    )
     return {
         "extracted_to": extract_dir,
         "coco_json_candidates": coco_candidates,
@@ -109,6 +117,11 @@ async def analyze_dataset_profile(
     is_valid, structure_errors = DatasetLoader.validate_dataset_structure(samples)
     if not samples:
         raise HTTPException(status_code=422, detail="Dataset contains zero valid samples.")
+
+    shared_ledger.record_event(
+        "DATASET_INGESTION", dataset_id, "INGEST_VALIDATE", samples[0].sha256[:16],
+        "SUCCESS" if is_valid else "STRUCTURE_WARNINGS", f"{len(samples)} samples parsed ({format_type.upper()})."
+    )
 
     visual_predictions_used = False
     visual_check_truncated = False
@@ -158,9 +171,16 @@ async def analyze_dataset_profile(
         contributor_risks=contrib_risks,
     )
 
+    all_findings = d_finds + l_finds + o_finds + p_finds
+    shared_ledger.record_event(
+        "DATA_ASSURANCE", dataset_id, "ANALYZE_INTEGRITY", samples[0].sha256[:16],
+        "FLAGGED" if all_findings else "PASSED_ZERO_ANOMALIES",
+        f"{len(samples)} samples ({format_type.upper()}), label_verification={'real_reference_model_inference' if visual_predictions_used else 'metadata_only'}, {len(all_findings)} finding(s)."
+    )
+
     return {
         "profile": profile,
-        "findings": d_finds + l_finds + o_finds + p_finds,
+        "findings": all_findings,
         "duplicate_stats": d_stats,
         "label_stats": l_stats,
         "ood_stats": o_stats,
