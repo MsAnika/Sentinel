@@ -44,11 +44,28 @@ async def upload_model(
     if file.filename:
         fp.model_name = file.filename
 
+    db.insert_model_record(fp.model_dump(), saved_path=saved_path)
+
     shared_ledger.record_event(
         "MODEL_UPLOAD", fp.model_id, "FINGERPRINT_GENERATED", fp.sha256_digest,
         "COMPLETED", f"Uploaded '{file.filename}' ({size_bytes} bytes), access_level={access_level.value}, format={fp.model_format}."
     )
     return fp
+
+
+@router.get("/list")
+async def list_uploaded_models(limit: int = 100):
+    """Real query against the persisted model records table -- every model
+    ever fingerprinted through this service, not recomputed on the fly."""
+    return {"models": db.list_model_records(limit=limit)}
+
+
+@router.get("/{model_id}")
+async def get_uploaded_model(model_id: str):
+    record = db.get_model_record(model_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No stored model record for model_id={model_id}")
+    return record
 
 
 @router.post("/fingerprint", response_model=ModelFingerprint)
