@@ -78,6 +78,8 @@ async def generate_model_fingerprint(
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+    db.insert_model_record(fp.model_dump(), saved_path=model_path)
+
     shared_ledger.record_event(
         "MODEL_FINGERPRINT", fp.model_id, "DIGEST_VERIFICATION", fp.sha256_digest,
         "COMPLETED", f"Fingerprinted '{model_path}' at access_level={access_level.value}."

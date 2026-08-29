@@ -46,3 +46,5 @@ test_assets/
 uploads/
 keys/
 audit_log/
+*.db
+*.db-journal

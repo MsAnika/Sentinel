@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from ..persistence import db
 from ..scenarios.scenario_manager import ScenarioManager
 
 router = APIRouter(prefix="/api/scenarios", tags=["Scenarios"])
@@ -43,12 +44,15 @@ async def list_scenarios():
 async def run_scenario(scenario_id: str):
     sid = scenario_id.upper()
     if sid == "A":
-        return manager.run_scenario_a_clean()
+        result = manager.run_scenario_a_clean()
     elif sid == "B":
-        return manager.run_scenario_b_poisoned()
+        result = manager.run_scenario_b_poisoned()
     elif sid == "C":
-        return manager.run_scenario_c_model_compromised()
+        result = manager.run_scenario_c_model_compromised()
     elif sid == "D":
-        return manager.run_scenario_d_tampered_inference()
+        result = manager.run_scenario_d_tampered_inference()
     else:
         raise HTTPException(status_code=404, detail=f"Scenario '{scenario_id}' not found. Available: A, B, C, D")
+
+    db.insert_assurance_report(result["report"].model_dump())
+    return result

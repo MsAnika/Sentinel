@@ -12,6 +12,7 @@ from ..data_assurance.poisoning_detector import PoisoningDetector
 from ..ingestion.dataset_loader import DatasetLoader, SampleItem
 from ..ingestion.upload_store import UPLOAD_ROOT, save_upload
 from ..inference.inference_engine import InferenceEngine
+from ..persistence import db
 from ..schemas import DatasetProfile, InferenceConfig
 from ..scenarios.probe_builder import build_visual_predictions
 
@@ -178,7 +179,20 @@ async def analyze_dataset_profile(
         f"{len(samples)} samples ({format_type.upper()}), label_verification={'real_reference_model_inference' if visual_predictions_used else 'metadata_only'}, {len(all_findings)} finding(s)."
     )
 
+    analysis_id = f"analysis_{uuid.uuid4().hex[:12]}"
+    label_verification_method = "real_reference_model_inference" if visual_predictions_used else "metadata_declared_ground_truth_only"
+    db.insert_dataset_analysis(
+        analysis_id=analysis_id,
+        dataset_id=dataset_id,
+        format_type=format_type.upper(),
+        total_images=len(samples),
+        findings=[f.model_dump() for f in all_findings],
+        profile=profile.model_dump(),
+        label_verification_method=label_verification_method,
+    )
+
     return {
+        "analysis_id": analysis_id,
         "profile": profile,
         "findings": all_findings,
         "duplicate_stats": d_stats,
@@ -186,6 +200,20 @@ async def analyze_dataset_profile(
         "ood_stats": o_stats,
         "poison_stats": p_stats,
         "structure_warnings": structure_errors,
-        "label_verification_method": "real_reference_model_inference" if visual_predictions_used else "metadata_declared_ground_truth_only",
+        "label_verification_method": label_verification_method,
         "visual_check_truncated_to": MAX_VISUAL_CHECK_SAMPLES if visual_check_truncated else None,
     }
+
+
+@router.get("/history")
+async def list_dataset_analysis_history(limit: int = 100):
+    """Real query against the persisted dataset-analyses table."""
+    return {"analyses": db.list_dataset_analyses(limit=limit)}
+
+
+@router.get("/history/{analysis_id}")
+async def get_dataset_analysis_by_id(analysis_id: str):
+    record = db.get_dataset_analysis(analysis_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No stored dataset analysis for analysis_id={analysis_id}")
+    return record

@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
@@ -5,6 +6,7 @@ from ..audit.audit_log import shared_ledger
 from ..inference.inference_engine import InferenceEngine, ModelExecutionError
 from ..ingestion.model_loader import ModelLoader
 from ..ingestion.upload_store import save_upload
+from ..persistence import db
 from ..provenance.verification import ProvenanceVerifier
 from ..schemas import BoundingBox, InferenceConfig, InferenceRecord, PreprocessingConfig
 
@@ -55,11 +57,53 @@ async def execute_inference(
         config=config,
     )
 
+    db.insert_inference_record(record.model_dump())
+
     shared_ledger.record_event(
         "INFERENCE_PROVENANCE", record.record_id, "SIGN_BIND", record.provenance_hash,
         "CREATED", f"Image={os.path.basename(image_path)}, model={model_id}, {len(predictions)} detection(s), signature={record.signature[:16]}..."
     )
     return record
+
+
+@router.get("/list")
+async def list_inference_records(limit: int = 100):
+    """Real query against the persisted inference-records table."""
+    return {"records": db.list_inference_records(limit=limit)}
+
+
+@router.get("/record/{record_id}")
+async def get_inference_record_by_id(record_id: str):
+    record = db.get_inference_record(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No stored inference record for record_id={record_id}")
+    return record
+
+
+@router.post("/record/{record_id}/verify")
+async def verify_stored_record(record_id: str, check_replay: bool = False):
+    """Verifies a previously-created record by pulling the authoritative
+    copy back out of the database by its ID, instead of requiring the
+    caller to already hold and resend the full record JSON."""
+    stored = db.get_inference_record(record_id)
+    if not stored:
+        raise HTTPException(status_code=404, detail=f"No stored inference record for record_id={record_id}")
+
+    record = InferenceRecord.model_validate(json.loads(stored["record_json"]))
+    is_valid, errors = verifier.verify_record(record, check_replay=check_replay)
+
+    shared_ledger.record_event(
+        "PROVENANCE_VERIFICATION", record.record_id, "VERIFY_INTEGRITY_FROM_DB", record.provenance_hash,
+        "VALID" if is_valid else "TAMPERING_DETECTED", "; ".join(errors) if errors else "Cryptographic binding verified."
+    )
+    return {
+        "record_id": record.record_id,
+        "is_valid": is_valid,
+        "tampering_detected": not is_valid,
+        "errors": errors,
+        "provenance_hash": record.provenance_hash,
+        "signature_valid": is_valid,
+    }
 
 
 @router.post("/verify")
