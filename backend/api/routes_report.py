@@ -1,6 +1,8 @@
+import json
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Response
 from ..assurance.report_generator import AssuranceReportGenerator
+from ..assurance.report_exporters import render_html_report, render_pdf_report
 from ..audit.audit_log import shared_ledger
 from ..persistence import db
 from ..schemas import AssuranceReport, ContributorRiskSummary, FindingSchema
@@ -64,3 +66,37 @@ async def get_assurance_report_by_id(report_id: str):
     if not record:
         raise HTTPException(status_code=404, detail=f"No stored assurance report for report_id={report_id}")
     return record
+
+
+def _load_report(report_id: str) -> AssuranceReport:
+    record = db.get_assurance_report(report_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No stored assurance report for report_id={report_id}")
+    return AssuranceReport.model_validate(json.loads(record["report_json"]))
+
+
+@router.get("/{report_id}/export.html")
+async def export_assurance_report_html(report_id: str):
+    """Renders the stored assurance report as a single self-contained HTML
+    file (inline CSS, no external assets, no network calls) so an analyst
+    can save/print/share it without needing this service running."""
+    report = _load_report(report_id)
+    html = render_html_report(report)
+    return Response(
+        content=html,
+        media_type="text/html",
+        headers={"Content-Disposition": f'attachment; filename="{report_id}.html"'},
+    )
+
+
+@router.get("/{report_id}/export.pdf")
+async def export_assurance_report_pdf(report_id: str):
+    """Renders the stored assurance report to PDF via reportlab (pure
+    Python, no system rendering dependencies) for offline distribution."""
+    report = _load_report(report_id)
+    pdf_bytes = render_pdf_report(report)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{report_id}.pdf"'},
+    )
