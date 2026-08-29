@@ -2,7 +2,7 @@
   "scenario_a_clean": [
     {
       "sequence_id": 1,
-      "timestamp": "2026-08-29T02:52:02Z",
+      "timestamp": "2026-08-29T02:58:29Z",
       "event": "DATASET_INGESTION",
       "asset_id": "ds_clean_01",
       "operation": "INGEST_VALIDATE",
@@ -10,157 +10,157 @@
       "result": "SUCCESS",
       "evidence_reference": "20 samples parsed from disk.",
       "previous_entry_hash": "3fbb589f7ffab06f8467e734cadfb87d178ad00e2bd02d8d85590600a0653cb9",
-      "entry_hash": "807582c1023963d67074d55f55171434e7da11c2cdedb11b4f2812b8bb7ec70c"
+      "entry_hash": "216a01cfc8979d76485139da9b3031aff459db4054bb181a09dffe0eebb701f8"
     },
     {
       "sequence_id": 2,
-      "timestamp": "2026-08-29T02:52:02Z",
+      "timestamp": "2026-08-29T02:58:30Z",
       "event": "DATA_ASSURANCE",
       "asset_id": "ds_clean_01",
       "operation": "ANALYZE_INTEGRITY",
       "input_digest": "da6f2ea4e9b3ae67",
       "result": "PASSED_ZERO_ANOMALIES",
       "evidence_reference": "Dataset integrity verified.",
-      "previous_entry_hash": "807582c1023963d67074d55f55171434e7da11c2cdedb11b4f2812b8bb7ec70c",
-      "entry_hash": "c74b113086fec123905c11a9ab3db725cc913210477ff226b9294b2509dcbcd5"
+      "previous_entry_hash": "216a01cfc8979d76485139da9b3031aff459db4054bb181a09dffe0eebb701f8",
+      "entry_hash": "2ff5148c845197e4db15d732803bcb3da9d9299f4c546d8cd75cb89a3d5ab8a9"
     },
     {
       "sequence_id": 3,
-      "timestamp": "2026-08-29T02:52:02Z",
+      "timestamp": "2026-08-29T02:58:30Z",
       "event": "MODEL_FINGERPRINT",
       "asset_id": "model_48ec0a5886e9",
       "operation": "DIGEST_VERIFICATION",
       "input_digest": "48ec0a5886e9f9b7843709d7c6bed8ed2bd09b88cf7d4f1ea86fb2a201b53fe2",
       "result": "MATCH",
       "evidence_reference": "Supplied model matches reference identity.",
-      "previous_entry_hash": "c74b113086fec123905c11a9ab3db725cc913210477ff226b9294b2509dcbcd5",
-      "entry_hash": "1f5f12df68ce2b92fc9b9e4e54301bf9319b7fefde1acc858835409f47bd999f"
+      "previous_entry_hash": "2ff5148c845197e4db15d732803bcb3da9d9299f4c546d8cd75cb89a3d5ab8a9",
+      "entry_hash": "b795cf4239ead74d84a4708dc5634f95259be40791e4fc1b193cc0bbe40937fc"
     },
     {
       "sequence_id": 4,
-      "timestamp": "2026-08-29T02:52:03Z",
+      "timestamp": "2026-08-29T02:58:30Z",
       "event": "MODEL_ASSESSMENT",
       "asset_id": "model_48ec0a5886e9",
       "operation": "BATTERY_TEST",
       "input_digest": "48ec0a5886e9f9b7",
       "result": "PASSED",
       "evidence_reference": "15/15 test probes matched expected predictions.",
-      "previous_entry_hash": "1f5f12df68ce2b92fc9b9e4e54301bf9319b7fefde1acc858835409f47bd999f",
-      "entry_hash": "f7341d9e1c7db50d3cc17be974a6227447c741178f27f40aa78d9c45ebb927eb"
+      "previous_entry_hash": "b795cf4239ead74d84a4708dc5634f95259be40791e4fc1b193cc0bbe40937fc",
+      "entry_hash": "9e0233c970fa49f92e37f07c4ed98538bee7881170334e5be862dfaff6cc0015"
     },
     {
       "sequence_id": 5,
-      "timestamp": "2026-08-29T02:52:03Z",
+      "timestamp": "2026-08-29T02:58:30Z",
       "event": "INFERENCE_PROVENANCE",
-      "asset_id": "rec_b1e704bd40fb",
+      "asset_id": "rec_c7fbfcaa600c",
       "operation": "SIGN_BIND",
-      "input_digest": "334d676df12159ff94ddf05432fd9f5f048e0b4a17d53de3222825f7afca4bd1",
+      "input_digest": "3068e7642b20933828f0f3ced7de40e0a3db734bc37e6b25e3c87c4eaf61e3b9",
       "result": "CREATED",
-      "evidence_reference": "Signature: 4oVOWVAMI5yHau5F...",
-      "previous_entry_hash": "f7341d9e1c7db50d3cc17be974a6227447c741178f27f40aa78d9c45ebb927eb",
-      "entry_hash": "f6ac5a22bcedcdce0deab76e6da49304b405158f52ed5e135facc59e398db39d"
+      "evidence_reference": "Signature: BADXDqiZRFItvx2h...",
+      "previous_entry_hash": "9e0233c970fa49f92e37f07c4ed98538bee7881170334e5be862dfaff6cc0015",
+      "entry_hash": "f7deaa8c5800aeffcd31ba48a8dddf150c12f4b8a669609de0e07e805ee707a6"
     },
     {
       "sequence_id": 6,
-      "timestamp": "2026-08-29T02:52:03Z",
+      "timestamp": "2026-08-29T02:58:30Z",
       "event": "PROVENANCE_VERIFICATION",
-      "asset_id": "rec_b1e704bd40fb",
+      "asset_id": "rec_c7fbfcaa600c",
       "operation": "VERIFY_INTEGRITY",
-      "input_digest": "334d676df12159ff94ddf05432fd9f5f048e0b4a17d53de3222825f7afca4bd1",
+      "input_digest": "3068e7642b20933828f0f3ced7de40e0a3db734bc37e6b25e3c87c4eaf61e3b9",
       "result": "VALID",
       "evidence_reference": "Cryptographic binding verified.",
-      "previous_entry_hash": "f6ac5a22bcedcdce0deab76e6da49304b405158f52ed5e135facc59e398db39d",
-      "entry_hash": "87fb5f5a3b13de09b5220143deda911a1521fc808903e8011a157614883c8af0"
+      "previous_entry_hash": "f7deaa8c5800aeffcd31ba48a8dddf150c12f4b8a669609de0e07e805ee707a6",
+      "entry_hash": "06b094e9f1fa663d3ff5ebabb4e534f2fffc3f822178789272007757a9887316"
     }
   ],
   "scenario_b_poisoned": [
     {
       "sequence_id": 7,
-      "timestamp": "2026-08-29T02:52:03Z",
+      "timestamp": "2026-08-29T02:58:31Z",
       "event": "DATASET_INGESTION",
       "asset_id": "ds_poisoned_02",
       "operation": "INGEST_VALIDATE",
       "input_digest": "da6f2ea4e9b3ae67",
       "result": "COMPLETED",
       "evidence_reference": "40 multi-contributor samples ingested.",
-      "previous_entry_hash": "87fb5f5a3b13de09b5220143deda911a1521fc808903e8011a157614883c8af0",
-      "entry_hash": "b73f59b72e0c53086c9e1833cca4808832e021e53d05b17443b4257a82412a3a"
+      "previous_entry_hash": "06b094e9f1fa663d3ff5ebabb4e534f2fffc3f822178789272007757a9887316",
+      "entry_hash": "39f3501c65b306107c9c374fcfe07a42645bd60fc3a277ae073f01bf13aa0f8e"
     },
     {
       "sequence_id": 8,
-      "timestamp": "2026-08-29T02:52:04Z",
+      "timestamp": "2026-08-29T02:58:31Z",
       "event": "DATA_ASSURANCE",
       "asset_id": "ds_poisoned_02",
       "operation": "ANALYZE_INTEGRITY",
       "input_digest": "da6f2ea4e9b3ae67",
       "result": "FLAGGED_HIGH_RISK",
       "evidence_reference": "Detected 4 integrity anomalies. Contributor Bravo flagged.",
-      "previous_entry_hash": "b73f59b72e0c53086c9e1833cca4808832e021e53d05b17443b4257a82412a3a",
-      "entry_hash": "3afe1e979c623118da07489721cf8df70512034eb8f83f6e05b31e281fedcd50"
+      "previous_entry_hash": "39f3501c65b306107c9c374fcfe07a42645bd60fc3a277ae073f01bf13aa0f8e",
+      "entry_hash": "703ec3e991ed63ac6aa76dd5c147efa4cb9f87ef2a35dd93414ed11396278ee0"
     }
   ],
   "scenario_c_model_compromised": [
     {
       "sequence_id": 9,
-      "timestamp": "2026-08-29T02:52:04Z",
+      "timestamp": "2026-08-29T02:58:32Z",
       "event": "MODEL_FINGERPRINT",
       "asset_id": "model_fb14ebf7bb51",
       "operation": "DIGEST_VERIFICATION",
       "input_digest": "fb14ebf7bb51b64e7792e48554072cd6d72e5f2ac521ec192c1646a28864f3da",
       "result": "MISMATCH_ALERT",
       "evidence_reference": "Supplied model does not match reference digest.",
-      "previous_entry_hash": "3afe1e979c623118da07489721cf8df70512034eb8f83f6e05b31e281fedcd50",
-      "entry_hash": "73d6c063aaea9e057d803109ebcf9a8fd777b20cb509db85b759d9c5e3500382"
+      "previous_entry_hash": "703ec3e991ed63ac6aa76dd5c147efa4cb9f87ef2a35dd93414ed11396278ee0",
+      "entry_hash": "8623f1460f54761ccdfcb8a716e91ec8d746e4797db90bd8be89a7fd7bbb0221"
     },
     {
       "sequence_id": 10,
-      "timestamp": "2026-08-29T02:52:06Z",
+      "timestamp": "2026-08-29T02:58:33Z",
       "event": "MODEL_ASSESSMENT",
       "asset_id": "model_fb14ebf7bb51",
       "operation": "BEHAVIOURAL_BATTERY",
       "input_digest": "fb14ebf7bb51b64e",
       "result": "FAILED_ANOMALOUS",
       "evidence_reference": "Model exhibited 2 behavioral/parameter violations.",
-      "previous_entry_hash": "73d6c063aaea9e057d803109ebcf9a8fd777b20cb509db85b759d9c5e3500382",
-      "entry_hash": "8fe9f1eead1c8784a53c3e9506e9159c3743232edfa9f2e267dfe1f18c2f180c"
+      "previous_entry_hash": "8623f1460f54761ccdfcb8a716e91ec8d746e4797db90bd8be89a7fd7bbb0221",
+      "entry_hash": "6bdaeff0c3b2a54ae56fb4a9c0fa7042821e002ce43538938187c93597b6c009"
     },
     {
       "sequence_id": 11,
-      "timestamp": "2026-08-29T02:52:07Z",
+      "timestamp": "2026-08-29T02:58:34Z",
       "event": "MODEL_ASSESSMENT",
       "asset_id": "model_fb14ebf7bb51",
       "operation": "TRIGGER_PROBE_BATTERY",
       "input_digest": "fb14ebf7bb51b64e",
       "result": "NO_TRIGGER_RESPONSE",
       "evidence_reference": "Attack success rate observed: 6.7%.",
-      "previous_entry_hash": "8fe9f1eead1c8784a53c3e9506e9159c3743232edfa9f2e267dfe1f18c2f180c",
-      "entry_hash": "4aedca11b99a029896216c84dd453f55fbef63964e6547f2d25bdc34705dd937"
+      "previous_entry_hash": "6bdaeff0c3b2a54ae56fb4a9c0fa7042821e002ce43538938187c93597b6c009",
+      "entry_hash": "f4ec3ae94991afc3938c5301deee1402290888dc817300fe9f77aa1b2333efce"
     }
   ],
   "scenario_d_tampered_inference": [
     {
       "sequence_id": 12,
-      "timestamp": "2026-08-29T02:52:08Z",
+      "timestamp": "2026-08-29T02:58:34Z",
       "event": "INFERENCE_PROVENANCE",
-      "asset_id": "rec_dc800fbd1485",
+      "asset_id": "rec_e2a95dc6fe80",
       "operation": "SIGN_BIND",
-      "input_digest": "64680f66f159f75c0ac6c9de7fa30d031e569edda698d17c2cad483513d2f468",
+      "input_digest": "3611511085f3324abdd240536f7e2f0693764129d02f26b4bf886c516f580f2c",
       "result": "CREATED",
-      "evidence_reference": "Authentic signature: HYqKfaWQti3jUEdr...",
-      "previous_entry_hash": "4aedca11b99a029896216c84dd453f55fbef63964e6547f2d25bdc34705dd937",
-      "entry_hash": "f05b36db49da99eda4c4ba6be707b94c0789d9f622198e50ffb16312c6a0d8cf"
+      "evidence_reference": "Authentic signature: XEvUi9tpO0EeTg7v...",
+      "previous_entry_hash": "f4ec3ae94991afc3938c5301deee1402290888dc817300fe9f77aa1b2333efce",
+      "entry_hash": "3c28e64afbd383969fd4924429de3f791b90b0eb54b2da88917d1a15fcbc7d60"
     },
     {
       "sequence_id": 13,
-      "timestamp": "2026-08-29T02:52:08Z",
+      "timestamp": "2026-08-29T02:58:34Z",
       "event": "PROVENANCE_VERIFICATION",
-      "asset_id": "rec_dc800fbd1485",
+      "asset_id": "rec_e2a95dc6fe80",
       "operation": "VERIFY_TAMPERING",
-      "input_digest": "64680f66f159f75c0ac6c9de7fa30d031e569edda698d17c2cad483513d2f468",
+      "input_digest": "3611511085f3324abdd240536f7e2f0693764129d02f26b4bf886c516f580f2c",
       "result": "TAMPERING_DETECTED",
       "evidence_reference": "Output Hash mismatch: record claims 69648b7b5aba..., but recalculated from predictions is a9a610bf4689... (TAMPERING DETECTED)",
-      "previous_entry_hash": "f05b36db49da99eda4c4ba6be707b94c0789d9f622198e50ffb16312c6a0d8cf",
-      "entry_hash": "4f70481c73e75ca109bd46ef0c7daae17a5fd77254609ae099070f92475158ff"
+      "previous_entry_hash": "3c28e64afbd383969fd4924429de3f791b90b0eb54b2da88917d1a15fcbc7d60",
+      "entry_hash": "c6e0d7658aba94641d70325ac9c2b2fe0a921a2048bc369feffd6606cfe93a4e"
     }
   ]
 }
