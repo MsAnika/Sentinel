@@ -1,6 +1,6 @@
 import React from 'react'
 import clsx from 'clsx'
-import { ShieldCheck, Skull, Cpu, AlertOctagon, Play } from 'lucide-react'
+import { ShieldCheck, Skull, Cpu, AlertOctagon, Play, Repeat, FileWarning } from 'lucide-react'
 import { StatusBadge } from '../ui/StatusBadge'
 
 interface ScenarioSelectorProps {
@@ -37,10 +37,26 @@ const SCENARIOS = [
   {
     id: 'D',
     title: 'Scenario D: Tampered Inference',
-    subtitle: 'Post-Hoc Prediction Alteration + Cryptographic Replay',
+    subtitle: 'Post-Hoc Prediction Alteration Detected via Hash Recalculation',
     badge: 'QUARANTINE',
     icon: AlertOctagon,
     tone: 'rose',
+  },
+  {
+    id: 'E',
+    title: 'Scenario E: Replay & Reordering',
+    subtitle: 'Nonce Replay of a Signed Record + Out-of-Sequence Injection',
+    badge: 'QUARANTINE',
+    icon: Repeat,
+    tone: 'rose',
+  },
+  {
+    id: 'F',
+    title: 'Scenario F: Audit-Log Tamper',
+    subtitle: 'Post-Hoc Ledger Rewrite Detected via Hash Chain + Signature',
+    badge: 'QUARANTINE',
+    icon: FileWarning,
+    tone: 'amber',
   },
 ]
 

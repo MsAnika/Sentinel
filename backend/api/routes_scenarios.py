@@ -37,6 +37,20 @@ async def list_scenarios():
             "disposition": "QUARANTINE",
             "description": "Cryptographically protected inference record altered post-execution; DAG hash recalculation detects corruption.",
         },
+        {
+            "id": "E",
+            "name": "Scenario E — Inference Replay & Reordering Attack",
+            "badge": "REPLAY DETECTED",
+            "disposition": "QUARANTINE",
+            "description": "A validly-signed inference record is resubmitted (nonce replay) and an out-of-sequence record is injected after a newer one (reordering); both are caught by nonce history and sequence-monotonicity checks.",
+        },
+        {
+            "id": "F",
+            "name": "Scenario F — Post-Hoc Audit-Log Modification",
+            "badge": "AUDIT TAMPER DETECTED",
+            "disposition": "QUARANTINE",
+            "description": "A historical audit-ledger entry is rewritten after the fact; hash-chain recalculation and per-entry Ed25519 signature verification both surface the violation.",
+        },
     ]
 
 
@@ -51,8 +65,12 @@ async def run_scenario(scenario_id: str):
         result = manager.run_scenario_c_model_compromised()
     elif sid == "D":
         result = manager.run_scenario_d_tampered_inference()
+    elif sid == "E":
+        result = manager.run_scenario_e_replay()
+    elif sid == "F":
+        result = manager.run_scenario_f_audit_tamper()
     else:
-        raise HTTPException(status_code=404, detail=f"Scenario '{scenario_id}' not found. Available: A, B, C, D")
+        raise HTTPException(status_code=404, detail=f"Scenario '{scenario_id}' not found. Available: A, B, C, D, E, F")
 
     db.insert_assurance_report(result["report"].model_dump())
     return result

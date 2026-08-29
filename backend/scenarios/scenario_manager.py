@@ -14,6 +14,7 @@ from ..model_assurance.fingerprint import ModelFingerprinter
 from ..provenance.verification import ProvenanceVerifier
 from .scenario_clean import ScenarioCleanDatasetRunner
 from .scenario_model_inf import ScenarioModelInferenceRunner
+from .scenario_replay_audit import ScenarioReplayAuditRunner
 
 
 class ScenarioManager:
@@ -80,6 +81,22 @@ class ScenarioManager:
             self.fingerprinter,
             self.inference_engine,
             self.verifier,
+            self.report_gen,
+            self.contrib_engine,
+            self.audit_ledger,
+        )
+
+    def run_scenario_e_replay(self) -> Dict[str, Any]:
+        return ScenarioReplayAuditRunner.run_scenario_e_replay(
+            self.fingerprinter,
+            self.inference_engine,
+            self.report_gen,
+            self.contrib_engine,
+            self.audit_ledger,
+        )
+
+    def run_scenario_f_audit_tamper(self) -> Dict[str, Any]:
+        return ScenarioReplayAuditRunner.run_scenario_f_audit_tamper(
             self.report_gen,
             self.contrib_engine,
             self.audit_ledger,

@@ -1,3 +1,5 @@
+import time
+import uuid
 from typing import Any, Dict, List
 from ..assurance.report_generator import AssuranceReportGenerator
 from ..audit.audit_log import TamperEvidentAuditLedger
@@ -6,7 +8,16 @@ from ..drift.distribution_shift import DistributionShiftDetector
 from ..inference.inference_engine import InferenceEngine
 from ..model_assurance.fingerprint import ModelFingerprinter
 from ..provenance.verification import ProvenanceVerifier
-from ..schemas import AssetType, FindingSchema, FindingSeverity, ModelAccessLevel, RecommendedDisposition
+from ..schemas import (
+    AssetType,
+    FindingSchema,
+    FindingSeverity,
+    InferenceConfig,
+    InferenceRecord,
+    ModelAccessLevel,
+    PreprocessingConfig,
+    RecommendedDisposition,
+)
 from .asset_generator import AssetGenerator
 from .probe_builder import PROBE_CONFIG
 from .scenario_clean import ScenarioCleanDatasetRunner
@@ -52,12 +63,42 @@ class ScenarioReplayAuditRunner:
             "REPLAY_DETECTED" if not replay_valid else "UNDETECTED_ANOMALY", "; ".join(replay_errors),
         )
 
-        # Reordering attack: after record_2 (seq=2) has been verified, resubmit
-        # a freshly re-signed but out-of-order record carrying a lower
-        # sequence number than the last one this verifier accepted.
-        stale_preds = inf_eng.run_inference(samples[0].image_path, assets["clean_model_path"], config=PROBE_CONFIG)
-        stale_record = vrf.create_record(samples[0].image_path, fp.model_id, fp.sha256_digest, stale_preds)
-        stale_record = stale_record.model_copy(update={"sequence_number": 1})
+        # Reordering attack: after record_2 (seq=2) has been verified,
+        # inject a genuinely, correctly-signed record that nonetheless
+        # carries an out-of-order sequence number (seq=1, a fresh nonce, a
+        # legitimately recomputed provenance hash and signature over that
+        # claim) -- this isolates sequence-monotonicity detection from hash
+        # tampering: the hash binding and signature are entirely valid, and
+        # the record is only rejected because it is out of order.
+        stale_image_path = samples[0].image_path
+        stale_nonce = uuid.uuid4().hex
+        stale_timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        stale_seq = 1  # deliberately not greater than record_2's sequence_number (2)
+        img_hash = vrf.hasher.hash_image_file(stale_image_path)
+        preproc_hash = vrf.hasher.hash_preprocessing_config(PreprocessingConfig())
+        cfg_hash = vrf.hasher.hash_inference_config(InferenceConfig())
+        out_hash = vrf.hasher.hash_predictions(preds_1)
+        stale_prov_hash = vrf.hasher.compute_provenance_hash(
+            image_hash=img_hash, model_digest=fp.sha256_digest, preprocessing_hash=preproc_hash,
+            config_hash=cfg_hash, output_hash=out_hash, timestamp=stale_timestamp, nonce=stale_nonce,
+            sequence_number=stale_seq,
+        )
+        stale_record = InferenceRecord(
+            record_id=f"rec_{stale_nonce[:12]}",
+            timestamp=stale_timestamp,
+            nonce=stale_nonce,
+            sequence_number=stale_seq,
+            image_hash=img_hash,
+            model_digest=fp.sha256_digest,
+            preprocessing_hash=preproc_hash,
+            config_hash=cfg_hash,
+            output_hash=out_hash,
+            provenance_hash=stale_prov_hash,
+            signature=vrf.signer.sign_provenance_hash(stale_prov_hash),
+            predictions=preds_1,
+            image_metadata={"path": stale_image_path, "note": "deliberately out-of-order sequence for FR-10 demo"},
+            model_id=fp.model_id,
+        )
         reorder_valid, reorder_errors = vrf.verify_record(stale_record, check_replay=True)
         audit.record_event(
             "PROVENANCE_VERIFICATION", stale_record.record_id, "REORDER_PROBE", stale_record.provenance_hash,
