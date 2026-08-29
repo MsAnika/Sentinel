@@ -58,6 +58,7 @@ class BackdoorDetector:
                     affected_source=model_id,
                     recommended_action=RecommendedDisposition.QUARANTINE,
                     limitations=["Trigger testing evaluated against known patch and frequency perturbation families."],
+                    access_assumptions=["Requires black-box or white-box model execution access to run trigger-vs-clean probe pairs; unavailable at HASH_ONLY access."],
                 )
             )
 

@@ -76,6 +76,10 @@ class BehaviourAnalyzer:
                     affected_source=model_id,
                     recommended_action=RecommendedDisposition.QUARANTINE if severity == FindingSeverity.CRITICAL else RecommendedDisposition.REVIEW,
                     limitations=["Reference battery evaluates bounded semantic envelope; real-world edge cases may exist."],
+                    access_assumptions=[
+                        f"Assessed at declared access_level={access_level.value}: real input/output execution "
+                        "against the same probe images was available for this comparison."
+                    ],
                 )
             )
 

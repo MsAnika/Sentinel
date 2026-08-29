@@ -63,7 +63,10 @@ class AssuranceReportGenerator:
         CoverageItem(
             attack_class="model_substitution",
             status=AttackClassStatus.SUPPORTED,
-            description="Detects replaced or bit-altered model files against a declared reference identity.",
+            description="Detects replaced or bit-altered model files against a declared reference identity. "
+            "Digest comparison yields one of three explicit dispositions -- MATCH, MISMATCH, or "
+            "NO_REFERENCE (no trusted reference digest was ever declared for this model) -- rather than "
+            "collapsing 'no reference supplied' into a false MATCH.",
             validation_method="Bitwise canonical SHA-256 digest comparison of the actual model file bytes",
         ),
         CoverageItem(
@@ -84,6 +87,15 @@ class AssuranceReportGenerator:
             validation_method="Input/output behavioral probing only",
         ),
         CoverageItem(
+            attack_class="hash_only_model_assessment",
+            status=AttackClassStatus.PARTIAL,
+            description="When only HASH_ONLY access is declared (the model file's bytes are available but "
+            "it is never executed or introspected), assessment is limited to file-level SHA-256 digest "
+            "identity verification. All execution-dependent checks (behavioral probing, trigger response, "
+            "parameter/activation analysis) are explicitly reported UNAVAILABLE with a stated reason.",
+            validation_method="File-level SHA-256 digest comparison only",
+        ),
+        CoverageItem(
             attack_class="inference_tampering",
             status=AttackClassStatus.SUPPORTED,
             description="Detects post-hoc alteration of predictions, bounding boxes, or metadata.",
@@ -96,11 +108,34 @@ class AssuranceReportGenerator:
             validation_method="Cryptographic nonces, sequence numbers, and timestamp freshness windows",
         ),
         CoverageItem(
-            attack_class="distribution_shift",
+            attack_class="reordering_detection",
             status=AttackClassStatus.SUPPORTED,
-            description="Characterizes operational domain shifts across terrain, sensor, and illumination "
-            "using real per-sample metadata statistics.",
-            validation_method="Categorical divergence ratio & illumination delta vs declared reference envelope",
+            description="Detects out-of-order/reordered inference records within a verifier's sequence "
+            "stream, independent of and in addition to nonce-based replay detection.",
+            validation_method="Monotonic per-stream sequence-number tracking (rejects any record whose "
+            "sequence_number does not exceed the last verified sequence)",
+        ),
+        CoverageItem(
+            attack_class="audit_log_modification",
+            status=AttackClassStatus.SUPPORTED,
+            description="Detects post-hoc rewriting of historical audit-ledger entries.",
+            validation_method="SHA-256 hash chaining plus a per-entry Ed25519 signature, independently "
+            "recomputed and verified end to end",
+        ),
+        CoverageItem(
+            attack_class="distribution_shift",
+            status=AttackClassStatus.PARTIAL,
+            description="Characterizes operational domain shifts across terrain, sensor, illumination, and "
+            "(when the observed samples carry a resolvable image path) real pixel-derived signals -- blur "
+            "(Laplacian variance), contrast, resolution, and estimated JPEG-style compression blockiness. "
+            "Classifies findings into probable_operational_drift / anomaly_requires_review / "
+            "manipulation_indicators_present / insufficient_evidence rather than a single manipulation flag. "
+            "Reported PARTIAL because image-quality signals require a declared reference baseline and an "
+            "image_path per observed sample; without either, the assessment falls back to metadata-only "
+            "terrain/sensor/illumination divergence.",
+            validation_method="Categorical divergence ratio, illumination delta, and (when available) "
+            "pixel-derived blur/contrast/resolution/compression-blockiness relative delta vs declared "
+            "reference envelope",
         ),
         CoverageItem(
             attack_class="pytorch_torchscript_ingestion",

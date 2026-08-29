@@ -72,6 +72,7 @@ class ParameterAnalyzer:
                     affected_source=model_id,
                     recommended_action=RecommendedDisposition.REVIEW,
                     limitations=["Heavy tails may occasionally arise from aggressive quantization, pruning, or a small number of sparse/localized filters rather than a backdoor."],
+                    access_assumptions=[f"Assessed under {access_level.value} access: real ONNX initializer weight tensors were extracted and inspected."],
                 )
             )
 

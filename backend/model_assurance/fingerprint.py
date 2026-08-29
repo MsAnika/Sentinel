@@ -53,6 +53,7 @@ class ModelFingerprinter:
                 affected_source=supplied_fingerprint.model_name,
                 recommended_action=RecommendedDisposition.QUARANTINE,
                 limitations=["Exact digest match proves bitwise identity; subtle fine-tuning requires behavioral battery analysis."],
+                access_assumptions=["Digest comparison requires only file-level (HASH_ONLY) access; valid at every access tier."],
             )
             return False, finding
 

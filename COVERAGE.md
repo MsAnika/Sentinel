@@ -29,10 +29,11 @@ risk score and disposition, not just isolated per-sample flags.
 
 | Attack class | Status | Validation method | Notes |
 |---|---|---|---|
-| `model_substitution` | SUPPORTED | Bitwise SHA-256 digest comparison of the actual model file bytes against a declared reference | |
+| `model_substitution` | SUPPORTED | Bitwise SHA-256 digest comparison of the actual model file bytes against a declared reference | Yields an explicit `MATCH` / `MISMATCH` / `NO_REFERENCE` disposition — a model with no declared reference digest is never silently treated as a MATCH |
 | `anomalous_model_behaviour` | SUPPORTED | Real reference-vs-candidate model execution on the same probe images, comparing actual outputs | Both models are actually run via onnxruntime; nothing is scripted |
-| Parameter/weight-statistics anomaly | SUPPORTED (white-box only) | Real ONNX initializer tensor extraction + kurtosis/variance analysis | Requires white-box access; explicitly `UNAVAILABLE` (not approximated) under declared black-box access |
+| Parameter/weight-statistics anomaly | SUPPORTED (white-box only) | Real ONNX initializer tensor extraction + kurtosis/variance analysis | Requires white-box access; explicitly `UNAVAILABLE` (not approximated) under declared black-box or hash-only access |
 | `black_box_model_assessment` | **PARTIAL** | Input/output behavioral probing only | This is the intended graceful degradation for vendor-supplied models where weight access isn't authorized — not a workaround |
+| `hash_only_model_assessment` | **PARTIAL** | File-level SHA-256 digest comparison only | Third, weakest access tier (`ModelAccessLevel.HASH_ONLY`): the model is never executed. All execution-dependent checks report explicit `UNAVAILABLE` with a stated reason (`backend/model_assurance/access_detector.py`) |
 | `unknown_trigger_reconstruction` | **NOT SUPPORTED** | — | No gradient-based blind trigger inversion (e.g. Neural Cleanse-style optimization). Backdoor detection only recognizes trigger patterns it is explicitly told to probe for |
 | PyTorch/TorchScript ingestion | **PARTIAL** | Real `torch.jit.load`/`torch.load` (safe `weights_only=True` attempted first) | Implemented but not yet validated end-to-end against a real trained checkpoint in this test suite — treat as less battle-tested than the ONNX path |
 
