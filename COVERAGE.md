@@ -43,26 +43,55 @@ risk score and disposition, not just isolated per-sample flags.
 |---|---|---|
 | `inference_tampering` | SUPPORTED | SHA-256 hash DAG over image + model digest + preprocessing + config + output, Ed25519 digital signature |
 | `replay_detection` | SUPPORTED | Nonces + monotonic sequence numbers + timestamps |
+| `reordering_detection` | SUPPORTED | Per-verifier-stream monotonic sequence-number tracking, independent of nonce reuse — a record whose `sequence_number` does not exceed the last verified sequence is rejected even with a fresh nonce and a valid signature |
 
 The signing key is persisted to disk (`keys/provenance_signing_key.pem`) so previously-issued
-signatures remain independently verifiable across service restarts.
+signatures remain independently verifiable across service restarts. Scenario E
+(`backend/scenarios/scenario_replay_audit.py`) exercises both replay and reordering as a runnable,
+demo-clickable scenario, not only a pytest assertion.
 
 ## Distribution shift / anomaly assessment (2.2.4)
 
 | Attack class | Status | Validation method |
 |---|---|---|
-| `distribution_shift` | SUPPORTED | Categorical divergence ratio (terrain/sensor) + illumination delta vs. a declared reference envelope, computed from real per-sample metadata |
+| `distribution_shift` | **PARTIAL** | Categorical divergence ratio (terrain/sensor) + illumination delta vs. a declared reference envelope, computed from real per-sample metadata; when an observed sample carries a resolvable `image_path`, real pixel-derived signals are added — blur (Laplacian variance), contrast (intensity std-dev), resolution, and an estimated JPEG-style compression-blockiness score (`backend/drift/image_quality.py`) |
+
+Each `DistributionShiftReport` now also carries a `classification` field with one of the four
+values named in the PRD — `probable_operational_drift`, `anomaly_requires_review`,
+`manipulation_indicators_present`, or `insufficient_evidence` (when fewer than 5 observed samples
+are supplied) — rather than only a single `is_manipulation_suspected` boolean. Reported PARTIAL
+because pixel-derived quality signals require both a declared reference baseline and a resolvable
+`image_path` per observed sample; without either, the assessment gracefully falls back to
+metadata-only terrain/sensor/illumination divergence (this fallback is stated explicitly in the
+report's `limitations` field, not silently substituted).
 
 ## Governance (2.2.5)
 
 - Every finding carries a human-readable `reason`, `evidence` dict, `confidence`, `severity`,
-  `affected_source`, and `recommended_action` (`ACCEPT` / `REVIEW` / `QUARANTINE`) —
+  `affected_source`, `recommended_action` (`ACCEPT` / `REVIEW` / `QUARANTINE`), and (where
+  meaningful) `access_assumptions` describing what model access level the check required —
   see `backend/schemas.py: FindingSchema`.
-- A single, process-wide, hash-chained, tamper-evident audit ledger
+- A single, process-wide, hash-chained, individually Ed25519-signed, tamper-evident audit ledger
   (`backend/audit/audit_log.py: shared_ledger`) records every real API action — model uploads,
   fingerprinting, parameter analysis, behavioural batteries, dataset ingestion/analysis, inference
   execution and verification — not just the canned demo scenarios. It is persisted to
-  `audit_log/ledger.jsonl` so the trail survives restarts.
+  `audit_log/ledger.jsonl` so the trail survives restarts. Each entry's hash is signed with a
+  dedicated key (`keys/audit_signing_key.pem`, separate from the inference-provenance key) so
+  forging a tampered entry requires the private key, not just knowledge of the hash-chain
+  algorithm. Scenario F (`backend/scenarios/scenario_replay_audit.py`) demonstrates a post-hoc
+  ledger rewrite being caught, on an isolated demo ledger so the live shared trail is never itself
+  corrupted by the demo.
+- **Offline verification CLI**: `python -m backend.tools.verify_offline {audit|record|all}` runs
+  entirely without starting the FastAPI service — no network socket, no `api/` route imports — and
+  verifies the audit ledger and/or signed inference records directly from local files, exiting
+  non-zero on any integrity violation. This is the deliverable the PRD names explicitly ("offline
+  verification CLI").
+- **Report export**: assurance reports are exported as machine-readable JSON (already supported),
+  plus human-readable **HTML** (`GET /api/report/{id}/export.html`, self-contained inline-CSS
+  document via a local Jinja2 template, no external assets) and **PDF**
+  (`GET /api/report/{id}/export.pdf`, via `reportlab` — pure Python, no system rendering
+  dependencies such as Cairo/Pango, so it works in an air-gapped environment from pre-provisioned
+  wheels alone).
 
 ## Assumptions
 
