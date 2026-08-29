@@ -1,14 +1,45 @@
 import hashlib
+import json
+import os
 import time
-from typing import Any, Dict, List, Tuple
+from typing import List, Optional, Tuple
 from ..schemas import AuditLogEntry
+
+DEFAULT_LEDGER_PATH = os.environ.get("VIGILCV_AUDIT_LEDGER_PATH", "audit_log/ledger.jsonl")
 
 
 class TamperEvidentAuditLedger:
-    def __init__(self, genesis_digest: str = "INTELX_DEFENCE_AUDIT_GENESIS_BLOCK_2026"):
+    """A hash-chained audit ledger. Optionally persisted to a JSON-lines file
+    so the tamper-evident trail survives process restarts -- an in-memory-only
+    ledger that resets every time the service restarts is not a real audit
+    trail for a long-lived deployment."""
+
+    def __init__(self, genesis_digest: str = "INTELX_DEFENCE_AUDIT_GENESIS_BLOCK_2026", persist_path: Optional[str] = None):
         self.genesis_digest = genesis_digest
         self.entries: List[AuditLogEntry] = []
         self._last_hash = hashlib.sha256(genesis_digest.encode("utf-8")).hexdigest()
+        self._persist_path = persist_path
+        if persist_path and os.path.exists(persist_path):
+            self._load_from_disk(persist_path)
+
+    def _load_from_disk(self, path: str) -> None:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                entry = AuditLogEntry.model_validate_json(line)
+                self.entries.append(entry)
+                self._last_hash = entry.entry_hash
+
+    def _append_to_disk(self, entry: AuditLogEntry) -> None:
+        if not self._persist_path:
+            return
+        dir_name = os.path.dirname(self._persist_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+        with open(self._persist_path, "a", encoding="utf-8") as f:
+            f.write(entry.model_dump_json() + "\n")
 
     def record_event(
         self,
@@ -41,6 +72,7 @@ class TamperEvidentAuditLedger:
 
         self.entries.append(entry)
         self._last_hash = entry_hash
+        self._append_to_disk(entry)
         return entry
 
     def verify_ledger_integrity(self) -> Tuple[bool, List[str]]:
@@ -71,3 +103,13 @@ class TamperEvidentAuditLedger:
 
     def get_entries(self) -> List[AuditLogEntry]:
         return self.entries
+
+    def entries_since(self, start_index: int) -> List[AuditLogEntry]:
+        return self.entries[start_index:]
+
+
+# Process-wide singleton. Every route (scenario replay and live analysis
+# alike) records into this ONE ledger so the audit trail reflects everything
+# the service actually did, not just whichever code path happened to
+# instantiate its own throwaway ledger.
+shared_ledger = TamperEvidentAuditLedger(persist_path=DEFAULT_LEDGER_PATH)

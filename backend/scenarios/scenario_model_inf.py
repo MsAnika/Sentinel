@@ -26,8 +26,9 @@ class ScenarioModelInferenceRunner:
         vrf: ProvenanceVerifier,
         rpt_gen: AssuranceReportGenerator,
         cnt_eng: ContributorRiskEngine,
+        audit: TamperEvidentAuditLedger,
     ) -> Dict[str, Any]:
-        audit = TamperEvidentAuditLedger()
+        run_start = len(audit.entries)
         samples = ScenarioCleanDatasetRunner.load_dynamic_samples()
         assets = AssetGenerator.ensure_test_assets("test_assets")
 
@@ -102,7 +103,7 @@ class ScenarioModelInferenceRunner:
             "overall_disposition": report.overall_disposition,
             "overall_risk_score": report.overall_risk_score,
             "report": report,
-            "audit_entries": audit.get_entries(),
+            "audit_entries": audit.entries_since(run_start),
             "model_fingerprint": compromised_fp,
             "model_behaviour": beh_assess,
             "findings": all_findings,
@@ -116,8 +117,9 @@ class ScenarioModelInferenceRunner:
         vrf: ProvenanceVerifier,
         rpt_gen: AssuranceReportGenerator,
         cnt_eng: ContributorRiskEngine,
+        audit: TamperEvidentAuditLedger,
     ) -> Dict[str, Any]:
-        audit = TamperEvidentAuditLedger()
+        run_start = len(audit.entries)
         samples = ScenarioCleanDatasetRunner.load_dynamic_samples()
         assets = AssetGenerator.ensure_test_assets("test_assets")
 
@@ -191,7 +193,7 @@ class ScenarioModelInferenceRunner:
             "overall_disposition": report.overall_disposition,
             "overall_risk_score": report.overall_risk_score,
             "report": report,
-            "audit_entries": audit.get_entries(),
+            "audit_entries": audit.entries_since(run_start),
             "valid_record": valid_record,
             "tampered_record": tampered_record,
             "findings": [finding],

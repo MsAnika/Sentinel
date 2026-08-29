@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, File, HTTPException, UploadFile
+from ..audit.audit_log import shared_ledger
 from ..inference.inference_engine import InferenceEngine
 from ..ingestion.model_loader import ModelLoader
 from ..ingestion.upload_store import save_upload
@@ -41,6 +42,11 @@ async def upload_model(
     fp.metadata["original_filename"] = file.filename
     if file.filename:
         fp.model_name = file.filename
+
+    shared_ledger.record_event(
+        "MODEL_UPLOAD", fp.model_id, "FINGERPRINT_GENERATED", fp.sha256_digest,
+        "COMPLETED", f"Uploaded '{file.filename}' ({size_bytes} bytes), access_level={access_level.value}, format={fp.model_format}."
+    )
     return fp
 
 

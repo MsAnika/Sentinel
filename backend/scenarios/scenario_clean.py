@@ -36,8 +36,9 @@ class ScenarioCleanDatasetRunner:
         inf_eng: InferenceEngine,
         vrf: ProvenanceVerifier,
         rpt_gen: AssuranceReportGenerator,
+        audit: TamperEvidentAuditLedger,
     ) -> Dict[str, Any]:
-        audit = TamperEvidentAuditLedger()
+        run_start = len(audit.entries)
         samples = ScenarioCleanDatasetRunner.load_dynamic_samples()
         clean_subset = samples[:20]
 
@@ -98,7 +99,7 @@ class ScenarioCleanDatasetRunner:
             "overall_disposition": report.overall_disposition,
             "overall_risk_score": report.overall_risk_score,
             "report": report,
-            "audit_entries": audit.get_entries(),
+            "audit_entries": audit.entries_since(run_start),
             "model_fingerprint": fp,
             "model_behaviour": beh_assess,
             "inference_record": inf_record,
@@ -118,8 +119,9 @@ class ScenarioCleanDatasetRunner:
         inf_eng: InferenceEngine,
         vrf: ProvenanceVerifier,
         rpt_gen: AssuranceReportGenerator,
+        audit: TamperEvidentAuditLedger,
     ) -> Dict[str, Any]:
-        audit = TamperEvidentAuditLedger()
+        run_start = len(audit.entries)
         samples = ScenarioCleanDatasetRunner.load_dynamic_samples()
 
         for i in range(10, 16):
@@ -179,7 +181,7 @@ class ScenarioCleanDatasetRunner:
             "overall_disposition": report.overall_disposition,
             "overall_risk_score": report.overall_risk_score,
             "report": report,
-            "audit_entries": audit.get_entries(),
+            "audit_entries": audit.entries_since(run_start),
             "model_fingerprint": fp,
             "contributor_summaries": contrib_sums,
             "findings": all_findings,

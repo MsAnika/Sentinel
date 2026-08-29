@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 from ..assurance.report_generator import AssuranceReportGenerator
+from ..audit.audit_log import shared_ledger
 from ..data_assurance.contributor_risk import ContributorRiskEngine
 from ..data_assurance.duplicate_detector import DuplicateDetector
 from ..data_assurance.label_analyzer import LabelAnalyzer
@@ -28,6 +29,7 @@ class ScenarioManager:
         self.inference_engine = InferenceEngine()
         self.verifier = ProvenanceVerifier()
         self.report_gen = AssuranceReportGenerator()
+        self.audit_ledger = shared_ledger
 
     def generate_base_samples(self, count: int = 50) -> List[SampleItem]:
         return ScenarioCleanDatasetRunner.generate_base_samples(count)
@@ -44,6 +46,7 @@ class ScenarioManager:
             self.inference_engine,
             self.verifier,
             self.report_gen,
+            self.audit_ledger,
         )
 
     def run_scenario_b_poisoned(self) -> Dict[str, Any]:
@@ -57,6 +60,7 @@ class ScenarioManager:
             self.inference_engine,
             self.verifier,
             self.report_gen,
+            self.audit_ledger,
         )
 
     def run_scenario_c_model_compromised(self) -> Dict[str, Any]:
@@ -68,6 +72,7 @@ class ScenarioManager:
             self.verifier,
             self.report_gen,
             self.contrib_engine,
+            self.audit_ledger,
         )
 
     def run_scenario_d_tampered_inference(self) -> Dict[str, Any]:
@@ -77,4 +82,5 @@ class ScenarioManager:
             self.verifier,
             self.report_gen,
             self.contrib_engine,
+            self.audit_ledger,
         )
