@@ -110,6 +110,13 @@ export class AssuranceApiClient {
     })
   }
 
+  /** Direct download URL for a stored report -- opened in a new tab / used
+   * as an <a href>, not fetched as JSON, so the browser handles the
+   * Content-Disposition attachment itself. */
+  static reportExportUrl(reportId: string, format: 'html' | 'pdf'): string {
+    return `${API_BASE}/api/report/${encodeURIComponent(reportId)}/export.${format}`
+  }
+
   // -- Live analysis: real, user-supplied files, no canned scenario involved --
 
   static async uploadModel(file: File): Promise<ModelFingerprint> {

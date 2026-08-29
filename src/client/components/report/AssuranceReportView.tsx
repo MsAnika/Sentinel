@@ -1,8 +1,9 @@
 import React from 'react'
-import { Download, Shield, Printer } from 'lucide-react'
+import { Download, Shield, FileText, FileType } from 'lucide-react'
 import { AssuranceReport } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 import { RiskMeter } from '../ui/RiskMeter'
+import { AssuranceApiClient } from '@/client/lib/api-client'
 
 interface AssuranceReportViewProps {
   report: AssuranceReport
@@ -17,10 +18,6 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({ report
     document.body.appendChild(downloadAnchor)
     downloadAnchor.click()
     downloadAnchor.remove()
-  }
-
-  const handlePrint = () => {
-    window.print()
   }
 
   return (
@@ -40,13 +37,24 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({ report
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
+            <a
+              href={AssuranceApiClient.reportExportUrl(report.report_id, 'html')}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
             >
-              <Printer className="h-3.5 w-3.5" />
-              PRINT / PDF
-            </button>
+              <FileText className="h-3.5 w-3.5" />
+              EXPORT HTML
+            </a>
+            <a
+              href={AssuranceApiClient.reportExportUrl(report.report_id, 'pdf')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <FileType className="h-3.5 w-3.5" />
+              EXPORT PDF
+            </a>
             <button
               onClick={handleDownloadJSON}
               className="flex items-center gap-1.5 rounded border border-emerald-600/50 bg-emerald-950/70 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-900/80 transition-colors cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.25)]"
@@ -69,12 +77,55 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({ report
             <div className="text-[10px] text-zinc-500 font-semibold uppercase">REPORT ID & TIMESTAMP</div>
             <div className="text-xs font-bold text-zinc-200">{report.report_id}</div>
             <div className="text-[10px] text-zinc-400">{report.generated_at}</div>
+            <div className="text-[10px] text-zinc-500">Policy: <span className="text-cyan-400/90 font-mono">{report.policy_version}</span></div>
           </div>
 
           <div>
             <RiskMeter score={report.overall_risk_score} />
           </div>
         </div>
+
+        {report.findings.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-300 border-b border-zinc-800 pb-2">
+              EVIDENCE FINDINGS ({report.findings.length})
+            </h4>
+            <div className="space-y-2">
+              {report.findings.map((f) => (
+                <div key={f.finding_id} className="rounded border border-zinc-800/80 bg-zinc-900/30 p-3 space-y-1.5 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-zinc-500">{f.finding_id}</span>
+                      <span className="font-bold text-zinc-200">{f.finding_type.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={f.severity} size="sm" />
+                      <StatusBadge status={f.recommended_action} size="sm" />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">{f.reason}</p>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-zinc-500">
+                    <span>Asset: <span className="text-zinc-300">{f.asset}</span></span>
+                    <span>Confidence: <span className="text-zinc-300">{f.confidence.toFixed(2)}</span></span>
+                    {f.affected_source && <span>Source: <span className="text-zinc-300">{f.affected_source}</span></span>}
+                  </div>
+                  {f.access_assumptions.length > 0 && (
+                    <div className="text-[10px] text-cyan-400/80">
+                      Access assumption: {f.access_assumptions.join(' ')}
+                    </div>
+                  )}
+                  {f.limitations.length > 0 && (
+                    <ul className="list-disc list-inside text-[10px] text-amber-400/70 space-y-0.5">
+                      {f.limitations.map((l, i) => (
+                        <li key={i}>{l}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-300 border-b border-zinc-800 pb-2">

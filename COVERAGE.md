@@ -35,7 +35,7 @@ risk score and disposition, not just isolated per-sample flags.
 | `black_box_model_assessment` | **PARTIAL** | Input/output behavioral probing only | This is the intended graceful degradation for vendor-supplied models where weight access isn't authorized — not a workaround |
 | `hash_only_model_assessment` | **PARTIAL** | File-level SHA-256 digest comparison only | Third, weakest access tier (`ModelAccessLevel.HASH_ONLY`): the model is never executed. All execution-dependent checks report explicit `UNAVAILABLE` with a stated reason (`backend/model_assurance/access_detector.py`) |
 | `unknown_trigger_reconstruction` | **NOT SUPPORTED** | — | No gradient-based blind trigger inversion (e.g. Neural Cleanse-style optimization). Backdoor detection only recognizes trigger patterns it is explicitly told to probe for |
-| PyTorch/TorchScript ingestion | **PARTIAL** | Real `torch.jit.load`/`torch.load` (safe `weights_only=True` attempted first) | Implemented but not yet validated end-to-end against a real trained checkpoint in this test suite — treat as less battle-tested than the ONNX path |
+| PyTorch/TorchScript ingestion | SUPPORTED | Real `torch.jit.load`/`torch.load` (safe `weights_only=True` attempted first) | Validated end-to-end against a real scripted `torch.nn.Module` (TorchScript) and a real state_dict checkpoint (PyTorch) — `test_torchscript_model_ingestion_end_to_end` / `test_pytorch_state_dict_checkpoint_ingestion_end_to_end`. ONNX still has the deepest coverage (backdoor/parameter/behavioural tests) |
 
 ## Inference provenance & output integrity (2.2.3)
 
@@ -108,8 +108,10 @@ report's `limitations` field, not silently substituted).
 3. Label-flip/mislabelling detection is only as strong as the reference model supplied for visual
    verification. Without one, it trusts contributor-declared metadata and will not catch errors on
    genuinely unannotated real-world data.
-4. PyTorch/TorchScript ingestion is implemented but not yet validated against a real trained
-   checkpoint — ONNX has the only fully verified end-to-end test coverage.
+4. PyTorch/TorchScript ingestion is validated against real scripted-module and state_dict fixtures,
+   but ONNX still has the deepest test coverage overall (backdoor/parameter/behavioural batteries all
+   run against ONNX fixtures; the PyTorch path is verified for loading/fingerprinting only, not yet
+   for backdoor/parameter analysis).
 5. Zero-day stealthy semantic triggers with extremely small perturbation norms may require
    white-box gradient inversion this system does not perform.
 6. This system provides empirical evidence and risk grading; it does not mathematically guarantee

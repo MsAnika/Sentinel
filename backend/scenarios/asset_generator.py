@@ -222,3 +222,57 @@ class AssetGenerator:
         )
         onnx.checker.check_model(model)
         onnx.save(model, output_path)
+
+    @staticmethod
+    def _build_torch_detector():
+        """A tiny, real nn.Module with the same backbone shape as the ONNX
+        fixture (three stride-2 convs + a 1x1 head), used to validate the
+        PyTorch/TorchScript ingestion path end-to-end against an actual
+        trained-shaped checkpoint rather than leaving that path untested."""
+        import torch
+        import torch.nn as nn
+
+        C = AssetGenerator.NUM_CHANNELS
+
+        class TacticalDetector(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.b1 = nn.Conv2d(3, 8, 3, stride=2, padding=1)
+                self.b2 = nn.Conv2d(8, 16, 3, stride=2, padding=1)
+                self.b3 = nn.Conv2d(16, 32, 3, stride=2, padding=1)
+                self.head = nn.Conv2d(32, C, 1)
+                self.relu = nn.ReLU()
+
+            def forward(self, x):
+                x = self.relu(self.b1(x))
+                x = self.relu(self.b2(x))
+                x = self.relu(self.b3(x))
+                x = self.head(x)
+                return x.flatten(2)
+
+        torch.manual_seed(42)
+        return TacticalDetector()
+
+    @staticmethod
+    def generate_torchscript_model(output_path: str) -> None:
+        """Builds and torch.jit.script-compiles a real, runnable PyTorch
+        model to disk -- exercises the TorchScript branch of ModelLoader
+        (torch.jit.load) against an actual scripted module, not a stub."""
+        import torch
+
+        model = AssetGenerator._build_torch_detector()
+        model.eval()
+        scripted = torch.jit.script(model)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        scripted.save(output_path)
+
+    @staticmethod
+    def generate_torch_checkpoint(output_path: str) -> None:
+        """Saves a real PyTorch state_dict to disk -- exercises the
+        `torch.load(..., weights_only=True)` branch of ModelLoader against
+        an actual trained-shaped checkpoint."""
+        import torch
+
+        model = AssetGenerator._build_torch_detector()
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        torch.save(model.state_dict(), output_path)

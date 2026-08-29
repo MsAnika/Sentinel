@@ -204,6 +204,7 @@ class AssuranceReport(BaseModel):
     generated_at: str
     problem_statement_id: str = "26228"
     organization: str = "Ministry of Defence (MoD) / Indian Army (DGIS)"
+    policy_version: str = "unversioned"
     overall_disposition: RecommendedDisposition
     overall_risk_score: float
     dataset_assurance_status: str

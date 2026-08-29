@@ -61,7 +61,10 @@ export const DistributionShiftView: React.FC<DistributionShiftViewProps> = ({ re
               Distribution-Shift & Environmental Drift Radar (FR-11 & FR-12)
             </h3>
           </div>
-          <StatusBadge status={statusStr} size="sm" />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={statusStr} size="sm" />
+            <StatusBadge status={report?.classification || 'insufficient_evidence'} size="sm" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">

@@ -139,11 +139,15 @@ class AssuranceReportGenerator:
         ),
         CoverageItem(
             attack_class="pytorch_torchscript_ingestion",
-            status=AttackClassStatus.PARTIAL,
-            description="Real PyTorch/TorchScript loading (with a safe weights_only=True-first attempt) is "
-            "implemented, but has not been validated end-to-end against an actual trained checkpoint in "
-            "this system's test suite. ONNX is the only format with fully verified test coverage.",
-            validation_method="torch.jit.load / torch.load, real parameter counting",
+            status=AttackClassStatus.SUPPORTED,
+            description="Real PyTorch/TorchScript loading (with a safe weights_only=True-first attempt), "
+            "validated end-to-end against an actual scripted torch.nn.Module (TorchScript) and an actual "
+            "state_dict checkpoint (PyTorch), asserting neither silently degrades to a BLACK_BOX parse "
+            "failure. Note: only real, standard modules/state_dicts are covered -- exotic custom "
+            "pickled objects in a legacy checkpoint may still require the unsafe full-unpickling fallback, "
+            "which is reported via `unsafe_pickle_deserialization: true` rather than hidden.",
+            validation_method="torch.jit.load / torch.load(weights_only=True), real parameter counting, "
+            "tested against real compiled/saved fixtures",
         ),
     ]
 
@@ -163,8 +167,9 @@ class AssuranceReportGenerator:
         "Label-flip/mislabelling detection is only as strong as the reference model supplied for visual "
         "verification. Without one, it falls back to trusting contributor-declared metadata and will not "
         "catch errors on genuinely unannotated real-world data.",
-        "PyTorch/TorchScript ingestion is implemented but not yet validated against a real trained "
-        "checkpoint; treat PyTorch-format assessments as less battle-tested than ONNX.",
+        "PyTorch/TorchScript ingestion is validated against real scripted-module and state_dict "
+        "fixtures, but ONNX remains the format exercised by the largest share of this system's test "
+        "suite (backdoor/parameter analysis, behavioural batteries).",
         "Zero-day stealthy semantic triggers with <0.01% perturbation norm may require white-box gradient inversion this system does not perform.",
         "Assurance evaluation provides empirical evidence and risk grading, but does not mathematically guarantee the total absence of unknown zero-day attacks.",
     ]
@@ -197,6 +202,7 @@ class AssuranceReportGenerator:
             generated_at=ts,
             problem_statement_id="26228",
             organization="Ministry of Defence (MoD) / Indian Army (DGIS)",
+            policy_version=self.risk_engine.POLICY_VERSION,
             overall_disposition=disposition,
             overall_risk_score=overall_risk,
             dataset_assurance_status=dataset_status,

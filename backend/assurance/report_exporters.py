@@ -59,7 +59,8 @@ def render_pdf_report(report: AssuranceReport) -> bytes:
     story.append(Paragraph("IntelX Assurance Report", title_style))
     story.append(Paragraph(
         f"Report ID: {report.report_id} &nbsp;|&nbsp; Generated: {report.generated_at} &nbsp;|&nbsp; "
-        f"Problem Statement {report.problem_statement_id} &nbsp;|&nbsp; {report.organization}",
+        f"Problem Statement {report.problem_statement_id} &nbsp;|&nbsp; {report.organization} &nbsp;|&nbsp; "
+        f"Policy: {report.policy_version}",
         meta_style,
     ))
     story.append(Spacer(1, 8))

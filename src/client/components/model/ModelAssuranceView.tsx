@@ -16,7 +16,13 @@ export const ModelAssuranceView: React.FC<ModelAssuranceViewProps> = ({
   findings,
 }) => {
   const modelFindings = findings.filter(f => f.asset_type === 'model')
-  const isWhiteBox = fingerprint?.access_level === 'WHITE_BOX'
+  const accessLevel = fingerprint?.access_level || 'WHITE_BOX'
+  const isWhiteBox = accessLevel === 'WHITE_BOX'
+  const accessSubtitle = accessLevel === 'WHITE_BOX'
+    ? 'Full Weight/Tensor Access'
+    : accessLevel === 'BLACK_BOX'
+      ? 'Black-Box I/O Probing Only'
+      : 'File Digest Only — No Execution'
 
   return (
     <div className="space-y-6 font-mono">
@@ -30,10 +36,10 @@ export const ModelAssuranceView: React.FC<ModelAssuranceViewProps> = ({
         />
         <StatCard
           title="Access Level (FR-07)"
-          value={fingerprint?.access_level || 'WHITE_BOX'}
-          subtitle={isWhiteBox ? "Full Weight/Tensor Access" : "Black-Box I/O Probing Only"}
+          value={accessLevel}
+          subtitle={accessSubtitle}
           icon={<Fingerprint className="h-4 w-4" />}
-          tone={isWhiteBox ? "emerald" : "amber"}
+          tone={isWhiteBox ? "emerald" : accessLevel === 'HASH_ONLY' ? "rose" : "amber"}
         />
         <StatCard
           title="Battery Probes"
@@ -117,6 +123,12 @@ export const ModelAssuranceView: React.FC<ModelAssuranceViewProps> = ({
                 </div>
 
                 <p className="text-xs text-zinc-300">{f.reason}</p>
+
+                {f.access_assumptions.length > 0 && (
+                  <div className="text-[11px] text-cyan-400/80">
+                    Access assumption: {f.access_assumptions.join(' ')}
+                  </div>
+                )}
 
                 <div className="rounded bg-zinc-950 p-2 text-[11px] text-zinc-400 border border-zinc-800/80">
                   <div className="text-zinc-500 font-semibold mb-1">EVIDENCE RECORD:</div>

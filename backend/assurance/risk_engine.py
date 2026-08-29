@@ -3,6 +3,15 @@ from ..schemas import FindingSchema, FindingSeverity, RecommendedDisposition
 
 
 class RiskEngine:
+    """Disposition policy: severity weights and ACCEPT/REVIEW/QUARANTINE
+    cutoffs. Bump POLICY_VERSION whenever these constants change -- the
+    PRD (section 9.3) requires policy thresholds to be versioned and
+    carried in every assurance report, so a report generated under one
+    policy can never be silently misread as having been evaluated under
+    another."""
+
+    POLICY_VERSION = "policy-2026.1"
+
     SEVERITY_WEIGHTS = {
         FindingSeverity.LOW: 5.0,
         FindingSeverity.MEDIUM: 18.0,

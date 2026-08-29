@@ -4,7 +4,15 @@ export type FindingSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 
 export type RecommendedDisposition = 'ACCEPT' | 'REVIEW' | 'QUARANTINE'
 
-export type ModelAccessLevel = 'WHITE_BOX' | 'BLACK_BOX'
+export type ModelAccessLevel = 'WHITE_BOX' | 'BLACK_BOX' | 'HASH_ONLY'
+
+export type ModelDigestStatus = 'MATCH' | 'MISMATCH' | 'NO_REFERENCE'
+
+export type DriftClassification =
+  | 'probable_operational_drift'
+  | 'anomaly_requires_review'
+  | 'manipulation_indicators_present'
+  | 'insufficient_evidence'
 
 export interface FindingSchema {
   finding_id: string
@@ -18,6 +26,7 @@ export interface FindingSchema {
   affected_source?: string
   recommended_action: RecommendedDisposition
   limitations: string[]
+  access_assumptions: string[]
 }
 
 export interface ContributorRiskSummary {
@@ -116,6 +125,9 @@ export interface DistributionShiftReport {
   suspected_cause: string
   is_manipulation_suspected: boolean
   reasoning: string
+  classification: DriftClassification
+  image_quality_evidence: Record<string, unknown>
+  limitations: string[]
 }
 
 export interface AuditLogEntry {
@@ -129,6 +141,7 @@ export interface AuditLogEntry {
   evidence_reference: string
   previous_entry_hash: string
   entry_hash: string
+  signature?: string
 }
 
 export interface CoverageItem {
@@ -143,6 +156,7 @@ export interface AssuranceReport {
   generated_at: string
   problem_statement_id: string
   organization: string
+  policy_version: string
   overall_disposition: RecommendedDisposition
   overall_risk_score: number
   dataset_assurance_status: string
