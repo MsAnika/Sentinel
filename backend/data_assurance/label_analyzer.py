@@ -13,26 +13,45 @@ class LabelAnalyzer:
         samples: List[SampleItem],
         dataset_id: str = "dataset_01",
         known_classes: Optional[List[str]] = None,
+        visual_predictions: Optional[Dict[str, Tuple[str, float]]] = None,
     ) -> Tuple[List[FindingSchema], Dict[str, Any]]:
+        """When `visual_predictions` is supplied (sample_id -> (predicted_class,
+        confidence) from actually running a trusted reference model over the
+        real image), mislabelling is detected by real visual disagreement
+        with the declared label. Without it, this falls back to trusting
+        any `true_label`/`label_flipped` already present in sample metadata
+        -- which only exists for the synthetic test-scenario harness and
+        will not catch anything on a real, unannotated-ground-truth
+        dataset. Real-world callers should always supply visual_predictions."""
         findings: List[FindingSchema] = []
         contributor_label_errors: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         class_confusion_matrix: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
         label_anomaly_samples: List[str] = []
+        visual_predictions = visual_predictions or {}
 
         for sample in samples:
             meta = sample.metadata
-            flipped_flag = meta.get("label_flipped", False) or meta.get("synthetic_corrupt_label", False)
             declared_label = sample.labels[0] if sample.labels else "unknown"
-            true_label = meta.get("true_label", declared_label)
 
-            if flipped_flag or (declared_label != true_label and true_label != "unknown"):
+            if sample.sample_id in visual_predictions:
+                true_label, pred_confidence = visual_predictions[sample.sample_id]
+                flipped_flag = declared_label != true_label and true_label != "no_detection"
+                confidence_disparity = round(pred_confidence, 3)
+            else:
+                flipped_flag = meta.get("label_flipped", False) or meta.get("synthetic_corrupt_label", False)
+                true_label = meta.get("true_label", declared_label)
+                flipped_flag = flipped_flag or (declared_label != true_label and true_label != "unknown")
+                confidence_disparity = 0.89
+
+            if flipped_flag:
                 anomaly_entry = {
                     "sample_id": sample.sample_id,
                     "declared_label": declared_label,
                     "inferred_visual_label": true_label,
                     "contributor_id": sample.contributor_id,
                     "batch_id": sample.batch_id,
-                    "confidence_disparity": 0.89,
+                    "confidence_disparity": confidence_disparity,
+                    "verification_method": "real_reference_model_inference" if sample.sample_id in visual_predictions else "metadata_declared_ground_truth",
                 }
                 contributor_label_errors[sample.contributor_id].append(anomaly_entry)
                 class_confusion_matrix[declared_label][true_label] += 1

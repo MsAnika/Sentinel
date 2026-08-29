@@ -40,6 +40,25 @@ def build_reference_battery(
     return battery
 
 
+def build_visual_predictions(
+    inf_eng: InferenceEngine,
+    reference_model_path: str,
+    samples: List[SampleItem],
+    config: InferenceConfig,
+) -> Dict[str, tuple]:
+    """Runs the real trusted reference model over every sample's actual
+    image and returns {sample_id: (predicted_class, confidence)}. This is
+    what makes label-flip/mislabelling detection possible on a real dataset
+    that has no independent ground-truth annotation -- the model's own
+    prediction stands in for the missing oracle."""
+    predictions: Dict[str, tuple] = {}
+    for sample in samples:
+        preds = inf_eng.run_inference(sample.image_path, reference_model_path, config=config)
+        top = preds[0] if preds else None
+        predictions[sample.sample_id] = (top.class_name if top else "no_detection", top.confidence if top else 0.0)
+    return predictions
+
+
 def build_trigger_probes(
     inf_eng: InferenceEngine,
     candidate_model_path: str,

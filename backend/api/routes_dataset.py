@@ -10,7 +10,9 @@ from ..data_assurance.ood_detector import OODDetector
 from ..data_assurance.poisoning_detector import PoisoningDetector
 from ..ingestion.dataset_loader import DatasetLoader, SampleItem
 from ..ingestion.upload_store import UPLOAD_ROOT, save_upload
-from ..schemas import DatasetProfile
+from ..inference.inference_engine import InferenceEngine
+from ..schemas import DatasetProfile, InferenceConfig
+from ..scenarios.probe_builder import build_visual_predictions
 
 router = APIRouter(prefix="/api/dataset", tags=["Dataset Assurance"])
 dup_detector = DuplicateDetector()
@@ -18,6 +20,9 @@ label_analyzer = LabelAnalyzer()
 ood_detector = OODDetector()
 poison_detector = PoisoningDetector()
 contrib_engine = ContributorRiskEngine()
+inference_engine = InferenceEngine()
+
+MAX_VISUAL_CHECK_SAMPLES = 300
 
 
 @router.post("/upload")
@@ -74,6 +79,12 @@ async def analyze_dataset_profile(
     images_dir: Optional[str] = Body(default=None, description="Directory containing the images referenced by coco_path (defaults to the JSON's own directory)."),
     yolo_dir: Optional[str] = Body(default=None, description="Server-local directory containing YOLO images/ and labels/ subfolders."),
     class_names: Optional[List[str]] = Body(default=None),
+    reference_model_path: Optional[str] = Body(
+        default=None,
+        description="Optional path to a trusted reference model. When supplied, mislabelling/label-flip "
+        "detection is derived from actually running this model over every sample and comparing its real "
+        "prediction to the declared label, instead of trusting metadata alone.",
+    ),
 ):
     """Runs the full dataset-integrity pipeline against a real, caller-supplied
     COCO or YOLO dataset already staged on the server's filesystem (the
@@ -99,8 +110,24 @@ async def analyze_dataset_profile(
     if not samples:
         raise HTTPException(status_code=422, detail="Dataset contains zero valid samples.")
 
+    visual_predictions_used = False
+    visual_check_truncated = False
+    label_kwargs: Dict[str, Any] = {}
+    if reference_model_path:
+        if not os.path.exists(reference_model_path):
+            raise HTTPException(status_code=404, detail=f"reference_model_path not found: {reference_model_path}")
+        check_samples = samples
+        if len(samples) > MAX_VISUAL_CHECK_SAMPLES:
+            check_samples = samples[:MAX_VISUAL_CHECK_SAMPLES]
+            visual_check_truncated = True
+        visual_predictions = build_visual_predictions(
+            inference_engine, reference_model_path, check_samples, InferenceConfig(confidence_threshold=0.25)
+        )
+        label_kwargs["visual_predictions"] = visual_predictions
+        visual_predictions_used = True
+
     d_finds, d_stats = dup_detector.analyze(samples, dataset_id)
-    l_finds, l_stats = label_analyzer.analyze(samples, dataset_id)
+    l_finds, l_stats = label_analyzer.analyze(samples, dataset_id, **label_kwargs)
     o_finds, o_stats = ood_detector.analyze(samples, dataset_id)
     p_finds, p_stats = poison_detector.analyze(samples, dataset_id)
 
@@ -139,4 +166,6 @@ async def analyze_dataset_profile(
         "ood_stats": o_stats,
         "poison_stats": p_stats,
         "structure_warnings": structure_errors,
+        "label_verification_method": "real_reference_model_inference" if visual_predictions_used else "metadata_declared_ground_truth_only",
+        "visual_check_truncated_to": MAX_VISUAL_CHECK_SAMPLES if visual_check_truncated else None,
     }
