@@ -156,6 +156,13 @@
           },
           "title": "Limitations",
           "type": "array"
+        },
+        "access_assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Access Assumptions",
+          "type": "array"
         }
       },
       "required": [

@@ -2,7 +2,7 @@
   "scenario_a_clean": [
     {
       "sequence_id": 1,
-      "timestamp": "2026-08-29T02:58:29Z",
+      "timestamp": "2026-08-29T10:07:53Z",
       "event": "DATASET_INGESTION",
       "asset_id": "ds_clean_01",
       "operation": "INGEST_VALIDATE",
@@ -10,157 +10,239 @@
       "result": "SUCCESS",
       "evidence_reference": "20 samples parsed from disk.",
       "previous_entry_hash": "3fbb589f7ffab06f8467e734cadfb87d178ad00e2bd02d8d85590600a0653cb9",
-      "entry_hash": "216a01cfc8979d76485139da9b3031aff459db4054bb181a09dffe0eebb701f8"
+      "entry_hash": "f7c1bdcca206159acb419645a9f60830ea9905f96d70b1db3b22fe9d18d4e96a",
+      "signature": "1F+xEHfmLa/xGHm63l/YAbW5tHZr0UJO3gtBPeKz+OMNg1Pixm4wo+7+ud92aEldc4bKWYuG2V64alCJdQH7Cw=="
     },
     {
       "sequence_id": 2,
-      "timestamp": "2026-08-29T02:58:30Z",
+      "timestamp": "2026-08-29T10:07:53Z",
       "event": "DATA_ASSURANCE",
       "asset_id": "ds_clean_01",
       "operation": "ANALYZE_INTEGRITY",
       "input_digest": "da6f2ea4e9b3ae67",
       "result": "PASSED_ZERO_ANOMALIES",
       "evidence_reference": "Dataset integrity verified.",
-      "previous_entry_hash": "216a01cfc8979d76485139da9b3031aff459db4054bb181a09dffe0eebb701f8",
-      "entry_hash": "2ff5148c845197e4db15d732803bcb3da9d9299f4c546d8cd75cb89a3d5ab8a9"
+      "previous_entry_hash": "f7c1bdcca206159acb419645a9f60830ea9905f96d70b1db3b22fe9d18d4e96a",
+      "entry_hash": "2a35e3621f8cfe3d14801831a7b2a46f8ebcf843ec59506c0d79ca3aaacfa203",
+      "signature": "aIdmrrfhIEdncMIn7pViA8udi4VygavPq89JvCi22dXnMiuwX86K8OVznedRwshnmM2bNawGsbd1RPkZp3JrCg=="
     },
     {
       "sequence_id": 3,
-      "timestamp": "2026-08-29T02:58:30Z",
+      "timestamp": "2026-08-29T10:07:54Z",
       "event": "MODEL_FINGERPRINT",
       "asset_id": "model_48ec0a5886e9",
       "operation": "DIGEST_VERIFICATION",
       "input_digest": "48ec0a5886e9f9b7843709d7c6bed8ed2bd09b88cf7d4f1ea86fb2a201b53fe2",
       "result": "MATCH",
       "evidence_reference": "Supplied model matches reference identity.",
-      "previous_entry_hash": "2ff5148c845197e4db15d732803bcb3da9d9299f4c546d8cd75cb89a3d5ab8a9",
-      "entry_hash": "b795cf4239ead74d84a4708dc5634f95259be40791e4fc1b193cc0bbe40937fc"
+      "previous_entry_hash": "2a35e3621f8cfe3d14801831a7b2a46f8ebcf843ec59506c0d79ca3aaacfa203",
+      "entry_hash": "a5c78c78605419f87b5fe6b386d65e47e5353fb61a7a90339e30c0b4cef3f784",
+      "signature": "SA1jQqAdaD1lX6gwGl2+/7X2miw5pTFPL+ry7rSNiF9UWe5AoC05IsdZLXnt/Yh2ivVKYCuVrxhi9vSie59EAw=="
     },
     {
       "sequence_id": 4,
-      "timestamp": "2026-08-29T02:58:30Z",
+      "timestamp": "2026-08-29T10:07:55Z",
       "event": "MODEL_ASSESSMENT",
       "asset_id": "model_48ec0a5886e9",
       "operation": "BATTERY_TEST",
       "input_digest": "48ec0a5886e9f9b7",
       "result": "PASSED",
       "evidence_reference": "15/15 test probes matched expected predictions.",
-      "previous_entry_hash": "b795cf4239ead74d84a4708dc5634f95259be40791e4fc1b193cc0bbe40937fc",
-      "entry_hash": "9e0233c970fa49f92e37f07c4ed98538bee7881170334e5be862dfaff6cc0015"
+      "previous_entry_hash": "a5c78c78605419f87b5fe6b386d65e47e5353fb61a7a90339e30c0b4cef3f784",
+      "entry_hash": "3df2189e8943057e6971858d284f54990c529e196dc706e4c743c16e41178fef",
+      "signature": "Gyb6S0alKRssIhHu661MsFdaJSKaVlyxtFqIMdHGjne/NuxYPttdo0PGxRKx/ReM/dFlndUlxkGEO5+i91eKCg=="
     },
     {
       "sequence_id": 5,
-      "timestamp": "2026-08-29T02:58:30Z",
+      "timestamp": "2026-08-29T10:07:55Z",
       "event": "INFERENCE_PROVENANCE",
-      "asset_id": "rec_c7fbfcaa600c",
+      "asset_id": "rec_1291b4249649",
       "operation": "SIGN_BIND",
-      "input_digest": "3068e7642b20933828f0f3ced7de40e0a3db734bc37e6b25e3c87c4eaf61e3b9",
+      "input_digest": "14f6e2f2c4f6f28200d28fdb839d5e1bcda0cbfd1e4e32257fec38a4719ce4cd",
       "result": "CREATED",
-      "evidence_reference": "Signature: BADXDqiZRFItvx2h...",
-      "previous_entry_hash": "9e0233c970fa49f92e37f07c4ed98538bee7881170334e5be862dfaff6cc0015",
-      "entry_hash": "f7deaa8c5800aeffcd31ba48a8dddf150c12f4b8a669609de0e07e805ee707a6"
+      "evidence_reference": "Signature: sdEGbd2jMRNVmEX7...",
+      "previous_entry_hash": "3df2189e8943057e6971858d284f54990c529e196dc706e4c743c16e41178fef",
+      "entry_hash": "c8f436b2efd789edf1db7aab9a6ed0b83dd65c55bd81dbd5d838cd3f7b468dc3",
+      "signature": "UbBzb0k5WmoV53VsBdFSn6xTwxXRFa/600yz2q0rUxFg4j4hCRV3lshjNZH0YIjjc7P0R0pWiqVFYtH0KxRKDA=="
     },
     {
       "sequence_id": 6,
-      "timestamp": "2026-08-29T02:58:30Z",
+      "timestamp": "2026-08-29T10:07:55Z",
       "event": "PROVENANCE_VERIFICATION",
-      "asset_id": "rec_c7fbfcaa600c",
+      "asset_id": "rec_1291b4249649",
       "operation": "VERIFY_INTEGRITY",
-      "input_digest": "3068e7642b20933828f0f3ced7de40e0a3db734bc37e6b25e3c87c4eaf61e3b9",
+      "input_digest": "14f6e2f2c4f6f28200d28fdb839d5e1bcda0cbfd1e4e32257fec38a4719ce4cd",
       "result": "VALID",
       "evidence_reference": "Cryptographic binding verified.",
-      "previous_entry_hash": "f7deaa8c5800aeffcd31ba48a8dddf150c12f4b8a669609de0e07e805ee707a6",
-      "entry_hash": "06b094e9f1fa663d3ff5ebabb4e534f2fffc3f822178789272007757a9887316"
+      "previous_entry_hash": "c8f436b2efd789edf1db7aab9a6ed0b83dd65c55bd81dbd5d838cd3f7b468dc3",
+      "entry_hash": "d42a51c2127f8f6dce4ce18d611f3414d4ebcd96a55d3f88596fdf24f34b20ab",
+      "signature": "S9f+OAiCfTBM3tRMY+jDcsAGSEehtJBZVp3WsclA1pmV91lvm8GQs/QVspcP52gNqQolLhTOiAH0QYlWeyVWDA=="
     }
   ],
   "scenario_b_poisoned": [
     {
       "sequence_id": 7,
-      "timestamp": "2026-08-29T02:58:31Z",
+      "timestamp": "2026-08-29T10:07:55Z",
       "event": "DATASET_INGESTION",
       "asset_id": "ds_poisoned_02",
       "operation": "INGEST_VALIDATE",
       "input_digest": "da6f2ea4e9b3ae67",
       "result": "COMPLETED",
       "evidence_reference": "40 multi-contributor samples ingested.",
-      "previous_entry_hash": "06b094e9f1fa663d3ff5ebabb4e534f2fffc3f822178789272007757a9887316",
-      "entry_hash": "39f3501c65b306107c9c374fcfe07a42645bd60fc3a277ae073f01bf13aa0f8e"
+      "previous_entry_hash": "d42a51c2127f8f6dce4ce18d611f3414d4ebcd96a55d3f88596fdf24f34b20ab",
+      "entry_hash": "67a09ac953a1673019e0439b2b02d99eb1be8dedac36fbe3c0ce66a573ba6dc2",
+      "signature": "DUwU5rcqkS4g7yLM806fuRx3v7W1xv1MuUhgKqot+f6fgbSi8LTJWLYGa5AwgpxoZk5y1/K9JimxhRr6NIc2AA=="
     },
     {
       "sequence_id": 8,
-      "timestamp": "2026-08-29T02:58:31Z",
+      "timestamp": "2026-08-29T10:07:56Z",
       "event": "DATA_ASSURANCE",
       "asset_id": "ds_poisoned_02",
       "operation": "ANALYZE_INTEGRITY",
       "input_digest": "da6f2ea4e9b3ae67",
       "result": "FLAGGED_HIGH_RISK",
       "evidence_reference": "Detected 4 integrity anomalies. Contributor Bravo flagged.",
-      "previous_entry_hash": "39f3501c65b306107c9c374fcfe07a42645bd60fc3a277ae073f01bf13aa0f8e",
-      "entry_hash": "703ec3e991ed63ac6aa76dd5c147efa4cb9f87ef2a35dd93414ed11396278ee0"
+      "previous_entry_hash": "67a09ac953a1673019e0439b2b02d99eb1be8dedac36fbe3c0ce66a573ba6dc2",
+      "entry_hash": "b18fb501167f14f38514f544a073d6b9214b5968137d91d4aa1ea86dd200561f",
+      "signature": "MmRVKMuVH9JZLSjtGNwWPExMtSXTIpfIOEL5Y19T3dpKpiLzYRHYf+WMXLG/e565RsZ3UAPINnRDDd4BI327Dg=="
     }
   ],
   "scenario_c_model_compromised": [
     {
       "sequence_id": 9,
-      "timestamp": "2026-08-29T02:58:32Z",
+      "timestamp": "2026-08-29T10:07:57Z",
       "event": "MODEL_FINGERPRINT",
       "asset_id": "model_fb14ebf7bb51",
       "operation": "DIGEST_VERIFICATION",
       "input_digest": "fb14ebf7bb51b64e7792e48554072cd6d72e5f2ac521ec192c1646a28864f3da",
       "result": "MISMATCH_ALERT",
       "evidence_reference": "Supplied model does not match reference digest.",
-      "previous_entry_hash": "703ec3e991ed63ac6aa76dd5c147efa4cb9f87ef2a35dd93414ed11396278ee0",
-      "entry_hash": "8623f1460f54761ccdfcb8a716e91ec8d746e4797db90bd8be89a7fd7bbb0221"
+      "previous_entry_hash": "b18fb501167f14f38514f544a073d6b9214b5968137d91d4aa1ea86dd200561f",
+      "entry_hash": "01dd160e2dd27bcd73f35d807de61d0d969e4d5b2c3031ecdc69b8a5bb72016d",
+      "signature": "gD153IzjvVm2hKvvocN0KkoDKXrh7v/Sb+lbzJaFOm8FFurv4QUVgmnlh1K3GvLCPpvZx1KrH/Iw/J+LRYubDQ=="
     },
     {
       "sequence_id": 10,
-      "timestamp": "2026-08-29T02:58:33Z",
+      "timestamp": "2026-08-29T10:07:58Z",
       "event": "MODEL_ASSESSMENT",
       "asset_id": "model_fb14ebf7bb51",
       "operation": "BEHAVIOURAL_BATTERY",
       "input_digest": "fb14ebf7bb51b64e",
       "result": "FAILED_ANOMALOUS",
       "evidence_reference": "Model exhibited 2 behavioral/parameter violations.",
-      "previous_entry_hash": "8623f1460f54761ccdfcb8a716e91ec8d746e4797db90bd8be89a7fd7bbb0221",
-      "entry_hash": "6bdaeff0c3b2a54ae56fb4a9c0fa7042821e002ce43538938187c93597b6c009"
+      "previous_entry_hash": "01dd160e2dd27bcd73f35d807de61d0d969e4d5b2c3031ecdc69b8a5bb72016d",
+      "entry_hash": "82e0c9950b4921401160352c85370f8b6fd3f24d285ac1178ebf24cc908cdcde",
+      "signature": "DVLK53Dv1bQ3lxMbXCNYDZsWauKza+N8tm/dYNtkeZ0myg0gIyfS30ij/047q9vac0UzQgD6yN1r23He6ZlBCg=="
     },
     {
       "sequence_id": 11,
-      "timestamp": "2026-08-29T02:58:34Z",
+      "timestamp": "2026-08-29T10:07:59Z",
       "event": "MODEL_ASSESSMENT",
       "asset_id": "model_fb14ebf7bb51",
       "operation": "TRIGGER_PROBE_BATTERY",
       "input_digest": "fb14ebf7bb51b64e",
       "result": "NO_TRIGGER_RESPONSE",
       "evidence_reference": "Attack success rate observed: 6.7%.",
-      "previous_entry_hash": "6bdaeff0c3b2a54ae56fb4a9c0fa7042821e002ce43538938187c93597b6c009",
-      "entry_hash": "f4ec3ae94991afc3938c5301deee1402290888dc817300fe9f77aa1b2333efce"
+      "previous_entry_hash": "82e0c9950b4921401160352c85370f8b6fd3f24d285ac1178ebf24cc908cdcde",
+      "entry_hash": "b85649b2be9579f64f79c33804c35d90d8490e58e7ff9d2eff7fb63cd5a47158",
+      "signature": "2fDQ9jEszA3p1H8RsV330EJVcSHy6/MR8tpoFXJgH2luxF+ze/4w9YHMt7VJGQrsLgfNATU5AmRcbQ8zgV2qDg=="
     }
   ],
   "scenario_d_tampered_inference": [
     {
       "sequence_id": 12,
-      "timestamp": "2026-08-29T02:58:34Z",
+      "timestamp": "2026-08-29T10:08:00Z",
       "event": "INFERENCE_PROVENANCE",
-      "asset_id": "rec_e2a95dc6fe80",
+      "asset_id": "rec_1217f6b9dbaf",
       "operation": "SIGN_BIND",
-      "input_digest": "3611511085f3324abdd240536f7e2f0693764129d02f26b4bf886c516f580f2c",
+      "input_digest": "8f59041a16f0ba87d494fbfa40497ad9caff4f36558e89624a608032cbcf4ca5",
       "result": "CREATED",
-      "evidence_reference": "Authentic signature: XEvUi9tpO0EeTg7v...",
-      "previous_entry_hash": "f4ec3ae94991afc3938c5301deee1402290888dc817300fe9f77aa1b2333efce",
-      "entry_hash": "3c28e64afbd383969fd4924429de3f791b90b0eb54b2da88917d1a15fcbc7d60"
+      "evidence_reference": "Authentic signature: do+UXuE7B6zlgV2W...",
+      "previous_entry_hash": "b85649b2be9579f64f79c33804c35d90d8490e58e7ff9d2eff7fb63cd5a47158",
+      "entry_hash": "e1d442103c55225ec581c7a48763e58a23bea621dbd68b32e8d4ec311f3f6e65",
+      "signature": "Q8N2umw172sloTayoT7ZTLvUbI3aB+Xp+RGNWuNiPsfdOTyJktz5+IFFa9bsws/DX8n9QZjAU/gt8lRE6TBlBA=="
     },
     {
       "sequence_id": 13,
-      "timestamp": "2026-08-29T02:58:34Z",
+      "timestamp": "2026-08-29T10:08:00Z",
       "event": "PROVENANCE_VERIFICATION",
-      "asset_id": "rec_e2a95dc6fe80",
+      "asset_id": "rec_1217f6b9dbaf",
       "operation": "VERIFY_TAMPERING",
-      "input_digest": "3611511085f3324abdd240536f7e2f0693764129d02f26b4bf886c516f580f2c",
+      "input_digest": "8f59041a16f0ba87d494fbfa40497ad9caff4f36558e89624a608032cbcf4ca5",
       "result": "TAMPERING_DETECTED",
       "evidence_reference": "Output Hash mismatch: record claims 69648b7b5aba..., but recalculated from predictions is a9a610bf4689... (TAMPERING DETECTED)",
-      "previous_entry_hash": "3c28e64afbd383969fd4924429de3f791b90b0eb54b2da88917d1a15fcbc7d60",
-      "entry_hash": "c6e0d7658aba94641d70325ac9c2b2fe0a921a2048bc369feffd6606cfe93a4e"
+      "previous_entry_hash": "e1d442103c55225ec581c7a48763e58a23bea621dbd68b32e8d4ec311f3f6e65",
+      "entry_hash": "d023d1623e6095fcc4314b916fa844f4e57b9a5b185a5f77a67dd2c6a225a225",
+      "signature": "ElGXheiAKEqYR8hrC6AEHSQ/6pB7/MhrWgIBS6mKh3JMdwLElV890i99RJQJcW5v0y2NIWFy3I0MpVfklnG4Cg=="
+    }
+  ],
+  "scenario_e_replay_and_reordering": [
+    {
+      "sequence_id": 14,
+      "timestamp": "2026-08-29T10:08:01Z",
+      "event": "INFERENCE_PROVENANCE",
+      "asset_id": "rec_364a5421e91a",
+      "operation": "SIGN_BIND",
+      "input_digest": "b41503b0209ad88fc8e9332f894e44988ed12ad7820b592262f437ffd6ac4688",
+      "result": "CREATED_AND_VERIFIED",
+      "evidence_reference": "seq=1",
+      "previous_entry_hash": "d023d1623e6095fcc4314b916fa844f4e57b9a5b185a5f77a67dd2c6a225a225",
+      "entry_hash": "2cae27a50e968a0cb0021151d2973106254ef3bcab873b599a7cb3ccfaf694c1",
+      "signature": "BJMKQmYQvIRUenYckH8QApzVpANc44X5eM4kbTXkC2nUBwN3l/GKVydqqGEWzAbuP75/p2kJ1FGCKgMySdFyBg=="
+    },
+    {
+      "sequence_id": 15,
+      "timestamp": "2026-08-29T10:08:01Z",
+      "event": "INFERENCE_PROVENANCE",
+      "asset_id": "rec_17c5e6a9b8c4",
+      "operation": "SIGN_BIND",
+      "input_digest": "4115ad7349a59afd9075b1dfc9f860c1ef3e94e599075f4dd6680396491ecf10",
+      "result": "CREATED_AND_VERIFIED",
+      "evidence_reference": "seq=2",
+      "previous_entry_hash": "2cae27a50e968a0cb0021151d2973106254ef3bcab873b599a7cb3ccfaf694c1",
+      "entry_hash": "487d5c15ebf1a2f8cfe6b6c3f113d54ebf0c79c1a2121ff6bb20e0809b411981",
+      "signature": "K2HOqf+fTiJWmV0kvC+s5+6mNSJI41NnOUNVovFZZXnnwi1qzu/cwN246w3T3dm6o4M8Ci04ZpvYp/seo0W+Aw=="
+    },
+    {
+      "sequence_id": 16,
+      "timestamp": "2026-08-29T10:08:01Z",
+      "event": "PROVENANCE_VERIFICATION",
+      "asset_id": "rec_364a5421e91a",
+      "operation": "REPLAY_PROBE",
+      "input_digest": "b41503b0209ad88fc8e9332f894e44988ed12ad7820b592262f437ffd6ac4688",
+      "result": "REPLAY_DETECTED",
+      "evidence_reference": "Replay detected: nonce '364a5421e91a472bbfc7b1ba940ed4d7' has already been processed in sequence context.; Reordering/replay detected: sequence number 1 is not greater than the last verified sequence number 2 for this stream (record is out-of-order or was replayed).",
+      "previous_entry_hash": "487d5c15ebf1a2f8cfe6b6c3f113d54ebf0c79c1a2121ff6bb20e0809b411981",
+      "entry_hash": "1c1db4f0e15bed7408beda72ba4446414ba8ce0ae51b34763259f088f507e24b",
+      "signature": "hxNCBwNHBqU8FUhfy0FhKvqwhgqHug/+MuespLW7kj9mdlSTi6jEEcUV/UrKa6fwNNG7PRNaT0Q7nMu9iBePCQ=="
+    },
+    {
+      "sequence_id": 17,
+      "timestamp": "2026-08-29T10:08:01Z",
+      "event": "PROVENANCE_VERIFICATION",
+      "asset_id": "rec_5795c98832e5",
+      "operation": "REORDER_PROBE",
+      "input_digest": "565157b279368f2f51f582f4ae53c52fa08967230eb792ae8a3ebaa637682dd7",
+      "result": "REORDERING_DETECTED",
+      "evidence_reference": "Reordering/replay detected: sequence number 1 is not greater than the last verified sequence number 2 for this stream (record is out-of-order or was replayed).",
+      "previous_entry_hash": "1c1db4f0e15bed7408beda72ba4446414ba8ce0ae51b34763259f088f507e24b",
+      "entry_hash": "d48ca89b0ec7eafdc82758626ea829c90e33c05caa34930f0f248a010bd56aef",
+      "signature": "u0/JVOf530qtrkqhpOf8jZ2wddEygmJDkdDKd/MWzqgTbCuYDlxWlpGwPKWcWruoZciefL68d2tZnkt6f9lgBQ=="
+    }
+  ],
+  "scenario_f_audit_log_tamper": [
+    {
+      "sequence_id": 18,
+      "timestamp": "2026-08-29T10:08:02Z",
+      "event": "AUDIT_INTEGRITY_TEST",
+      "asset_id": "audit_ledger_demo_01",
+      "operation": "ISOLATED_TAMPER_SIMULATION",
+      "input_digest": "f60d2e9d58df317e7724691ac054494c98679df738ed66942af9ae5ec96467ec",
+      "result": "TAMPER_DETECTED",
+      "evidence_reference": "Isolated demo ledger: pre-tamper valid=True, post-tamper valid=False, 1 violation(s) surfaced.",
+      "previous_entry_hash": "d48ca89b0ec7eafdc82758626ea829c90e33c05caa34930f0f248a010bd56aef",
+      "entry_hash": "effaa27b2e9e33bb83c388171cca1851caecc0cf6754a2d36d9d2ef15cacf59c",
+      "signature": "kTJLjmWnkwPARA27eR7mUlOKljcMPuUGfWScr0VTFZcADmVWmuHdgOOiONbgFkErwxQ2tTJSOOlh/+4qbFDwCA=="
     }
   ]
 }

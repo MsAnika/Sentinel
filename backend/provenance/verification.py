@@ -49,7 +49,11 @@ class ProvenanceVerifier:
         )
 
         signature = self.signer.sign_provenance_hash(prov_hash)
-        self.seen_nonces.add(nonce)
+        # Deliberately NOT added to seen_nonces here: replay detection is
+        # scoped to verify_record(check_replay=True), which marks a nonce
+        # "seen" the first time it is actually checked. Registering it at
+        # creation would make the very first legitimate verification of a
+        # freshly created record always report a false replay.
 
         return InferenceRecord(
             record_id=f"rec_{nonce[:12]}",

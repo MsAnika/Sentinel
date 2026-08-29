@@ -46,15 +46,21 @@ class ScenarioReplayAuditRunner:
         vrf = ProvenanceVerifier()
         fp = fng_prt.generate_fingerprint(assets["clean_model_path"], ModelAccessLevel.WHITE_BOX)
 
+        # Each record's first check_replay=True verification is expected to
+        # be legitimate (nonce and sequence both fresh) -- this also
+        # advances vrf.last_verified_sequence, which the reordering probe
+        # below needs something to be "out of order" relative to.
         preds_1 = inf_eng.run_inference(samples[0].image_path, assets["clean_model_path"], config=PROBE_CONFIG)
         record_1 = vrf.create_record(samples[0].image_path, fp.model_id, fp.sha256_digest, preds_1)
-        first_valid, _ = vrf.verify_record(record_1, check_replay=True)
-        audit.record_event("INFERENCE_PROVENANCE", record_1.record_id, "SIGN_BIND", record_1.provenance_hash, "CREATED", f"seq={record_1.sequence_number}")
+        first_valid, first_errors = vrf.verify_record(record_1, check_replay=True)
+        assert first_valid, f"Expected the first legitimate verification of record_1 to pass: {first_errors}"
+        audit.record_event("INFERENCE_PROVENANCE", record_1.record_id, "SIGN_BIND", record_1.provenance_hash, "CREATED_AND_VERIFIED", f"seq={record_1.sequence_number}")
 
         preds_2 = inf_eng.run_inference(samples[1 % len(samples)].image_path, assets["clean_model_path"], config=PROBE_CONFIG)
         record_2 = vrf.create_record(samples[1 % len(samples)].image_path, fp.model_id, fp.sha256_digest, preds_2)
-        second_valid, _ = vrf.verify_record(record_2, check_replay=True)
-        audit.record_event("INFERENCE_PROVENANCE", record_2.record_id, "SIGN_BIND", record_2.provenance_hash, "CREATED", f"seq={record_2.sequence_number}")
+        second_valid, second_errors = vrf.verify_record(record_2, check_replay=True)
+        assert second_valid, f"Expected the first legitimate verification of record_2 to pass: {second_errors}"
+        audit.record_event("INFERENCE_PROVENANCE", record_2.record_id, "SIGN_BIND", record_2.provenance_hash, "CREATED_AND_VERIFIED", f"seq={record_2.sequence_number}")
 
         # Replay attack: resubmit the exact same (already-verified) record.
         replay_valid, replay_errors = vrf.verify_record(record_1, check_replay=True)
