@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Body, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from ..audit.audit_log import shared_ledger
 from ..inference.inference_engine import InferenceEngine
 from ..ingestion.model_loader import ModelLoader
@@ -23,7 +23,7 @@ inference_engine = InferenceEngine()
 @router.post("/upload", response_model=ModelFingerprint)
 async def upload_model(
     file: UploadFile = File(...),
-    access_level: ModelAccessLevel = ModelAccessLevel.WHITE_BOX,
+    access_level: ModelAccessLevel = Form(default=ModelAccessLevel.WHITE_BOX),
 ):
     """Accepts a real uploaded ONNX/PyTorch/TorchScript model file, persists
     it, and returns a fingerprint derived from the file's actual bytes and

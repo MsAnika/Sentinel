@@ -1,0 +1,299 @@
+{
+  "$defs": {
+    "AssetType": {
+      "enum": [
+        "dataset",
+        "model",
+        "inference_record",
+        "pipeline"
+      ],
+      "title": "AssetType",
+      "type": "string"
+    },
+    "AttackClassStatus": {
+      "enum": [
+        "SUPPORTED",
+        "PARTIAL",
+        "NOT_SUPPORTED"
+      ],
+      "title": "AttackClassStatus",
+      "type": "string"
+    },
+    "ContributorRiskSummary": {
+      "properties": {
+        "contributor_id": {
+          "title": "Contributor Id",
+          "type": "string"
+        },
+        "total_samples": {
+          "title": "Total Samples",
+          "type": "integer"
+        },
+        "suspicious_samples": {
+          "title": "Suspicious Samples",
+          "type": "integer"
+        },
+        "near_duplicates": {
+          "title": "Near Duplicates",
+          "type": "integer"
+        },
+        "label_anomalies": {
+          "title": "Label Anomalies",
+          "type": "integer"
+        },
+        "ood_samples": {
+          "title": "Ood Samples",
+          "type": "integer"
+        },
+        "trigger_suspects": {
+          "title": "Trigger Suspects",
+          "type": "integer"
+        },
+        "risk_score": {
+          "title": "Risk Score",
+          "type": "number"
+        },
+        "risk_level": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "recommended_action": {
+          "$ref": "#/$defs/RecommendedDisposition"
+        }
+      },
+      "required": [
+        "contributor_id",
+        "total_samples",
+        "suspicious_samples",
+        "near_duplicates",
+        "label_anomalies",
+        "ood_samples",
+        "trigger_suspects",
+        "risk_score",
+        "risk_level",
+        "recommended_action"
+      ],
+      "title": "ContributorRiskSummary",
+      "type": "object"
+    },
+    "CoverageItem": {
+      "properties": {
+        "attack_class": {
+          "title": "Attack Class",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AttackClassStatus"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "validation_method": {
+          "title": "Validation Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attack_class",
+        "status",
+        "description",
+        "validation_method"
+      ],
+      "title": "CoverageItem",
+      "type": "object"
+    },
+    "FindingSchema": {
+      "properties": {
+        "finding_id": {
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "asset": {
+          "title": "Asset",
+          "type": "string"
+        },
+        "asset_type": {
+          "$ref": "#/$defs/AssetType"
+        },
+        "finding_type": {
+          "title": "Finding Type",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "evidence": {
+          "additionalProperties": true,
+          "title": "Evidence",
+          "type": "object"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "number"
+        },
+        "affected_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affected Source"
+        },
+        "recommended_action": {
+          "$ref": "#/$defs/RecommendedDisposition"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "finding_id",
+        "asset",
+        "asset_type",
+        "finding_type",
+        "reason",
+        "severity",
+        "confidence",
+        "recommended_action"
+      ],
+      "title": "FindingSchema",
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "title": "FindingSeverity",
+      "type": "string"
+    },
+    "RecommendedDisposition": {
+      "enum": [
+        "ACCEPT",
+        "REVIEW",
+        "QUARANTINE"
+      ],
+      "title": "RecommendedDisposition",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "report_id": {
+      "title": "Report Id",
+      "type": "string"
+    },
+    "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+    },
+    "problem_statement_id": {
+      "default": "26228",
+      "title": "Problem Statement Id",
+      "type": "string"
+    },
+    "organization": {
+      "default": "Ministry of Defence (MoD) / Indian Army (DGIS)",
+      "title": "Organization",
+      "type": "string"
+    },
+    "overall_disposition": {
+      "$ref": "#/$defs/RecommendedDisposition"
+    },
+    "overall_risk_score": {
+      "title": "Overall Risk Score",
+      "type": "number"
+    },
+    "dataset_assurance_status": {
+      "title": "Dataset Assurance Status",
+      "type": "string"
+    },
+    "model_assurance_status": {
+      "title": "Model Assurance Status",
+      "type": "string"
+    },
+    "inference_provenance_status": {
+      "title": "Inference Provenance Status",
+      "type": "string"
+    },
+    "distribution_shift_status": {
+      "title": "Distribution Shift Status",
+      "type": "string"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/FindingSchema"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "contributor_summaries": {
+      "items": {
+        "$ref": "#/$defs/ContributorRiskSummary"
+      },
+      "title": "Contributor Summaries",
+      "type": "array"
+    },
+    "coverage_statements": {
+      "items": {
+        "$ref": "#/$defs/CoverageItem"
+      },
+      "title": "Coverage Statements",
+      "type": "array"
+    },
+    "assumptions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "audit_chain_digest": {
+      "title": "Audit Chain Digest",
+      "type": "string"
+    },
+    "audit_chain_valid": {
+      "title": "Audit Chain Valid",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "report_id",
+    "generated_at",
+    "overall_disposition",
+    "overall_risk_score",
+    "dataset_assurance_status",
+    "model_assurance_status",
+    "inference_provenance_status",
+    "distribution_shift_status",
+    "findings",
+    "contributor_summaries",
+    "coverage_statements",
+    "assumptions",
+    "limitations",
+    "audit_chain_digest",
+    "audit_chain_valid"
+  ],
+  "title": "AssuranceReport",
+  "type": "object"
+}

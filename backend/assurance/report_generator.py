@@ -16,15 +16,20 @@ class AssuranceReportGenerator:
     DEFAULT_COVERAGE: List[CoverageItem] = [
         CoverageItem(
             attack_class="label_flipping",
-            status=AttackClassStatus.SUPPORTED,
-            description="Detects anomalous label discrepancies and intentional label inversion.",
-            validation_method="Surrogate feature consistency & confusion discrepancy matrix",
+            status=AttackClassStatus.PARTIAL,
+            description="Detects label discrepancies by comparing declared labels against a trusted "
+            "reference model's real predictions, when one is supplied. Without a reference model, this "
+            "falls back to trusting contributor-declared metadata and will not catch mislabelling on "
+            "genuinely unannotated real-world data.",
+            validation_method="Reference-model visual disagreement check (when reference_model_path is "
+            "supplied) or declared-metadata cross-check (fallback)",
         ),
         CoverageItem(
             attack_class="systematic_mislabelling",
-            status=AttackClassStatus.SUPPORTED,
-            description="Identifies concentrated annotation errors in specific contributor batches.",
-            validation_method="Batch-level error density & contributor entropy profiling",
+            status=AttackClassStatus.PARTIAL,
+            description="Identifies concentrated annotation errors in specific contributor batches, subject "
+            "to the same reference-model dependency as label_flipping above.",
+            validation_method="Batch-level error density aggregated from per-sample label disagreement evidence",
         ),
         CoverageItem(
             attack_class="near_duplicate_flooding",
@@ -41,20 +46,42 @@ class AssuranceReportGenerator:
         CoverageItem(
             attack_class="trigger_backdoor_poisoning",
             status=AttackClassStatus.SUPPORTED,
-            description="Identifies high-frequency patch watermarks and trojan trigger perturbations.",
-            validation_method="Spatial frequency anomaly inspection & trigger activation probe",
+            description="Identifies known-signature high-frequency patch watermarks in training images "
+            "(spatial correlation), and detects backdoor activation by actually re-running the candidate "
+            "model on clean vs. trigger-patched copies of the same image and comparing real outputs.",
+            validation_method="Spatial frequency matched-filter correlation & real clean-vs-triggered "
+            "inference comparison",
+        ),
+        CoverageItem(
+            attack_class="unknown_trigger_reconstruction",
+            status=AttackClassStatus.NOT_SUPPORTED,
+            description="Blind discovery of an unknown/never-seen trigger pattern via gradient-based "
+            "trigger inversion (e.g. Neural Cleanse-style optimization) is not implemented. Backdoor "
+            "detection above only recognizes trigger patterns it is told to test for.",
+            validation_method="N/A",
         ),
         CoverageItem(
             attack_class="model_substitution",
             status=AttackClassStatus.SUPPORTED,
-            description="Detects replaced model weights or binary tampering against reference identity.",
-            validation_method="Bitwise canonical SHA-256 weight and layer structure digest comparison",
+            description="Detects replaced or bit-altered model files against a declared reference identity.",
+            validation_method="Bitwise canonical SHA-256 digest comparison of the actual model file bytes",
         ),
         CoverageItem(
             attack_class="anomalous_model_behaviour",
             status=AttackClassStatus.SUPPORTED,
-            description="Identifies behavioral deviations across standardized tactical test probes.",
-            validation_method="Reference test battery execution & confidence divergence analysis",
+            description="Runs the same probe images through a trusted reference model and the candidate "
+            "model and compares their real predictions for divergence. Weight/activation statistics "
+            "additionally available for ONNX models under white-box access only.",
+            validation_method="Real reference-vs-candidate inference comparison; ONNX initializer weight "
+            "kurtosis/variance analysis (white-box only)",
+        ),
+        CoverageItem(
+            attack_class="black_box_model_assessment",
+            status=AttackClassStatus.PARTIAL,
+            description="When only black-box access is declared, assessment is limited to input/output "
+            "behavioral probing (reference battery comparison). Parameter/weight statistics and activation "
+            "inspection are explicitly reported as unavailable, not approximated or faked.",
+            validation_method="Input/output behavioral probing only",
         ),
         CoverageItem(
             attack_class="inference_tampering",
@@ -71,8 +98,17 @@ class AssuranceReportGenerator:
         CoverageItem(
             attack_class="distribution_shift",
             status=AttackClassStatus.SUPPORTED,
-            description="Characterizes operational domain shifts across terrain, sensor, and illumination.",
-            validation_method="Multivariate feature divergence vs declared reference envelope",
+            description="Characterizes operational domain shifts across terrain, sensor, and illumination "
+            "using real per-sample metadata statistics.",
+            validation_method="Categorical divergence ratio & illumination delta vs declared reference envelope",
+        ),
+        CoverageItem(
+            attack_class="pytorch_torchscript_ingestion",
+            status=AttackClassStatus.PARTIAL,
+            description="Real PyTorch/TorchScript loading (with a safe weights_only=True-first attempt) is "
+            "implemented, but has not been validated end-to-end against an actual trained checkpoint in "
+            "this system's test suite. ONNX is the only format with fully verified test coverage.",
+            validation_method="torch.jit.load / torch.load, real parameter counting",
         ),
     ]
 
@@ -83,8 +119,18 @@ class AssuranceReportGenerator:
     ]
 
     DEFAULT_LIMITATIONS: List[str] = [
-        "Black-box model evaluation is limited to input/output behavioral probing; white-box weight statistics are unavailable.",
-        "Zero-day stealthy semantic triggers with <0.01% perturbation norm may require white-box gradient inversion.",
+        "Black-box model evaluation is limited to input/output behavioral probing (reference battery "
+        "comparison); white-box weight/activation statistics are explicitly reported UNAVAILABLE rather "
+        "than approximated.",
+        "Backdoor/trigger detection matches against known trigger signatures (spatial frequency patch "
+        "correlation, or whatever trigger pattern a caller explicitly probes for). Blind reconstruction of "
+        "an unknown, never-specified trigger via gradient inversion is not implemented.",
+        "Label-flip/mislabelling detection is only as strong as the reference model supplied for visual "
+        "verification. Without one, it falls back to trusting contributor-declared metadata and will not "
+        "catch errors on genuinely unannotated real-world data.",
+        "PyTorch/TorchScript ingestion is implemented but not yet validated against a real trained "
+        "checkpoint; treat PyTorch-format assessments as less battle-tested than ONNX.",
+        "Zero-day stealthy semantic triggers with <0.01% perturbation norm may require white-box gradient inversion this system does not perform.",
         "Assurance evaluation provides empirical evidence and risk grading, but does not mathematically guarantee the total absence of unknown zero-day attacks.",
     ]
 
