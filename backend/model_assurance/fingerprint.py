@@ -1,18 +1,9 @@
-import hashlib
 import os
 from typing import Optional, Tuple
 from ..schemas import AssetType, FindingSchema, FindingSeverity, ModelAccessLevel, ModelFingerprint, RecommendedDisposition
 
 
 class ModelFingerprinter:
-    @staticmethod
-    def compute_sha256(filepath: str) -> str:
-        hasher = hashlib.sha256()
-        with open(filepath, "rb") as f:
-            while chunk := f.read(65536):
-                hasher.update(chunk)
-        return hasher.hexdigest()
-
     def generate_fingerprint(
         self,
         model_path: str,

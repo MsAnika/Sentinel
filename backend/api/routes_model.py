@@ -9,6 +9,7 @@ from ..model_assurance.backdoor_detector import BackdoorDetector
 from ..model_assurance.behaviour_analyzer import BehaviourAnalyzer
 from ..model_assurance.fingerprint import ModelFingerprinter
 from ..model_assurance.parameter_analyzer import ParameterAnalyzer
+from ..persistence import db
 from ..schemas import InferenceConfig, ModelAccessLevel, ModelFingerprint
 from ..scenarios.probe_builder import build_reference_battery
 
