@@ -54,7 +54,7 @@ demo-clickable scenario, not only a pytest assertion.
 
 | Attack class | Status | Validation method |
 |---|---|---|
-| `distribution_shift` | **PARTIAL** | Categorical divergence ratio (terrain/sensor) + illumination delta vs. a declared reference envelope, computed from real per-sample metadata; when an observed sample carries a resolvable `image_path`, real pixel-derived signals are added — blur (Laplacian variance), contrast (intensity std-dev), resolution, and an estimated JPEG-style compression-blockiness score (`backend/drift/image_quality.py`) |
+| `distribution_shift` | **PARTIAL** | Categorical divergence ratio (terrain/sensor) + illumination delta vs. a declared reference envelope, computed from real per-sample metadata; when an observed sample carries a resolvable `image_path`, real pixel-derived signals are added — blur (Laplacian variance), contrast (intensity std-dev), resolution, and an estimated JPEG-style compression-blockiness score (`backend/drift/image_quality.py`); when **both** a reference and observed image set are supplied, a real embedding-space comparison is added — actual CNN feature vectors from a real onnxruntime forward pass (`backend/drift/embedding_extractor.py`, self-generated fixed-seed weights, no external download), compared via a diagonal Frechet distance |
 
 Each `DistributionShiftReport` now also carries a `classification` field with one of the four
 values named in the PRD — `probable_operational_drift`, `anomaly_requires_review`,

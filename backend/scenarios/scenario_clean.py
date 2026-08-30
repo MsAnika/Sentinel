@@ -161,6 +161,11 @@ class ScenarioCleanDatasetRunner:
             observed_samples_metadata=[{**s.metadata, "image_path": s.image_path} for s in samples],
             declared_reference_id="ref_plains_optical_baseline",
             observed_dataset_id="ds_poisoned_02",
+            # contributor_alpha's untouched samples (indices 0-9) as a real
+            # embedding-space reference set -- everything from index 10
+            # onward was mutated above (duplicated / trigger-patched /
+            # label-flipped and reassigned to contributor_bravo).
+            reference_samples_metadata=[{**s.metadata, "image_path": s.image_path} for s in samples[:10]],
         )
 
         report = rpt_gen.generate_report(

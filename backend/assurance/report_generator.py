@@ -125,17 +125,21 @@ class AssuranceReportGenerator:
         CoverageItem(
             attack_class="distribution_shift",
             status=AttackClassStatus.PARTIAL,
-            description="Characterizes operational domain shifts across terrain, sensor, illumination, and "
-            "(when the observed samples carry a resolvable image path) real pixel-derived signals -- blur "
-            "(Laplacian variance), contrast, resolution, and estimated JPEG-style compression blockiness. "
-            "Classifies findings into probable_operational_drift / anomaly_requires_review / "
-            "manipulation_indicators_present / insufficient_evidence rather than a single manipulation flag. "
-            "Reported PARTIAL because image-quality signals require a declared reference baseline and an "
-            "image_path per observed sample; without either, the assessment falls back to metadata-only "
-            "terrain/sensor/illumination divergence.",
-            validation_method="Categorical divergence ratio, illumination delta, and (when available) "
-            "pixel-derived blur/contrast/resolution/compression-blockiness relative delta vs declared "
-            "reference envelope",
+            description="Characterizes operational domain shifts across terrain, sensor, illumination, "
+            "real pixel-derived signals (blur/contrast/resolution/compression blockiness), and -- when "
+            "both a reference and an observed image set are supplied -- a real embedding-space comparison: "
+            "actual CNN feature vectors extracted via a real onnxruntime forward pass through a "
+            "self-generated (fixed-seed, no external download) feature extractor, compared with a diagonal "
+            "Frechet distance. Classifies findings into probable_operational_drift / "
+            "anomaly_requires_review / manipulation_indicators_present / insufficient_evidence rather than "
+            "a single manipulation flag. Reported PARTIAL because each additional signal family requires "
+            "additional inputs (a declared quality baseline; a reference image set) that may not always be "
+            "supplied -- when unavailable, the assessment gracefully falls back to whichever signal "
+            "families it does have inputs for, and states the gap in `limitations` rather than fabricating "
+            "the missing signal.",
+            validation_method="Categorical divergence ratio, illumination delta, pixel-derived "
+            "blur/contrast/resolution/compression-blockiness relative delta, and diagonal Frechet distance "
+            "over real CNN embeddings (backend/drift/embedding_extractor.py), all vs. a declared reference",
         ),
         CoverageItem(
             attack_class="pytorch_torchscript_ingestion",

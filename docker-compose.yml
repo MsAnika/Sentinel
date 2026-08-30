@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Durable evidence store: SQLite DB, audit ledger, signing keys,
+      # uploaded assets. Named volume so `docker compose down` (without
+      # -v) never loses the tamper-evident trail or the signing keys that
+      # make previously-issued signatures verifiable.
+      - intelx-evidence:/data
+      - intelx-uploads:/app/uploads
+    # No egress needed at runtime; this only serves the local API. Loosen
+    # only if you have a specific integration reason to.
+    networks:
+      - intelx-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - intelx-net
+
+networks:
+  intelx-net:
+    driver: bridge
+
+volumes:
+  intelx-evidence:
+  intelx-uploads:

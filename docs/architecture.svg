@@ -1,0 +1,189 @@
+<svg viewBox="0 0 1180 1500" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="1500" fill="#ffffff"/>
+
+  <text x="590" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">IntelX — System Architecture</text>
+  <text x="590" y="58" text-anchor="middle" font-size="12" fill="#64748b">Offline, air-gapped assurance pipeline for multi-contributor computer-vision pipelines (PS 26228)</text>
+
+  <!-- Layer 1: Ingestion -->
+  <g>
+    <rect x="60" y="90" width="1060" height="90" rx="8" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="90" y="112" font-size="13" font-weight="700" fill="#1e3a8a">1 · ASSET INGESTION</text>
+    <rect x="90" y="122" width="300" height="46" rx="6" fill="#ffffff" stroke="#93c5fd"/>
+    <text x="240" y="141" text-anchor="middle" font-size="11.5" fill="#1e40af">COCO / YOLO Dataset</text>
+    <text x="240" y="157" text-anchor="middle" font-size="9.5" fill="#64748b">DatasetLoader → SampleItem manifest</text>
+    <rect x="420" y="122" width="300" height="46" rx="6" fill="#ffffff" stroke="#93c5fd"/>
+    <text x="570" y="141" text-anchor="middle" font-size="11.5" fill="#1e40af">ONNX / PyTorch / TorchScript</text>
+    <text x="570" y="157" text-anchor="middle" font-size="9.5" fill="#64748b">ModelLoader → adapter contract</text>
+    <rect x="750" y="122" width="300" height="46" rx="6" fill="#ffffff" stroke="#93c5fd"/>
+    <text x="900" y="141" text-anchor="middle" font-size="11.5" fill="#1e40af">Inference Inputs / Records</text>
+    <text x="900" y="157" text-anchor="middle" font-size="9.5" fill="#64748b">Probe images, model + config refs</text>
+  </g>
+
+  <line x1="590" y1="180" x2="590" y2="210" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Layer 2: three parallel assurance engines -->
+  <g>
+    <text x="90" y="228" font-size="13" font-weight="700" fill="#0f172a">2 · INDEPENDENT ASSURANCE ENGINES (run per-asset, feed a shared evidence store)</text>
+
+    <!-- Data assurance -->
+    <rect x="60" y="238" width="340" height="230" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="80" y="260" font-size="12.5" font-weight="700" fill="#14532d">DATA ASSURANCE ENGINE</text>
+    <text x="80" y="274" font-size="9" fill="#166534">backend/data_assurance/</text>
+    <g font-size="10.5" fill="#166534">
+      <rect x="80" y="284" width="300" height="26" rx="4" fill="#ffffff" stroke="#86efac"/>
+      <text x="90" y="301">duplicate_detector.py — exact/near-dup (dHash)</text>
+      <rect x="80" y="315" width="300" height="26" rx="4" fill="#ffffff" stroke="#86efac"/>
+      <text x="90" y="332">label_analyzer.py — flip / systematic mislabel</text>
+      <rect x="80" y="346" width="300" height="26" rx="4" fill="#ffffff" stroke="#86efac"/>
+      <text x="90" y="363">ood_detector.py — OOD z-score vs. reference</text>
+      <rect x="80" y="377" width="300" height="26" rx="4" fill="#ffffff" stroke="#86efac"/>
+      <text x="90" y="394">poisoning_detector.py — trigger patch scan</text>
+      <rect x="80" y="410" width="300" height="26" rx="4" fill="#dcfce7" stroke="#4ade80"/>
+      <text x="90" y="427" font-weight="600">contributor_risk.py — source-level aggregation</text>
+    </g>
+
+    <!-- Model assurance -->
+    <rect x="420" y="238" width="340" height="230" rx="8" fill="#fefce8" stroke="#eab308" stroke-width="1.5"/>
+    <text x="440" y="260" font-size="12.5" font-weight="700" fill="#713f12">MODEL ASSURANCE ENGINE</text>
+    <text x="440" y="274" font-size="9" fill="#854d0e">backend/model_assurance/</text>
+    <g font-size="10.5" fill="#854d0e">
+      <rect x="440" y="284" width="300" height="26" rx="4" fill="#ffffff" stroke="#fde047"/>
+      <text x="450" y="301">fingerprint.py — SHA-256 digest MATCH/MISMATCH/NO_REF</text>
+      <rect x="440" y="315" width="300" height="26" rx="4" fill="#ffffff" stroke="#fde047"/>
+      <text x="450" y="332">behaviour_analyzer.py — reference-battery divergence</text>
+      <rect x="440" y="346" width="300" height="26" rx="4" fill="#ffffff" stroke="#fde047"/>
+      <text x="450" y="363">backdoor_detector.py — clean-vs-trigger probe ASR</text>
+      <rect x="440" y="377" width="300" height="26" rx="4" fill="#ffffff" stroke="#fde047"/>
+      <text x="450" y="394">parameter_analyzer.py — weight kurtosis (white-box)</text>
+      <rect x="440" y="410" width="300" height="26" rx="4" fill="#fef9c3" stroke="#facc15"/>
+      <text x="450" y="427" font-weight="600">access_detector.py — HASH_ONLY / BLACK_BOX / WHITE_BOX</text>
+    </g>
+
+    <!-- Inference assurance -->
+    <rect x="780" y="238" width="340" height="230" rx="8" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.5"/>
+    <text x="800" y="260" font-size="12.5" font-weight="700" fill="#831843">INFERENCE ASSURANCE ENGINE</text>
+    <text x="800" y="274" font-size="9" fill="#9d174d">backend/provenance/ + inference/</text>
+    <g font-size="10.5" fill="#9d174d">
+      <rect x="800" y="284" width="300" height="26" rx="4" fill="#ffffff" stroke="#f9a8d4"/>
+      <text x="810" y="301">inference_engine.py — real onnxruntime execution</text>
+      <rect x="800" y="315" width="300" height="26" rx="4" fill="#ffffff" stroke="#f9a8d4"/>
+      <text x="810" y="332">hashing.py — image+model+config+output → DAG hash</text>
+      <rect x="800" y="346" width="300" height="26" rx="4" fill="#ffffff" stroke="#f9a8d4"/>
+      <text x="810" y="363">signing.py — Ed25519 sign / verify</text>
+      <rect x="800" y="377" width="300" height="26" rx="4" fill="#ffffff" stroke="#f9a8d4"/>
+      <text x="810" y="394">verification.py — nonce replay + sequence reorder</text>
+      <rect x="800" y="410" width="300" height="26" rx="4" fill="#fce7f3" stroke="#f472b6"/>
+      <text x="810" y="427" font-weight="600">tamper detection on protected records</text>
+    </g>
+  </g>
+
+  <line x1="230" y1="468" x2="590" y2="510" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="590" y1="468" x2="590" y2="510" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="950" y1="468" x2="590" y2="510" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Layer 3: Distribution shift -->
+  <g>
+    <rect x="60" y="518" width="1060" height="110" rx="8" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5"/>
+    <text x="90" y="540" font-size="13" font-weight="700" fill="#0c4a6e">3 · DISTRIBUTION-SHIFT ANALYSIS — backend/drift/</text>
+    <rect x="90" y="550" width="330" height="60" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+    <text x="255" y="570" text-anchor="middle" font-size="11" fill="#0369a1" font-weight="600">distribution_shift.py</text>
+    <text x="255" y="586" text-anchor="middle" font-size="9.5" fill="#64748b">terrain/sensor/illumination + real</text>
+    <text x="255" y="600" text-anchor="middle" font-size="9.5" fill="#64748b">pixel-derived image_quality.py signals</text>
+    <rect x="440" y="550" width="290" height="60" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+    <text x="585" y="576" text-anchor="middle" font-size="10.5" fill="#0369a1" font-weight="600">4-way classification</text>
+    <text x="585" y="592" text-anchor="middle" font-size="9" fill="#64748b">operational_drift · requires_review ·</text>
+    <text x="585" y="604" text-anchor="middle" font-size="9" fill="#64748b">manipulation_present · insufficient_evidence</text>
+    <rect x="750" y="550" width="300" height="60" rx="6" fill="#ffffff" stroke="#7dd3fc"/>
+    <text x="900" y="576" text-anchor="middle" font-size="10.5" fill="#0369a1" font-weight="600">Calibrated risk + confidence</text>
+    <text x="900" y="592" text-anchor="middle" font-size="9" fill="#64748b">never claims intentional manipulation</text>
+    <text x="900" y="604" text-anchor="middle" font-size="9" fill="#64748b">from shift alone</text>
+  </g>
+
+  <line x1="590" y1="628" x2="590" y2="660" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Layer 4: Governance -->
+  <g>
+    <rect x="60" y="668" width="1060" height="200" rx="8" fill="#faf5ff" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="90" y="690" font-size="13" font-weight="700" fill="#581c87">4 · ASSURANCE &amp; GOVERNANCE LAYER — backend/assurance/ + audit/ + persistence/</text>
+
+    <rect x="90" y="700" width="230" height="150" rx="6" fill="#ffffff" stroke="#d8b4fe"/>
+    <text x="205" y="722" text-anchor="middle" font-size="11" font-weight="600" fill="#6b21a8">Evidence Store</text>
+    <text x="205" y="740" text-anchor="middle" font-size="9.5" fill="#64748b">persistence/db.py</text>
+    <text x="205" y="756" text-anchor="middle" font-size="9.5" fill="#64748b">SQLite: models,</text>
+    <text x="205" y="770" text-anchor="middle" font-size="9.5" fill="#64748b">dataset analyses,</text>
+    <text x="205" y="784" text-anchor="middle" font-size="9.5" fill="#64748b">inference records,</text>
+    <text x="205" y="798" text-anchor="middle" font-size="9.5" fill="#64748b">assurance reports</text>
+
+    <rect x="335" y="700" width="230" height="150" rx="6" fill="#ffffff" stroke="#d8b4fe"/>
+    <text x="450" y="722" text-anchor="middle" font-size="11" font-weight="600" fill="#6b21a8">Policy Engine</text>
+    <text x="450" y="740" text-anchor="middle" font-size="9.5" fill="#64748b">risk_engine.py</text>
+    <text x="450" y="756" text-anchor="middle" font-size="9.5" fill="#64748b">versioned severity</text>
+    <text x="450" y="770" text-anchor="middle" font-size="9.5" fill="#64748b">weights + cutoffs</text>
+    <text x="450" y="786" text-anchor="middle" font-size="9.5" fill="#64748b" font-weight="600">policy_version</text>
+    <text x="450" y="800" text-anchor="middle" font-size="9.5" fill="#64748b">carried in every report</text>
+
+    <rect x="580" y="700" width="230" height="150" rx="6" fill="#ffffff" stroke="#d8b4fe"/>
+    <text x="695" y="722" text-anchor="middle" font-size="11" font-weight="600" fill="#6b21a8">Risk Aggregation</text>
+    <text x="695" y="740" text-anchor="middle" font-size="9.5" fill="#64748b">report_generator.py</text>
+    <text x="695" y="756" text-anchor="middle" font-size="9.5" fill="#64748b">findings → overall</text>
+    <text x="695" y="770" text-anchor="middle" font-size="9.5" fill="#64748b">disposition</text>
+    <text x="695" y="790" text-anchor="middle" font-size="10" fill="#166534" font-weight="700">ACCEPT</text>
+    <text x="695" y="804" text-anchor="middle" font-size="10" fill="#854d0e" font-weight="700">REVIEW · QUARANTINE</text>
+
+    <rect x="825" y="700" width="255" height="150" rx="6" fill="#ffffff" stroke="#d8b4fe"/>
+    <text x="952" y="722" text-anchor="middle" font-size="11" font-weight="600" fill="#6b21a8">Signed Hash-Chained Audit</text>
+    <text x="952" y="740" text-anchor="middle" font-size="9.5" fill="#64748b">audit/audit_log.py</text>
+    <text x="952" y="756" text-anchor="middle" font-size="9.5" fill="#64748b">SHA-256 chain +</text>
+    <text x="952" y="770" text-anchor="middle" font-size="9.5" fill="#64748b">per-entry Ed25519 signature</text>
+    <text x="952" y="786" text-anchor="middle" font-size="9.5" fill="#64748b">shared_ledger, persisted to</text>
+    <text x="952" y="800" text-anchor="middle" font-size="9.5" fill="#64748b">audit_log/ledger.jsonl</text>
+  </g>
+
+  <line x1="590" y1="868" x2="590" y2="900" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Layer 5: Assurance report -->
+  <g>
+    <rect x="60" y="908" width="1060" height="120" rx="8" fill="#f8fafc" stroke="#0f172a" stroke-width="1.5"/>
+    <text x="90" y="930" font-size="13" font-weight="700" fill="#0f172a">5 · ASSURANCE REPORT — assurance/report_generator.py + report_exporters.py</text>
+    <rect x="90" y="940" width="220" height="70" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="200" y="962" text-anchor="middle" font-size="10.5" font-weight="600" fill="#0f172a">Disposition + risk score</text>
+    <text x="200" y="978" text-anchor="middle" font-size="9.5" fill="#64748b">evidence, confidence,</text>
+    <text x="200" y="992" text-anchor="middle" font-size="9.5" fill="#64748b">severity, limitations</text>
+    <rect x="330" y="940" width="220" height="70" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="440" y="962" text-anchor="middle" font-size="10.5" font-weight="600" fill="#0f172a">Coverage statement</text>
+    <text x="440" y="978" text-anchor="middle" font-size="9.5" fill="#64748b">SUPPORTED / PARTIAL /</text>
+    <text x="440" y="992" text-anchor="middle" font-size="9.5" fill="#64748b">NOT_SUPPORTED per attack class</text>
+    <rect x="570" y="940" width="220" height="70" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="680" y="962" text-anchor="middle" font-size="10.5" font-weight="600" fill="#0f172a">Audit verification</text>
+    <text x="680" y="978" text-anchor="middle" font-size="9.5" fill="#64748b">chain digest + validity</text>
+    <text x="680" y="992" text-anchor="middle" font-size="9.5" fill="#64748b">carried in the report</text>
+    <rect x="810" y="940" width="270" height="70" rx="6" fill="#ecfdf5" stroke="#34d399"/>
+    <text x="945" y="962" text-anchor="middle" font-size="10.5" font-weight="700" fill="#065f46">JSON · HTML · PDF export</text>
+    <text x="945" y="978" text-anchor="middle" font-size="9.5" fill="#047857">Jinja2 (HTML) + reportlab (PDF)</text>
+    <text x="945" y="992" text-anchor="middle" font-size="9.5" fill="#047857">both pure-Python, no system deps</text>
+  </g>
+
+  <line x1="945" y1="1028" x2="945" y2="1060" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="200" y1="800" x2="140" y2="1060" stroke="#475569" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+  <!-- Layer 6: Offline verification -->
+  <g>
+    <rect x="60" y="1068" width="1060" height="90" rx="8" fill="#fff7ed" stroke="#f97316" stroke-width="1.5"/>
+    <text x="90" y="1090" font-size="13" font-weight="700" fill="#7c2d12">6 · OFFLINE VERIFICATION — no FastAPI process, no network socket</text>
+    <rect x="90" y="1100" width="440" height="46" rx="6" fill="#ffffff" stroke="#fdba74"/>
+    <text x="310" y="1119" text-anchor="middle" font-size="10.5" fill="#9a3412" font-weight="600">tools/verify_offline.py audit / record / all</text>
+    <text x="310" y="1135" text-anchor="middle" font-size="9" fill="#64748b">Re-derives the same hash-chain + Ed25519 checks the service uses</text>
+    <rect x="550" y="1100" width="500" height="46" rx="6" fill="#ffffff" stroke="#fdba74"/>
+    <text x="800" y="1119" text-anchor="middle" font-size="10.5" fill="#9a3412" font-weight="600">Exit 0 = clean · Exit 1 = tamper/violation detected</text>
+    <text x="800" y="1135" text-anchor="middle" font-size="9" fill="#64748b">Safe to wire into a CI gate or a pre-approval script on an air-gapped analyst workstation</text>
+  </g>
+
+  <text x="590" y="1190" text-anchor="middle" font-size="10.5" fill="#64748b">Data flow: asset ingestion → independent per-domain assurance engines → shared evidence store → policy engine + risk aggregation → signed, hash-chained audit log → exported report</text>
+  <text x="590" y="1208" text-anchor="middle" font-size="10.5" fill="#94a3b8">The entire pipeline runs fully offline; no stage makes a network call. See docs/threat_model.md for trust boundaries and threat coverage.</text>
+</svg>

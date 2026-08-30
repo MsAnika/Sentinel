@@ -4,7 +4,9 @@ scenarios (E, F), HTML/PDF report export, NO_REFERENCE digest status, and
 the HASH_ONLY model access tier. These hit the real routes, not just the
 underlying Python functions, so a route-level regression (bad Body(...)
 wiring, wrong status code, wrong media type) is caught."""
+import os
 from fastapi.testclient import TestClient
+from backend.api.auth import API_KEY_ENV_VAR
 from backend.main import app
 
 client = TestClient(app)

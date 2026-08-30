@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .api.auth import require_api_key
 from .api.routes_audit import router as audit_router
 from .api.routes_dataset import router as dataset_router
 from .api.routes_drift import router as drift_router
@@ -22,13 +23,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(scenarios_router)
-app.include_router(dataset_router)
-app.include_router(model_router)
-app.include_router(inference_router)
-app.include_router(drift_router)
-app.include_router(audit_router)
-app.include_router(report_router)
+# Every route below requires the X-API-Key header IF (and only if) the
+# operator has set VIGILCV_API_KEY -- see api/auth.py for why this is a
+# deliberately lightweight MVP gate, not full RBAC. /health is
+# deliberately excluded so liveness checks work even on a locked-down
+# deployment.
+_auth_dep = [Depends(require_api_key)]
+app.include_router(scenarios_router, dependencies=_auth_dep)
+app.include_router(dataset_router, dependencies=_auth_dep)
+app.include_router(model_router, dependencies=_auth_dep)
+app.include_router(inference_router, dependencies=_auth_dep)
+app.include_router(drift_router, dependencies=_auth_dep)
+app.include_router(audit_router, dependencies=_auth_dep)
+app.include_router(report_router, dependencies=_auth_dep)
 
 
 @app.get("/health")

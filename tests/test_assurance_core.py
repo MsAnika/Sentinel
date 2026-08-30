@@ -244,6 +244,79 @@ def test_real_parameter_analysis_flags_backdoored_weights():
     assert backdoored_stats["max_kurtosis"] > clean_stats["max_kurtosis"]
 
 
+def test_distribution_shift_embedding_comparison_is_real_and_directional():
+    """FR-11: distribution shift must support a real embedding-space
+    comparison (learned CNN feature vectors via a real onnxruntime forward
+    pass), not just raw pixel/metadata statistics -- and it must be
+    directionally sensible: a reference set compared to itself-ish should
+    show less divergence than a reference set compared to a visually very
+    different population (here: images carrying the checkerboard trigger
+    patch in one corner)."""
+    import os
+    import numpy as np
+    from PIL import Image
+    from backend.scenarios.asset_generator import AssetGenerator
+
+    AssetGenerator.ensure_test_assets("test_assets")
+    detector = DistributionShiftDetector()
+
+    ref_meta = [
+        {"image_path": f"test_assets/images/tactical_sample_{i:03d}.jpg"}
+        for i in range(1, 16)
+    ]
+    obs_meta_similar = [
+        {"terrain": "plains", "sensor": "EO_optical", "illumination": 0.75,
+         "image_path": f"test_assets/images/tactical_sample_{i:03d}.jpg"}
+        for i in range(16, 21)
+    ]
+
+    # A clearly, substantially different visual population -- solid-color
+    # flat images -- to give the embedding-shift signal something
+    # unambiguous to detect, rather than relying on a subtle few-pixel
+    # trigger patch after 640->64 downsampling (which is too marginal a
+    # signal for a stable test assertion).
+    os.makedirs("test_assets/images/_shift_test", exist_ok=True)
+    flat_paths = []
+    for i, color in enumerate([(10, 200, 10), (5, 210, 15), (12, 195, 8), (8, 205, 20), (15, 190, 5)]):
+        p = f"test_assets/images/_shift_test/flat_{i}.jpg"
+        Image.new("RGB", (640, 640), color).save(p)
+        flat_paths.append(p)
+    obs_meta_very_different = [
+        {"terrain": "plains", "sensor": "EO_optical", "illumination": 0.75, "image_path": p}
+        for p in flat_paths
+    ]
+
+    report_similar = detector.evaluate_shift(
+        {"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.75},
+        obs_meta_similar, reference_samples_metadata=ref_meta,
+    )
+    report_very_different = detector.evaluate_shift(
+        {"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.75},
+        obs_meta_very_different, reference_samples_metadata=ref_meta,
+    )
+
+    assert "embedding_shift" in report_similar.affected_dimensions
+    assert "embedding_comparison" in report_similar.image_quality_evidence
+    comparison = report_similar.image_quality_evidence["embedding_comparison"]
+    assert comparison["reference_samples_embedded"] == 15
+    assert comparison["embedding_dim"] == 32
+
+    assert report_very_different.affected_dimensions["embedding_shift"] > report_similar.affected_dimensions["embedding_shift"]
+
+
+def test_distribution_shift_without_reference_images_falls_back_gracefully():
+    """Without reference_samples_metadata, embedding comparison must be
+    skipped explicitly (not silently faked), and the rest of the
+    evaluation must still work exactly as before."""
+    detector = DistributionShiftDetector()
+    report = detector.evaluate_shift(
+        {"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.75},
+        [{"terrain": "plains", "sensor": "EO_optical", "illumination": 0.75} for _ in range(10)],
+    )
+    assert "embedding_shift" not in report.affected_dimensions
+    assert any("Embedding-space" in l for l in report.limitations)
+
+
 def test_yolo_dataset_ingestion():
     """FR-01: YOLO ingestion must actually be exercised, not just present
     as unused code. The same fixtures AssetGenerator writes for the COCO

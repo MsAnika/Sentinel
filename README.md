@@ -20,6 +20,12 @@
 
 ---
 
+![IntelX architecture diagram](docs/architecture.svg)
+
+Threat model, trust boundaries, and explicit out-of-scope threats: [`docs/threat_model.md`](docs/threat_model.md).
+
+---
+
 ## 2. Senior Developer Architecture & Directory Structure
 
 The codebase is organized strictly into modular, single-responsibility components with zero redundant coupling and no single file exceeding 300 lines of code.
@@ -139,29 +145,39 @@ Any modification to predictions, bounding boxes, or model digests results in an 
 
 ---
 
-## 5. Quick Start (Air-Gapped Local Setup)
+## 5. Quick Start
 
-### Prerequisites
-- Python 3.10+
-- Bun (or Node.js 20+)
+### Option A — Docker Compose (recommended for a demo/judge environment)
+```bash
+docker compose up --build
+```
+Backend on [http://localhost:8000](http://localhost:8000), frontend on
+[http://localhost:3000](http://localhost:3000). See `docker/backend.Dockerfile`,
+`docker/frontend.Dockerfile`, and `docker-compose.yml`. Evidence (SQLite DB, audit ledger, signing
+keys) persists in the `intelx-evidence` named volume across `docker compose down`/`up`.
 
-### Step 1: Initialize Python Backend
+### Option B — Native (Air-Gapped Local Setup)
+
+**Prerequisites:** Python 3.12 (3.10+ should work; PyTorch's TorchScript path is verified on 3.12 —
+see the note in `backend/requirements.lock.txt`), Bun (or Node.js 20+).
+
 ```bash
 # Create and activate virtual environment
 uv venv backend/.venv
 source backend/.venv/bin/activate
 
-# Install dependencies (fully offline-capable wheels)
-uv pip install -r <(echo "fastapi uvicorn pydantic numpy pillow scikit-learn cryptography pytest httpx onnx")
+# Install dependencies -- backend/requirements.txt pins exact top-level versions;
+# for a full air-gapped wheel pre-provisioning step, use requirements.lock.txt instead
+# (see the header comment in that file for the pip download / --no-index workflow).
+uv pip install -r backend/requirements.txt
 
 # Run automated assurance test suite
-PYTHONPATH=. backend/.venv/bin/pytest tests/ -v
+backend/.venv/bin/python -m pytest tests/ -v
 
 # Start FastAPI air-gapped backend server
-PYTHONPATH=. backend/.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+backend/.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Step 2: Initialize Next.js Command Console
 ```bash
 # Install frontend packages
 bun install
@@ -172,6 +188,14 @@ bun run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your air-gapped browser.
 
+### Offline verification CLI
+
+Verify the audit ledger and/or signed inference records without starting the service at all:
+```bash
+backend/.venv/bin/python -m backend.tools.verify_offline audit
+backend/.venv/bin/python -m backend.tools.verify_offline all
+```
+
 ---
 
 ## 6. Functional Compliance Verification
@@ -179,10 +203,11 @@ Open [http://localhost:3000](http://localhost:3000) in your air-gapped browser.
 - [x] **FR-01 / FR-02**: Dataset Ingestion & Integrity Analysis (COCO & YOLO, duplicates, label flips, triggers, OOD).
 - [x] **FR-03**: Contributor-Level Risk Aggregation.
 - [x] **FR-04 / FR-05**: Model Ingestion & SHA-256 Weight Fingerprinting.
-- [x] **FR-06 / FR-07**: Behaviour Assessment & White-box vs Black-box Access Detection.
-- [x] **FR-08 / FR-09 / FR-10**: Cryptographic Provenance Binding, Tamper Detection & Replay Prevention.
-- [x] **FR-11 / FR-12**: Distribution-Shift & Environmental Drift Radar.
-- [x] **FR-13 / FR-14**: Standardized Finding Schema & Assurance Report Generation.
-- [x] **FR-15**: Tamper-Evident Hash-Chained Audit Ledger.
-- [x] **FR-16 / Section 19**: Reproducible Attack Testing Matrix (Scenarios A, B, C, D).
+- [x] **FR-06 / FR-07**: Behaviour Assessment & three-tier Access Detection (`WHITE_BOX` / `BLACK_BOX` / `HASH_ONLY`).
+- [x] **FR-08 / FR-09 / FR-10**: Cryptographic Provenance Binding, Tamper Detection, Replay & Reordering Detection (independent checks — see `provenance/verification.py`).
+- [x] **FR-11 / FR-12**: Distribution-Shift & Environmental Drift Radar, classified into `probable_operational_drift` / `anomaly_requires_review` / `manipulation_indicators_present` / `insufficient_evidence`.
+- [x] **FR-13 / FR-14**: Standardized Finding Schema (incl. `access_assumptions`) & Assurance Report Generation — JSON, HTML, and PDF export (`/api/report/{id}/export.{html,pdf}`).
+- [x] **FR-15**: Tamper-Evident, Individually-Signed, Hash-Chained Audit Ledger, plus a standalone offline verification CLI (`backend/tools/verify_offline.py`).
+- [x] **FR-16 / Section 19**: Reproducible Attack Testing Matrix — Scenarios A–F (dataset poisoning, model substitution/backdoor, inference tampering, replay & reordering, audit-log tampering).
 - [x] **NFR-01 / NFR-02**: 100% Offline & Air-Gapped execution guarantee.
+- [x] **Deliverables**: [`SBOM.md`](SBOM.md) (license inventory), [`docs/architecture.svg`](docs/architecture.svg) + [`docs/threat_model.md`](docs/threat_model.md), [`COVERAGE.md`](COVERAGE.md), `docker-compose.yml`, `.github/workflows/ci.yml`.
