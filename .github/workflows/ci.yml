@@ -34,19 +34,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      # This repo uses bun (bun.lock is the committed lockfile, not
+      # package-lock.json) -- installing with npm would resolve a
+      # different dependency tree than what's actually developed/tested
+      # against and Docker builds with.
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: "22"
+          bun-version: "1.3.11"
 
       - name: Install frontend dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
+
+      # `tsc` alone fails on a fresh checkout: Next.js's route/layout
+      # prop types (e.g. LayoutProps) are generated into .next/types by
+      # the dev server or build, not committed to the repo. `next typegen`
+      # produces just those types without a full production build.
+      - name: Generate Next.js route types
+        run: bunx next typegen
 
       - name: Type check
-        run: npx tsc --noEmit -p .
+        run: bunx tsc --noEmit -p .
 
       - name: Lint
-        run: npx eslint .
+        run: bunx eslint .
 
   docker-build:
     name: Docker image build
