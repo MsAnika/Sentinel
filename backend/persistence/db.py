@@ -224,3 +224,49 @@ def get_assurance_report(report_id: str, db_path: str = DB_PATH) -> Optional[Dic
     with get_connection(db_path) as conn:
         row = conn.execute("SELECT * FROM assurance_reports WHERE report_id = ?", (report_id,)).fetchone()
         return dict(row) if row else None
+
+
+# -- Evidence-reference check (used to guard deletion of raw uploads) --------
+
+def find_references_to_path(abs_path: str, db_path: str = DB_PATH) -> List[str]:
+    """Returns a human-readable description of every persisted evidence
+    record that references the given absolute filesystem path, so a
+    caller can refuse to delete it while any reference exists.
+
+    Deliberately over-cautious: in addition to the one indexed exact-match
+    column (model_records.saved_path), this does a substring search across
+    every stored JSON blob (dataset/inference/report records embed file
+    paths inside their JSON payloads, not as queryable columns). A
+    raw-upload file that still shows up here has already been folded into
+    at least one piece of generated evidence -- deleting the source file
+    out from under that evidence would make it unable to be
+    re-verified/re-examined later, which this system's whole purpose is
+    to prevent. False positives (an unrelated record whose JSON happens to
+    contain this exact path substring) only make deletion more
+    conservative, never less safe."""
+    init_db(db_path)
+    refs: List[str] = []
+    like_pattern = f"%{abs_path}%"
+    with get_connection(db_path) as conn:
+        for row in conn.execute(
+            "SELECT model_id, model_name FROM model_records WHERE saved_path = ?", (abs_path,)
+        ):
+            refs.append(f"model_record:{row['model_id']} ({row['model_name']})")
+
+        for row in conn.execute(
+            "SELECT analysis_id, dataset_id FROM dataset_analyses WHERE profile_json LIKE ? OR findings_json LIKE ?",
+            (like_pattern, like_pattern),
+        ):
+            refs.append(f"dataset_analysis:{row['analysis_id']} ({row['dataset_id']})")
+
+        for row in conn.execute(
+            "SELECT record_id FROM inference_records WHERE record_json LIKE ?", (like_pattern,)
+        ):
+            refs.append(f"inference_record:{row['record_id']}")
+
+        for row in conn.execute(
+            "SELECT report_id FROM assurance_reports WHERE report_json LIKE ?", (like_pattern,)
+        ):
+            refs.append(f"assurance_report:{row['report_id']}")
+
+    return refs

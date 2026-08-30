@@ -8,6 +8,7 @@ from .api.routes_inference import router as inference_router
 from .api.routes_model import router as model_router
 from .api.routes_report import router as report_router
 from .api.routes_scenarios import router as scenarios_router
+from .api.routes_uploads import router as uploads_router
 
 app = FastAPI(
     title="VIGIL-CV | Trustworthy Computer Vision Assurance System",
@@ -36,6 +37,7 @@ app.include_router(inference_router, dependencies=_auth_dep)
 app.include_router(drift_router, dependencies=_auth_dep)
 app.include_router(audit_router, dependencies=_auth_dep)
 app.include_router(report_router, dependencies=_auth_dep)
+app.include_router(uploads_router, dependencies=_auth_dep)
 
 
 @app.get("/health")
