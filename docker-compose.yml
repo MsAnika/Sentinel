@@ -5,6 +5,13 @@ services:
       dockerfile: docker/backend.Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      # Unset (default) = no auth, matching the single-analyst air-gapped
+      # workstation deployment model. Uncomment and set a real secret
+      # before exposing this service beyond localhost -- see
+      # docs/threat_model.md "API access control".
+      # VIGILCV_API_KEY: "change-me"
+      VIGILCV_API_KEY: ""
     volumes:
       # Durable evidence store: SQLite DB, audit ledger, signing keys,
       # uploaded assets. Named volume so `docker compose down` (without

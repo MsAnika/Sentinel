@@ -85,6 +85,22 @@ covered:
   explicit unavailable status with a reason (`model_assurance/access_detector.py`) rather than
   silently skipping or faking a result.
 
+## API access control (current state, and its limit)
+
+Every route except `/health` is gated by `backend/api/auth.py: require_api_key`, a single
+shared-secret check against the `X-API-Key` header. This is **not** the "local role-based access
+control" the PRD names for Phase 1 scale-up (section 17) — it authenticates that a caller holds
+the workstation's shared secret; it does not distinguish analyst identities or roles. By default
+(`VIGILCV_API_KEY` unset) auth is disabled entirely, matching the PRD's stated single-analyst,
+air-gapped-workstation deployment model for the SIH prototype. Set `VIGILCV_API_KEY` before
+exposing this service to any shared network segment.
+
+**Known limitation:** the Next.js frontend (`src/client/lib/api-client.ts`) does not currently send
+an `X-API-Key` header on any request. Enabling `VIGILCV_API_KEY` protects the API from direct
+callers (curl, another service, the offline verification CLI's HTTP-based checks) but will also
+lock the bundled UI out until it is updated to supply the header — treat this as a backend-only
+hardening control for now, not a drop-in feature for the shipped UI.
+
 ## Key management (current state, and its limit)
 
 Both signing keys are generated on first use and persisted to disk under `keys/` (or the
