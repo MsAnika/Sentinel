@@ -86,6 +86,34 @@ def test_verify_digest_no_reference_via_api(tmp_path):
     assert body["finding"]["finding_type"] == "model_identity_unverifiable"
 
 
+def test_api_key_gate_disabled_by_default():
+    """Default MVP posture: no VIGILCV_API_KEY set means every route is
+    reachable without any auth header -- matches the PRD's single
+    air-gapped-workstation deployment model for the SIH prototype."""
+    assert os.environ.get(API_KEY_ENV_VAR) is None
+    res = client.get("/api/scenarios/list")
+    assert res.status_code == 200
+
+
+def test_api_key_gate_enforced_when_configured(monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV_VAR, "test-secret-key-123")
+
+    no_header_res = client.get("/api/scenarios/list")
+    assert no_header_res.status_code == 401
+
+    wrong_key_res = client.get("/api/scenarios/list", headers={"X-API-Key": "wrong"})
+    assert wrong_key_res.status_code == 401
+
+    correct_key_res = client.get("/api/scenarios/list", headers={"X-API-Key": "test-secret-key-123"})
+    assert correct_key_res.status_code == 200
+
+
+def test_health_endpoint_never_requires_api_key(monkeypatch):
+    monkeypatch.setenv(API_KEY_ENV_VAR, "test-secret-key-123")
+    res = client.get("/health")
+    assert res.status_code == 200
+
+
 def test_hash_only_access_capabilities_via_api():
     res = client.post("/api/model/access-capabilities?access_level=HASH_ONLY")
     assert res.status_code == 200
