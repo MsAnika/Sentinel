@@ -5,6 +5,7 @@ import {
   ModelBehaviourAssessment,
   ModelFingerprint,
   ScenarioRunResult,
+  TrendSummary,
 } from '@/shared/types/assurance'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -108,6 +109,10 @@ export class AssuranceApiClient {
     return this.request('/api/audit/verify', {
       method: 'POST',
     })
+  }
+
+  static async getTrends(limit = 200): Promise<TrendSummary> {
+    return this.request(`/api/report/trends/summary?limit=${limit}`)
   }
 
   /** Direct download URL for a stored report -- opened in a new tab / used

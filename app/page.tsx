@@ -11,12 +11,13 @@ import { AuditLedgerView } from '@/client/components/audit/AuditLedgerView'
 import { AssuranceReportView } from '@/client/components/report/AssuranceReportView'
 import { AssuranceApiClient } from '@/client/lib/api-client'
 import { ScenarioRunResult } from '@/shared/types/assurance'
-import { Layers, Cpu, Link2, Compass, FileText, Shield, FlaskConical, UploadCloud } from 'lucide-react'
+import { Layers, Cpu, Link2, Compass, FileText, Shield, FlaskConical, UploadCloud, BarChart3 } from 'lucide-react'
 import clsx from 'clsx'
 import { LiveAnalysisView } from '@/client/components/live/LiveAnalysisView'
+import { TrendDashboardView } from '@/client/components/dashboard/TrendDashboardView'
 
 export default function DashboardPage() {
-  const [appMode, setAppMode] = useState<'scenarios' | 'live'>('scenarios')
+  const [appMode, setAppMode] = useState<'scenarios' | 'live' | 'dashboard'>('scenarios')
   const [activeScenario, setActiveScenario] = useState<string>('A')
   const [activeTab, setActiveTab] = useState<'dataset' | 'model' | 'provenance' | 'drift' | 'audit' | 'report'>('dataset')
   const [scenarioData, setScenarioData] = useState<ScenarioRunResult | null>(null)
@@ -92,9 +93,22 @@ export default function DashboardPage() {
           >
             <UploadCloud className="h-4 w-4" /> Live Analysis
           </button>
+          <button
+            onClick={() => setAppMode('dashboard')}
+            className={clsx(
+              'flex items-center gap-2 rounded-t border border-b-0 px-4 py-2 font-bold tracking-wider uppercase transition-colors cursor-pointer',
+              appMode === 'dashboard'
+                ? 'border-cyan-700/60 bg-zinc-900 text-cyan-300'
+                : 'border-transparent text-zinc-500 hover:text-zinc-300'
+            )}
+          >
+            <BarChart3 className="h-4 w-4" /> Dashboard
+          </button>
         </div>
 
-        {appMode === 'live' ? (
+        {appMode === 'dashboard' ? (
+          <TrendDashboardView />
+        ) : appMode === 'live' ? (
           <LiveAnalysisView />
         ) : (
           <>

@@ -9,6 +9,7 @@ from ..model_assurance.backdoor_detector import BackdoorDetector
 from ..model_assurance.behaviour_analyzer import BehaviourAnalyzer
 from ..model_assurance.fingerprint import ModelFingerprinter
 from ..model_assurance.parameter_analyzer import ParameterAnalyzer
+from ..model_assurance.trigger_reconstruction import run_trigger_reconstruction
 from ..persistence import db
 from ..schemas import InferenceConfig, ModelAccessLevel, ModelFingerprint
 from ..scenarios.probe_builder import build_reference_battery
@@ -204,3 +205,34 @@ async def run_behaviour_battery(
         "findings": findings,
         "battery": battery,
     }
+
+
+@router.post("/trigger-reconstruction")
+async def run_unknown_trigger_reconstruction(
+    model_path: str = Body(..., embed=True, description="Server-local path to the model under assessment."),
+    clean_image_paths: List[str] = Body(..., embed=True, description="Real clean images to reconstruct triggers against."),
+    class_names: List[str] = Body(..., embed=True),
+    model_id: Optional[str] = Body(default=None, embed=True),
+):
+    """Blind, gradient-based unknown-trigger reconstruction (Neural
+    Cleanse). Unlike /behaviour-battery, this is never told what a
+    trigger looks like -- it optimizes one from scratch per candidate
+    class and flags any class that needs a suspiciously small
+    perturbation to hijack. WHITE_BOX-only, and further scoped to models
+    whose ONNX graph this system can bridge into a differentiable
+    framework; reports UNAVAILABLE with a reason otherwise, never a
+    silent skip."""
+    import os
+    if not os.path.exists(model_path):
+        raise HTTPException(status_code=404, detail=f"Model file not found: {model_path}")
+
+    resolved_id = model_id or f"model_{ModelLoader.calculate_file_sha256(model_path)[:12]}"
+    result, findings = run_trigger_reconstruction(resolved_id, model_path, clean_image_paths, class_names)
+
+    shared_ledger.record_event(
+        "MODEL_ASSESSMENT", resolved_id, "UNKNOWN_TRIGGER_RECONSTRUCTION", ModelLoader.calculate_file_sha256(model_path),
+        result.get("status", "UNKNOWN"),
+        f"backdoor_suspected={result.get('backdoor_suspected')}, {len(findings)} finding(s)." if result.get("status") == "COMPLETED"
+        else result.get("reason", ""),
+    )
+    return {"result": result, "findings": findings}

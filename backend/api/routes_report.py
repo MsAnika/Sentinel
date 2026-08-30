@@ -60,6 +60,64 @@ async def list_assurance_reports(limit: int = 100):
     return {"reports": db.list_assurance_reports(limit=limit)}
 
 
+@router.get("/trends/summary")
+async def get_report_trends(limit: int = 200):
+    """Aggregates every persisted assurance report into a historical
+    trend view -- risk score over time, disposition mix, and per-contributor
+    risk aggregated across all runs -- for the dashboard. Reads real,
+    already-persisted reports; computes nothing new, just aggregates what
+    every prior /report/generate or scenario run already wrote to the DB."""
+    rows = db.list_assurance_reports(limit=limit)
+    rows = list(reversed(rows))  # oldest first, for a left-to-right trend line
+
+    disposition_counts: Dict[str, int] = {"ACCEPT": 0, "REVIEW": 0, "QUARANTINE": 0}
+    contributor_totals: Dict[str, Dict[str, Any]] = {}
+    timeline = []
+
+    for row in rows:
+        disposition = row.get("overall_disposition", "UNKNOWN")
+        disposition_counts[disposition] = disposition_counts.get(disposition, 0) + 1
+        timeline.append({
+            "report_id": row["report_id"],
+            "generated_at": row["generated_at"],
+            "overall_risk_score": row["overall_risk_score"],
+            "overall_disposition": disposition,
+        })
+
+        full_record = db.get_assurance_report(row["report_id"])
+        if not full_record:
+            continue
+        report = json.loads(full_record["report_json"])
+        for c in report.get("contributor_summaries", []):
+            cid = c["contributor_id"]
+            bucket = contributor_totals.setdefault(cid, {
+                "contributor_id": cid, "appearances": 0, "risk_score_sum": 0.0,
+                "max_risk_level": "LOW", "quarantine_count": 0,
+            })
+            bucket["appearances"] += 1
+            bucket["risk_score_sum"] += c.get("risk_score", 0.0)
+            severity_rank = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
+            if severity_rank.get(c.get("risk_level", "LOW"), 0) > severity_rank.get(bucket["max_risk_level"], 0):
+                bucket["max_risk_level"] = c.get("risk_level", "LOW")
+            if c.get("recommended_action") == "QUARANTINE":
+                bucket["quarantine_count"] += 1
+
+    contributor_trends = []
+    for bucket in contributor_totals.values():
+        contributor_trends.append({
+            **bucket,
+            "avg_risk_score": round(bucket["risk_score_sum"] / max(1, bucket["appearances"]), 2),
+        })
+    contributor_trends.sort(key=lambda c: -c["avg_risk_score"])
+
+    return {
+        "total_reports": len(rows),
+        "disposition_counts": disposition_counts,
+        "timeline": timeline,
+        "contributor_trends": contributor_trends,
+    }
+
+
 @router.get("/{report_id}")
 async def get_assurance_report_by_id(report_id: str):
     record = db.get_assurance_report(report_id)

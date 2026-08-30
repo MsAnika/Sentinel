@@ -34,7 +34,7 @@ risk score and disposition, not just isolated per-sample flags.
 | Parameter/weight-statistics anomaly | SUPPORTED (white-box only) | Real ONNX initializer tensor extraction + kurtosis/variance analysis | Requires white-box access; explicitly `UNAVAILABLE` (not approximated) under declared black-box or hash-only access |
 | `black_box_model_assessment` | **PARTIAL** | Input/output behavioral probing only | This is the intended graceful degradation for vendor-supplied models where weight access isn't authorized — not a workaround |
 | `hash_only_model_assessment` | **PARTIAL** | File-level SHA-256 digest comparison only | Third, weakest access tier (`ModelAccessLevel.HASH_ONLY`): the model is never executed. All execution-dependent checks report explicit `UNAVAILABLE` with a stated reason (`backend/model_assurance/access_detector.py`) |
-| `unknown_trigger_reconstruction` | **NOT SUPPORTED** | — | No gradient-based blind trigger inversion (e.g. Neural Cleanse-style optimization). Backdoor detection only recognizes trigger patterns it is explicitly told to probe for |
+| `unknown_trigger_reconstruction` | **PARTIAL** | Neural Cleanse-style blind gradient-based trigger reconstruction (`backend/model_assurance/trigger_reconstruction.py`), per-class mask+pattern optimization + MAD anomaly-index outlier test | Never told the trigger pattern in advance; verified to correctly flag the true backdoored class and produce zero false positives on the clean fixture pair (`test_neural_cleanse_discovers_the_hidden_backdoor_class`). Requires WHITE_BOX access AND a model whose ONNX graph can be bridged into a differentiable framework (`onnx_torch_bridge.py`) — currently only this system's own detector-family graph; other architectures report `UNAVAILABLE` with a reason, verified against the real third-party YOLOX model |
 | PyTorch/TorchScript ingestion | SUPPORTED | Real `torch.jit.load`/`torch.load` (safe `weights_only=True` attempted first) | Validated end-to-end against a real scripted `torch.nn.Module` (TorchScript) and a real state_dict checkpoint (PyTorch) — `test_torchscript_model_ingestion_end_to_end` / `test_pytorch_state_dict_checkpoint_ingestion_end_to_end`. ONNX still has the deepest coverage (backdoor/parameter/behavioural tests) |
 
 ## Inference provenance & output integrity (2.2.3)
@@ -49,6 +49,14 @@ The signing key is persisted to disk (`keys/provenance_signing_key.pem`) so prev
 signatures remain independently verifiable across service restarts. Scenario E
 (`backend/scenarios/scenario_replay_audit.py`) exercises both replay and reordering as a runnable,
 demo-clickable scenario, not only a pytest assertion.
+
+**Key rotation** (`backend/tools/rotate_keys.py`, `backend/provenance/key_registry.py`): both
+signing roles (provenance, audit) can be rotated to a fresh Ed25519 keypair without invalidating
+any signature issued before the rotation — every public key ever used is tracked in a key
+registry, and verification checks the current key first, then every retired key for that role.
+Verified with a test that rotates the audit ledger's signing key *mid-stream* (one entry signed
+before rotation, one after) and confirms the whole chain still verifies
+(`test_audit_ledger_stays_valid_across_a_mid_stream_key_rotation`).
 
 ## Distribution shift / anomaly assessment (2.2.4)
 
@@ -98,6 +106,37 @@ report's `limitations` field, not silently substituted).
 - System operates in a strictly air-gapped, offline environment with no external network access.
 - Reference baseline fingerprints and declared test batteries are supplied and stored locally by the operator.
 - Ingested datasets adhere to valid COCO or YOLO annotation specifications.
+
+## Real-data validation (not just synthetic fixtures)
+
+`tests/test_real_world_validation.py` runs the duplicate/OOD/distribution-shift
+detectors and the full inference pipeline against **real, third-party data**:
+40 genuine COCO 2017 photographs (official CDN, CC BY 4.0) and a real,
+official YOLOX-Nano ONNX checkpoint (Megvii, Apache-2.0) — see
+`real_validation/PROVENANCE.md` for exact sources, licenses, and SHA-256.
+This is in addition to, not instead of, the synthetic-fixture test suite.
+
+This validation pass found and fixed one real calibration bug that no
+synthetic-fixture test had surfaced: when no reference image-quality
+baseline was explicitly declared, `DistributionShiftDetector` silently
+reported `blur_shift = 0.0` regardless of actual measured blur difference,
+instead of computing an empirical baseline from the real reference sample
+images already available via `reference_samples_metadata`. Fixed in
+`backend/drift/distribution_shift.py`.
+
+A second real-model adapter was added to support this: `InferenceEngine`
+now auto-detects and correctly decodes YOLOX-family multi-stride
+anchor-based output (verified against Megvii's own upstream decode
+source), in addition to this system's original single-stride grid format
+— genuine multi-architecture support, not a hardcoded special case.
+
+The distribution-shift embedding extractor (`backend/drift/embedding_extractor.py`)
+is now a genuinely SimCLR-contrastively-pretrained CNN
+(`backend/drift/train_embedding_extractor.py`), not just a fixed-random-seed
+one -- trained offline, once, on this repo's own real + synthetic images
+(no external pretrained weights), with the trained checkpoint committed to
+`real_validation/models/embedding_extractor_trained.onnx` so no training
+occurs at runtime.
 
 ## Known limitations (explicit, not implied)
 

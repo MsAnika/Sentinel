@@ -33,7 +33,7 @@ class TamperEvidentAuditLedger:
         self.entries: List[AuditLogEntry] = []
         self._last_hash = hashlib.sha256(genesis_digest.encode("utf-8")).hexdigest()
         self._persist_path = persist_path
-        self.signer = signer or ProvenanceSigner(key_path=DEFAULT_AUDIT_KEY_PATH)
+        self.signer = signer or ProvenanceSigner(key_path=DEFAULT_AUDIT_KEY_PATH, role="audit")
         if persist_path and os.path.exists(persist_path):
             self._load_from_disk(persist_path)
 

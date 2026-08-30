@@ -114,6 +114,43 @@ def test_health_endpoint_never_requires_api_key(monkeypatch):
     assert res.status_code == 200
 
 
+def test_rbac_analyst_key_cannot_delete_uploads_admin_key_can(monkeypatch):
+    """RBAC hardening: an analyst-role key can read but not delete raw
+    uploads; only an admin-role key can. Distinct, enforced roles -- not
+    just a single shared secret."""
+    from backend.api.auth import API_KEYS_ENV_VAR
+
+    monkeypatch.delenv(API_KEY_ENV_VAR, raising=False)
+    monkeypatch.setenv(API_KEYS_ENV_VAR, "test-analyst-key:analyst,test-admin-key:admin")
+
+    list_res = client.get("/api/uploads/", headers={"X-API-Key": "test-analyst-key"})
+    assert list_res.status_code == 200
+
+    analyst_delete = client.delete("/api/uploads/bm90YV9yZWFsX2lk", headers={"X-API-Key": "test-analyst-key"})
+    assert analyst_delete.status_code == 403
+
+    admin_delete = client.delete("/api/uploads/bm90YV9yZWFsX2lk", headers={"X-API-Key": "test-admin-key"})
+    assert admin_delete.status_code == 404  # correctly authorized, just doesn't exist
+
+    no_key_res = client.get("/api/uploads/")
+    assert no_key_res.status_code == 401
+
+
+def test_rbac_legacy_single_key_still_works_as_admin(monkeypatch):
+    """Backward compatibility: VIGILCV_API_KEY (singular, pre-RBAC) must
+    still work exactly as before -- treated as one admin-role key."""
+    from backend.api.auth import API_KEYS_ENV_VAR
+
+    monkeypatch.delenv(API_KEYS_ENV_VAR, raising=False)
+    monkeypatch.setenv(API_KEY_ENV_VAR, "legacy-secret")
+
+    res = client.get("/api/uploads/", headers={"X-API-Key": "legacy-secret"})
+    assert res.status_code == 200
+
+    delete_res = client.delete("/api/uploads/bm90YV9yZWFsX2lk", headers={"X-API-Key": "legacy-secret"})
+    assert delete_res.status_code == 404  # admin role granted, just doesn't exist
+
+
 def test_hash_only_access_capabilities_via_api():
     res = client.post("/api/model/access-capabilities?access_level=HASH_ONLY")
     assert res.status_code == 200

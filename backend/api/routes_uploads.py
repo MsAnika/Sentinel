@@ -3,10 +3,11 @@ import binascii
 import os
 import shutil
 from typing import Any, Dict, List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from ..audit.audit_log import shared_ledger
 from ..ingestion.upload_store import UPLOAD_ROOT
 from ..persistence import db
+from .auth import ROLE_ADMIN, require_role
 
 router = APIRouter(prefix="/api/uploads", tags=["Raw Upload Management"])
 
@@ -135,7 +136,7 @@ async def list_uploads():
     }
 
 
-@router.delete("/{upload_id}")
+@router.delete("/{upload_id}", dependencies=[Depends(require_role(ROLE_ADMIN))])
 async def delete_upload(upload_id: str):
     """Permanently deletes one raw-upload entry (a single uploaded file,
     or an entire extracted dataset directory). Refuses -- 409, not a

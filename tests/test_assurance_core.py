@@ -199,6 +199,57 @@ def test_pytorch_state_dict_checkpoint_ingestion_end_to_end():
     )
 
 
+def test_neural_cleanse_discovers_the_hidden_backdoor_class():
+    """The one previously NOT_SUPPORTED capability: blind, gradient-based
+    unknown-trigger reconstruction. Unlike backdoor_detector.py's existing
+    test, this is never told the checkerboard trigger exists -- it must
+    independently discover that 'military_vehicle' is the hijacked class
+    by finding it needs an anomalously small reconstructed perturbation,
+    AND that the clean model produces zero false-positive flags."""
+    from backend.model_assurance.trigger_reconstruction import run_trigger_reconstruction
+    from backend.scenarios.asset_generator import AssetGenerator
+    import glob
+
+    assets = AssetGenerator.ensure_test_assets("test_assets")
+    class_names = ["military_vehicle", "infantry", "radar_station", "aircraft", "naval_vessel"]
+    clean_images = sorted(glob.glob("test_assets/images/*.jpg"))[:10]
+
+    clean_result, clean_findings = run_trigger_reconstruction(
+        "clean_model", assets["clean_model_path"], clean_images, class_names
+    )
+    assert clean_result["status"] == "COMPLETED"
+    assert clean_result["backdoor_suspected"] is False
+    assert len(clean_findings) == 0
+
+    backdoored_result, backdoored_findings = run_trigger_reconstruction(
+        "backdoored_model", assets["backdoored_model_path"], clean_images, class_names
+    )
+    assert backdoored_result["status"] == "COMPLETED"
+    assert backdoored_result["backdoor_suspected"] is True
+    assert any(f["class_name"] == "military_vehicle" for f in backdoored_result["flagged_classes"])
+    assert len(backdoored_findings) >= 1
+    assert backdoored_findings[0].finding_type == "unknown_trigger_reconstruction"
+
+
+def test_neural_cleanse_reports_unavailable_for_unbridgeable_architecture():
+    """A model this system cannot bridge into a differentiable framework
+    (e.g. the real third-party YOLOX model) must report UNAVAILABLE with
+    a reason, not raise or silently return an empty/fabricated result."""
+    import os
+    from backend.model_assurance.trigger_reconstruction import run_trigger_reconstruction
+
+    yolox_path = "real_validation/models/yolox_nano.onnx"
+    if not os.path.exists(yolox_path):
+        pytest.skip("real_validation/ fixtures not present")
+
+    result, findings = run_trigger_reconstruction(
+        "yolox_model", yolox_path, ["real_validation/images/000000000009.jpg"], ["person"]
+    )
+    assert result["status"] == "UNAVAILABLE"
+    assert "reason" in result
+    assert findings == []
+
+
 def test_model_fingerprint_raises_on_missing_file():
     fingerprinter = ModelFingerprinter()
     with pytest.raises(FileNotFoundError):
@@ -540,6 +591,51 @@ def test_offline_cli_verifies_ledger_and_detects_tamper(tmp_path):
     (tmp_path / "cli_ledger.jsonl").write_text("\n".join(lines) + "\n")
 
     assert verify_audit_ledger(ledger_path) is False
+
+
+def test_key_rotation_preserves_verifiability_of_prior_signatures(tmp_path):
+    """FR-15 hardening: rotating a signing key must never invalidate
+    signatures issued before the rotation, and the audit ledger must stay
+    fully valid even when the signing key rotates mid-stream."""
+    from backend.provenance.signing import ProvenanceSigner
+
+    key_path = str(tmp_path / "prov.pem")
+    registry_path = str(tmp_path / "registry.json")
+
+    signer = ProvenanceSigner(key_path=key_path, role="provenance", registry_path=registry_path)
+    old_sig = signer.sign_provenance_hash("hash_before_rotation")
+    old_fp = signer.public_key_hex
+
+    new_fp = signer.rotate()
+    assert new_fp != old_fp
+
+    new_sig = signer.sign_provenance_hash("hash_after_rotation")
+
+    # A fresh instance (simulating a new process) must independently reach
+    # the same conclusions using only what's on disk.
+    fresh = ProvenanceSigner(key_path=key_path, role="provenance", registry_path=registry_path)
+    assert fresh.public_key_hex == new_fp
+    assert fresh.verify_signature("hash_before_rotation", old_sig) is True
+    assert fresh.verify_signature("hash_after_rotation", new_sig) is True
+    assert fresh.verify_signature("tampered_hash", old_sig) is False
+
+
+def test_audit_ledger_stays_valid_across_a_mid_stream_key_rotation(tmp_path):
+    ledger_path = str(tmp_path / "ledger.jsonl")
+    audit_key_path = str(tmp_path / "audit.pem")
+    registry_path = str(tmp_path / "registry.json")
+
+    from backend.provenance.signing import ProvenanceSigner
+    signer = ProvenanceSigner(key_path=audit_key_path, role="audit", registry_path=registry_path)
+    ledger = TamperEvidentAuditLedger(persist_path=ledger_path, signer=signer)
+
+    ledger.record_event("BEFORE_ROTATION", "asset1", "OP", "digest1", "OK")
+    signer.rotate()
+    ledger.record_event("AFTER_ROTATION", "asset2", "OP", "digest2", "OK")
+
+    is_valid, errors = ledger.verify_ledger_integrity()
+    assert is_valid is True
+    assert errors == []
 
 
 def test_html_and_pdf_report_export():

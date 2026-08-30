@@ -6,22 +6,31 @@ from PIL import Image
 
 EMBED_DIM = 32
 INPUT_SIZE = 64
-DEFAULT_EMBEDDING_MODEL_PATH = "test_assets/models/embedding_extractor.onnx"
+
+# The real, SimCLR-contrastively-pretrained checkpoint (see
+# backend/drift/train_embedding_extractor.py) -- checked into the repo
+# under real_validation/ (not test_assets/, which is disposable and
+# regenerated on every run) precisely so this trained result persists.
+TRAINED_EMBEDDING_MODEL_PATH = "real_validation/models/embedding_extractor_trained.onnx"
+# Fallback used only if the trained checkpoint above is missing (e.g. a
+# fresh checkout that hasn't fetched real_validation/ yet): a
+# deterministic fixed-random-seed CNN, arbitrary but reproducible.
+FALLBACK_EMBEDDING_MODEL_PATH = "test_assets/models/embedding_extractor.onnx"
+DEFAULT_EMBEDDING_MODEL_PATH = TRAINED_EMBEDDING_MODEL_PATH
 
 
-def build_embedding_extractor_onnx(output_path: str = DEFAULT_EMBEDDING_MODEL_PATH) -> str:
+def build_embedding_extractor_onnx(output_path: str = FALLBACK_EMBEDDING_MODEL_PATH) -> str:
     """Builds a small, real, deterministic (fixed-seed) CNN feature
     extractor and saves it as ONNX: three stride-2 3x3 convs down to an
     8x8 feature map, global-average-pooled to a fixed EMBED_DIM vector.
 
-    This is a genuine embedding-space comparison mechanism (a real forward
-    pass through learned convolutional filters, executed via onnxruntime)
-    rather than raw pixel/color-moment statistics -- while remaining fully
-    self-contained and offline: no pretrained weights are downloaded or
-    bundled. The fixed random seed makes the "learned" filters arbitrary
-    but reproducible frequency/edge/color detectors, which is sufficient
-    to separate visually distinct image populations (the actual claim
-    this module makes -- see the docstring on DistributionShiftDetector).
+    This is the fallback generator, used only when the real
+    contrastively-trained checkpoint (TRAINED_EMBEDDING_MODEL_PATH) is
+    unavailable. It's still a genuine embedding-space comparison mechanism
+    (a real forward pass through real convolutional filters, executed via
+    onnxruntime) rather than raw pixel/color-moment statistics -- the
+    fixed random seed just means these particular filters were never
+    trained on anything, only reproducibly initialised.
     """
     import onnx
     from onnx import helper, TensorProto
@@ -83,10 +92,19 @@ class EmbeddingExtractor:
     """
 
     def __init__(self, model_path: Optional[str] = None):
-        self.model_path = model_path or DEFAULT_EMBEDDING_MODEL_PATH
+        self.model_path = model_path
+
+    def _resolve_model_path(self) -> str:
+        if self.model_path:
+            return self.model_path
+        if os.path.exists(TRAINED_EMBEDDING_MODEL_PATH):
+            return TRAINED_EMBEDDING_MODEL_PATH
+        return build_embedding_extractor_onnx(FALLBACK_EMBEDDING_MODEL_PATH)
 
     def _session(self):
-        resolved = build_embedding_extractor_onnx(self.model_path)
+        resolved = self._resolve_model_path()
+        if not os.path.exists(resolved):
+            resolved = build_embedding_extractor_onnx(resolved)
         mtime = os.path.getmtime(resolved)
         return _load_session(resolved, mtime)
 

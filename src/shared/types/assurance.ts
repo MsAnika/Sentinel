@@ -172,6 +172,29 @@ export interface AssuranceReport {
   audit_chain_valid: boolean
 }
 
+export interface TrendTimelinePoint {
+  report_id: string
+  generated_at: string
+  overall_risk_score: number
+  overall_disposition: RecommendedDisposition
+}
+
+export interface ContributorTrend {
+  contributor_id: string
+  appearances: number
+  risk_score_sum: number
+  max_risk_level: FindingSeverity
+  quarantine_count: number
+  avg_risk_score: number
+}
+
+export interface TrendSummary {
+  total_reports: number
+  disposition_counts: Record<string, number>
+  timeline: TrendTimelinePoint[]
+  contributor_trends: ContributorTrend[]
+}
+
 export interface ScenarioRunResult {
   scenario_id: string
   title: string
