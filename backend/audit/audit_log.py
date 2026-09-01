@@ -115,7 +115,9 @@ class TamperEvidentAuditLedger:
                     f"Unsigned entry at sequence #{entry.sequence_id}: no Ed25519 signature present, "
                     "integrity of this entry cannot be cryptographically confirmed independent of the hash chain."
                 )
-            elif not self.signer.verify_signature(entry.entry_hash, entry.signature):
+            elif not self.signer.verify_signature(
+                entry.entry_hash, entry.signature, record_timestamp=entry.timestamp
+            ):
                 errors.append(
                     f"Invalid signature at sequence #{entry.sequence_id}: Ed25519 signature does not "
                     "verify against the stored entry_hash (SIGNATURE FORGERY OR CORRUPTION DETECTED)."

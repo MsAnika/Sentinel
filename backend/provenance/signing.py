@@ -79,7 +79,26 @@ class ProvenanceSigner:
         sig_bytes = self._private_key.sign(provenance_hash.encode("utf-8"))
         return base64.b64encode(sig_bytes).decode("utf-8")
 
-    def verify_signature(self, provenance_hash: str, signature_b64: str) -> bool:
+    def verify_signature(
+        self,
+        provenance_hash: str,
+        signature_b64: str,
+        record_timestamp: Optional[str] = None,
+    ) -> bool:
+        """`record_timestamp` (the claimed creation time of the thing being
+        verified, in the same "%Y-%m-%dT%H:%M:%SZ" format used throughout
+        this codebase -- fixed-width, so lexicographic comparison equals
+        chronological order) lets this method enforce that a RETIRED key
+        can only validate records that were plausibly signed while it was
+        still active. Without this, rotating a key because its private key
+        was compromised would not actually revoke it: the attacker could
+        still sign brand-new records with the leaked key and have them
+        verify via the "fall back to every historical key" path below,
+        which defeats the entire purpose of rotation. Callers that don't
+        have a trustworthy timestamp to hand (record_timestamp=None) get
+        the old, unrestricted behavior -- but every real caller in this
+        codebase (InferenceRecord.timestamp, AuditLogEntry.timestamp) does
+        have one and must pass it."""
         try:
             sig_bytes = base64.b64decode(signature_b64.encode("utf-8"))
         except Exception:
@@ -87,6 +106,7 @@ class ProvenanceSigner:
 
         # Current key first (the common case, and avoids depending on the
         # registry file existing at all for a signer that's never rotated).
+        # The currently-active key has no retirement window to check.
         try:
             self._public_key.verify(sig_bytes, provenance_hash.encode("utf-8"))
             return True
@@ -94,10 +114,22 @@ class ProvenanceSigner:
             pass
 
         # Fall back to every historical key for this role -- required so a
-        # record signed before a rotation still verifies afterward.
-        for hex_key in self._registry.all_public_keys_for_role(self._role):
+        # record signed before a rotation still verifies afterward. Each
+        # retired key is only trusted for the window it was actually
+        # active: [created_at, retired_at). A record timestamped after a
+        # key's retirement cannot have been legitimately signed with it,
+        # even if the attacker still holds that private key.
+        for entry in self._registry.history_for_role(self._role):
+            hex_key = entry["public_key_hex"]
             if hex_key == self.public_key_hex:
                 continue
+            if record_timestamp is not None:
+                created_at = entry.get("created_at")
+                retired_at = entry.get("retired_at")
+                if created_at is not None and record_timestamp < created_at:
+                    continue
+                if retired_at is not None and record_timestamp > retired_at:
+                    continue
             try:
                 candidate = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(hex_key))
                 candidate.verify(sig_bytes, provenance_hash.encode("utf-8"))

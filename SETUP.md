@@ -98,6 +98,13 @@ data is still there:
 
 Full interactive API docs are available at `http://localhost:8000/docs` once the backend is running.
 
+**Path sandboxing**: any endpoint that takes a "server-local path" (`model_path`, `coco_path`,
+`image_path`, etc.) only accepts paths that resolve inside `uploads/`, `test_assets/`, or
+`real_validation/` (`backend/api/path_safety.py`). Upload the file via the corresponding
+`/upload` endpoint first and pass back the `saved_path` it returns — a path outside these
+directories is refused with 403, even if it exists and is readable, to prevent using these
+endpoints to read arbitrary files on the host.
+
 ## 6. Reproducing the test scenarios manually
 
 ```python

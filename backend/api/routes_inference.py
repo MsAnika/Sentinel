@@ -9,6 +9,7 @@ from ..ingestion.upload_store import save_upload
 from ..persistence import db
 from ..provenance.verification import ProvenanceVerifier
 from ..schemas import BoundingBox, InferenceConfig, InferenceRecord, PreprocessingConfig
+from .path_safety import resolve_safe_path
 
 router = APIRouter(prefix="/api/inference", tags=["Inference & Provenance"])
 engine = InferenceEngine()
@@ -35,6 +36,8 @@ async def execute_inference(
     onnxruntime and cryptographically binds the real predictions -- the
     model digest used in the provenance record is computed from the model
     file itself, not accepted as a client-supplied claim."""
+    image_path = resolve_safe_path(image_path, "image_path")
+    model_path = resolve_safe_path(model_path, "model_path")
     if not os.path.exists(image_path):
         raise HTTPException(status_code=404, detail=f"Image not found: {image_path}")
     if not os.path.exists(model_path):

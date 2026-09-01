@@ -36,6 +36,8 @@ class ProvenanceVerifier:
         preproc_hash = self.hasher.hash_preprocessing_config(preproc)
         cfg_hash = self.hasher.hash_inference_config(config)
         out_hash = self.hasher.hash_predictions(predictions)
+        resolved_metadata = image_metadata or {"path": image_path}
+        metadata_hash = self.hasher.hash_metadata(resolved_metadata)
 
         prov_hash = self.hasher.compute_provenance_hash(
             image_hash=img_hash,
@@ -46,6 +48,8 @@ class ProvenanceVerifier:
             timestamp=timestamp,
             nonce=nonce,
             sequence_number=seq_num,
+            model_id=model_id,
+            metadata_hash=metadata_hash,
         )
 
         signature = self.signer.sign_provenance_hash(prov_hash)
@@ -68,7 +72,7 @@ class ProvenanceVerifier:
             provenance_hash=prov_hash,
             signature=signature,
             predictions=predictions,
-            image_metadata=image_metadata or {"path": image_path},
+            image_metadata=resolved_metadata,
             model_id=model_id,
             is_valid=True,
             tampering_detected=False,
@@ -98,6 +102,8 @@ class ProvenanceVerifier:
             timestamp=record.timestamp,
             nonce=record.nonce,
             sequence_number=record.sequence_number,
+            model_id=record.model_id,
+            metadata_hash=self.hasher.hash_metadata(record.image_metadata),
         )
 
         if recalculated_prov_hash != record.provenance_hash:
@@ -105,7 +111,9 @@ class ProvenanceVerifier:
                 f"Provenance Hash mismatch: claimed {record.provenance_hash[:12]}... vs recalculated {recalculated_prov_hash[:12]}... (ALTERATION DETECTED)"
             )
 
-        sig_valid = self.signer.verify_signature(record.provenance_hash, record.signature)
+        sig_valid = self.signer.verify_signature(
+            record.provenance_hash, record.signature, record_timestamp=record.timestamp
+        )
         if not sig_valid:
             errors.append("Digital signature verification failed for this provenance record.")
 

@@ -68,8 +68,17 @@ def verify_audit_ledger(ledger_path: str) -> bool:
     return is_valid
 
 
-def verify_single_record(record: InferenceRecord, check_replay: bool = False) -> bool:
-    verifier = ProvenanceVerifier()
+def verify_single_record(
+    record: InferenceRecord, check_replay: bool = False, verifier: "ProvenanceVerifier" = None
+) -> bool:
+    """`verifier` defaults to a fresh instance when omitted (a one-off
+    single-record check has no replay/reorder history to compare against
+    anyway). Callers checking MULTIPLE records from the same stream
+    (`verify_all_db_records`) must pass one shared verifier instance
+    across all of them -- replay/reorder detection needs seen_nonces and
+    last_verified_sequence to accumulate across records, not reset to
+    empty on every call."""
+    verifier = verifier or ProvenanceVerifier()
     is_valid, errors = verifier.verify_record(record, check_replay=check_replay)
     status = "VALID" if is_valid else "TAMPERING / INTEGRITY FAILURE DETECTED"
     print(f"record_id:        {record.record_id}")
@@ -91,23 +100,38 @@ def verify_record_file(path: str) -> bool:
 
 
 def verify_all_db_records(db_path: str) -> bool:
-    import os
-    os.environ.setdefault("VIGILCV_DB_PATH", db_path)
     from ..persistence import db as db_module
 
     _print_header(f"ALL INFERENCE RECORDS IN LOCAL DB: {db_path}")
-    rows = db_module.list_inference_records(limit=100000)
+    # Pass db_path explicitly rather than relying on the VIGILCV_DB_PATH
+    # env var: db_module.DB_PATH is a module-level constant resolved once
+    # at import time, so setting the env var here has no effect once the
+    # module has already been imported elsewhere in the process (e.g. by
+    # the FastAPI app in the same test session).
+    rows = db_module.list_inference_records(limit=100000, db_path=db_path)
     if not rows:
         print("No inference records found in the local evidence store.")
         return True
 
+    records = [InferenceRecord.model_validate(json.loads(row["record_json"])) for row in rows]
+    # Verify in sequence order (not DB insertion/query order, which is
+    # created_at DESC) so replay/reordering detection below is checking
+    # the actual claimed stream order, not an arbitrary one.
+    records.sort(key=lambda r: r.sequence_number)
+
+    # One shared verifier for the whole batch: `seen_nonces` and
+    # `last_verified_sequence` must accumulate across every record in this
+    # stream for replay/reordering to be detectable at all. A fresh
+    # verifier per record (the previous behavior) reset that state to
+    # empty every time, so a replayed or reordered record among these
+    # would have been silently reported VALID.
+    verifier = ProvenanceVerifier()
     all_valid = True
-    for row in rows:
-        record = InferenceRecord.model_validate(json.loads(row["record_json"]))
-        ok = verify_single_record(record)
+    for record in records:
+        ok = verify_single_record(record, check_replay=True, verifier=verifier)
         print("-" * 72)
         all_valid = all_valid and ok
-    print(f"\n{len(rows)} record(s) checked. Overall: {'ALL VALID' if all_valid else 'ONE OR MORE FAILURES'}")
+    print(f"\n{len(records)} record(s) checked. Overall: {'ALL VALID' if all_valid else 'ONE OR MORE FAILURES'}")
     return all_valid
 
 
@@ -138,11 +162,9 @@ def main(argv: List[str] = None) -> int:
             ok = verify_record_file(args.record)
             return 0 if ok else 1
         if args.record_id:
-            import os
-            os.environ.setdefault("VIGILCV_DB_PATH", args.db)
             from ..persistence import db as db_module
 
-            row = db_module.get_inference_record(args.record_id)
+            row = db_module.get_inference_record(args.record_id, db_path=args.db)
             if not row:
                 print(f"No stored inference record for record_id={args.record_id}", file=sys.stderr)
                 return 2

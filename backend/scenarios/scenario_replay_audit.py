@@ -84,10 +84,12 @@ class ScenarioReplayAuditRunner:
         preproc_hash = vrf.hasher.hash_preprocessing_config(PreprocessingConfig())
         cfg_hash = vrf.hasher.hash_inference_config(InferenceConfig())
         out_hash = vrf.hasher.hash_predictions(preds_1)
+        stale_image_metadata = {"path": stale_image_path, "note": "deliberately out-of-order sequence for FR-10 demo"}
+        stale_metadata_hash = vrf.hasher.hash_metadata(stale_image_metadata)
         stale_prov_hash = vrf.hasher.compute_provenance_hash(
             image_hash=img_hash, model_digest=fp.sha256_digest, preprocessing_hash=preproc_hash,
             config_hash=cfg_hash, output_hash=out_hash, timestamp=stale_timestamp, nonce=stale_nonce,
-            sequence_number=stale_seq,
+            sequence_number=stale_seq, model_id=fp.model_id, metadata_hash=stale_metadata_hash,
         )
         stale_record = InferenceRecord(
             record_id=f"rec_{stale_nonce[:12]}",
@@ -102,7 +104,7 @@ class ScenarioReplayAuditRunner:
             provenance_hash=stale_prov_hash,
             signature=vrf.signer.sign_provenance_hash(stale_prov_hash),
             predictions=preds_1,
-            image_metadata={"path": stale_image_path, "note": "deliberately out-of-order sequence for FR-10 demo"},
+            image_metadata=stale_image_metadata,
             model_id=fp.model_id,
         )
         reorder_valid, reorder_errors = vrf.verify_record(stale_record, check_replay=True)

@@ -464,7 +464,8 @@ def test_provenance_reordering_detection_independent_of_replay():
         prov_hash = verifier.hasher.compute_provenance_hash(
             image_hash=img_hash, model_digest="digest_a", preprocessing_hash=preproc_hash,
             config_hash=cfg_hash, output_hash=out_hash, timestamp=timestamp, nonce=nonce,
-            sequence_number=sequence_number,
+            sequence_number=sequence_number, model_id="yolo_v8_recon",
+            metadata_hash=verifier.hasher.hash_metadata({}),
         )
         return InferenceRecord(
             record_id=f"rec_{nonce}", timestamp=timestamp, nonce=nonce, sequence_number=sequence_number,

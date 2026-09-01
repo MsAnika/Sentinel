@@ -41,7 +41,7 @@ risk score and disposition, not just isolated per-sample flags.
 
 | Attack class | Status | Validation method |
 |---|---|---|
-| `inference_tampering` | SUPPORTED | SHA-256 hash DAG over image + model digest + preprocessing + config + output, Ed25519 digital signature |
+| `inference_tampering` | SUPPORTED | SHA-256 hash DAG over image + model digest + model identifier + preprocessing + config + output + image metadata, Ed25519 digital signature |
 | `replay_detection` | SUPPORTED | Nonces + monotonic sequence numbers + timestamps |
 | `reordering_detection` | SUPPORTED | Per-verifier-stream monotonic sequence-number tracking, independent of nonce reuse — a record whose `sequence_number` does not exceed the last verified sequence is rejected even with a fresh nonce and a valid signature |
 
@@ -57,6 +57,13 @@ registry, and verification checks the current key first, then every retired key 
 Verified with a test that rotates the audit ledger's signing key *mid-stream* (one entry signed
 before rotation, one after) and confirms the whole chain still verifies
 (`test_audit_ledger_stays_valid_across_a_mid_stream_key_rotation`).
+
+A retired key is only trusted for the window it was actually active
+(`[created_at, retired_at)`, checked against the record's own timestamp) — rotating a key because
+its private key was compromised actually revokes it: an attacker who still holds the retired
+private key cannot use it to sign a *new* record after rotation, because the new record's
+timestamp falls outside that key's validity window. Verified by
+`test_rotated_key_can_no_longer_sign_new_valid_records` (`tests/test_security_fixes.py`).
 
 ## Distribution shift / anomaly assessment (2.2.4)
 

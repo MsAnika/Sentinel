@@ -33,8 +33,19 @@ class ProvenanceHasher:
     @staticmethod
     def hash_predictions(predictions: List[BoundingBox]) -> str:
         pred_dicts = [p.model_dump() for p in predictions]
-        pred_dicts.sort(key=lambda x: (x["class_name"], x["confidence"]))
+        # Sort on every field, not just (class_name, confidence): two
+        # predictions tied on those two but differing in box coordinates
+        # would otherwise retain their original (Python sort is stable)
+        # relative order, making the canonicalization order-dependent for
+        # that tie case. Sorting on the box too makes the ordering fully
+        # determined by content, independent of input order.
+        pred_dicts.sort(key=lambda x: (x["class_name"], x["confidence"], x["box"]))
         canonical_str = json.dumps(pred_dicts, sort_keys=True)
+        return hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def hash_metadata(metadata: Dict[str, Any]) -> str:
+        canonical_str = json.dumps(metadata or {}, sort_keys=True, default=str)
         return hashlib.sha256(canonical_str.encode("utf-8")).hexdigest()
 
     @staticmethod
@@ -47,13 +58,27 @@ class ProvenanceHasher:
         timestamp: str,
         nonce: str,
         sequence_number: int,
+        model_id: str = "",
+        metadata_hash: str = "",
     ) -> str:
+        """Binds every field the system claims an inference record's
+        cryptographic identity covers. `model_id` and `metadata_hash`
+        (a hash of `image_metadata`) were historically omitted here, which
+        meant a validly-signed record's declared model identity or image
+        provenance metadata could be altered post-issuance without
+        invalidating the hash or signature -- silently breaking the "input
+        image, model identifier ... and resulting output" binding this
+        system exists to provide. `model_id`/`metadata_hash` default to ""
+        only so old call sites that haven't been updated don't crash; real
+        callers must always pass both."""
         combined = (
             f"{image_hash}:"
             f"{model_digest}:"
+            f"{model_id}:"
             f"{preprocessing_hash}:"
             f"{config_hash}:"
             f"{output_hash}:"
+            f"{metadata_hash}:"
             f"{timestamp}:"
             f"{nonce}:"
             f"{sequence_number}"

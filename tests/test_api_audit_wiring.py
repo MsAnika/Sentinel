@@ -55,9 +55,21 @@ def test_parameter_analysis_respects_declared_black_box_access(tmp_path):
     model_path = tmp_path / "audit_wiring_model_3.onnx"
     AssetGenerator.generate_detector_onnx(str(model_path), is_backdoored=False)
 
+    # /api/model/parameter-analysis takes a server-local path, which must
+    # resolve inside the sandboxed upload/fixture directories (path_safety.py)
+    # -- it does not accept an arbitrary pytest tmp_path. Upload the file
+    # first, exactly as a real caller would, and use the path the server
+    # itself staged it under.
+    upload_res = client.post(
+        "/api/model/upload",
+        files={"file": ("audit_wiring_model_3.onnx", _read_bytes(str(model_path)), "application/octet-stream")},
+    )
+    assert upload_res.status_code == 200
+    saved_path = upload_res.json()["metadata"]["saved_path"]
+
     res = client.post(
         "/api/model/parameter-analysis",
-        json={"model_path": str(model_path), "access_level": "BLACK_BOX"},
+        json={"model_path": saved_path, "access_level": "BLACK_BOX"},
     )
     assert res.status_code == 200
     stats = res.json()["stats"]

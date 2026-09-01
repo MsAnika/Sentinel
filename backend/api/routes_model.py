@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from ..audit.audit_log import shared_ledger
@@ -13,8 +14,16 @@ from ..model_assurance.trigger_reconstruction import run_trigger_reconstruction
 from ..persistence import db
 from ..schemas import InferenceConfig, ModelAccessLevel, ModelFingerprint
 from ..scenarios.probe_builder import build_reference_battery
+from .path_safety import resolve_safe_path
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/model", tags=["Model Assurance"])
+# Matches exactly the extensions ModelLoader knows how to parse
+# (model_loader.py). Rejecting anything else at upload time -- rather than
+# accepting any extension and only discovering it's unsupported later at
+# parse time -- keeps arbitrary file types (scripts, executables) from
+# being staged on disk under a misleading .onnx-looking name at all.
+ALLOWED_MODEL_EXTENSIONS = {".onnx", ".pt", ".pth", ".torchscript"}
 fingerprinter = ModelFingerprinter()
 behaviour_analyzer = BehaviourAnalyzer()
 backdoor_detector = BackdoorDetector()
@@ -30,6 +39,14 @@ async def upload_model(
     """Accepts a real uploaded ONNX/PyTorch/TorchScript model file, persists
     it, and returns a fingerprint derived from the file's actual bytes and
     (when parseable) its real graph/checkpoint metadata."""
+    import os
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_MODEL_EXTENSIONS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported model file extension '{ext}'. Accepted: {sorted(ALLOWED_MODEL_EXTENSIONS)}.",
+        )
+
     try:
         saved_path, size_bytes = await save_upload(file, "models")
     except ValueError as e:
@@ -38,7 +55,11 @@ async def upload_model(
     try:
         fp = fingerprinter.generate_fingerprint(saved_path, access_level=access_level)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Failed to inspect uploaded model: {e}")
+        logger.exception("Failed to inspect uploaded model '%s'", saved_path)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Failed to inspect uploaded model: {type(e).__name__} (see server logs for details).",
+        )
 
     fp.metadata["saved_path"] = saved_path
     fp.metadata["original_filename"] = file.filename
@@ -74,6 +95,7 @@ async def generate_model_fingerprint(
     model_path: str = Body(..., embed=True, description="Server-local path to a previously uploaded or staged model file."),
     access_level: ModelAccessLevel = Body(default=ModelAccessLevel.WHITE_BOX, embed=True),
 ):
+    model_path = resolve_safe_path(model_path, "model_path")
     try:
         fp = fingerprinter.generate_fingerprint(model_path, access_level=access_level)
     except FileNotFoundError as e:
@@ -137,6 +159,7 @@ async def run_parameter_analysis(
     fallback that fabricates weight tensors, and no fallback that silently
     performs white-box analysis when the caller declared black-box access."""
     import os
+    model_path = resolve_safe_path(model_path, "model_path")
     if not os.path.exists(model_path):
         raise HTTPException(status_code=404, detail=f"Model file not found at: {model_path}")
 
@@ -158,7 +181,11 @@ async def run_parameter_analysis(
         onnx_model = onnx.load(model_path)
         onnx.checker.check_model(onnx_model)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Failed to parse ONNX model: {e}")
+        logger.exception("Failed to parse ONNX model '%s'", model_path)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Failed to parse ONNX model: {type(e).__name__} (see server logs for details).",
+        )
 
     weight_tensors = param_analyzer.extract_onnx_weight_tensors(onnx_model)
     stats, findings = param_analyzer.analyze_weights_and_activations(resolved_id, ModelAccessLevel.WHITE_BOX, weight_tensors)
@@ -183,6 +210,9 @@ async def run_behaviour_battery(
     candidate model, and their real predictions are compared. There is no
     scripted-probe fallback."""
     import os
+    reference_model_path = resolve_safe_path(reference_model_path, "reference_model_path")
+    candidate_model_path = resolve_safe_path(candidate_model_path, "candidate_model_path")
+    probe_image_paths = [resolve_safe_path(p, "probe_image_paths") for p in probe_image_paths]
     for p in (reference_model_path, candidate_model_path, *probe_image_paths):
         if not os.path.exists(p):
             raise HTTPException(status_code=404, detail=f"File not found: {p}")
@@ -223,6 +253,8 @@ async def run_unknown_trigger_reconstruction(
     framework; reports UNAVAILABLE with a reason otherwise, never a
     silent skip."""
     import os
+    model_path = resolve_safe_path(model_path, "model_path")
+    clean_image_paths = [resolve_safe_path(p, "clean_image_paths") for p in clean_image_paths]
     if not os.path.exists(model_path):
         raise HTTPException(status_code=404, detail=f"Model file not found: {model_path}")
 
