@@ -10,7 +10,13 @@ class OODDetector:
     def __init__(self, z_score_threshold: float = 2.8):
         self.z_score_threshold = z_score_threshold
 
-    def extract_color_moment_features(self, image_path: str) -> np.ndarray:
+    def extract_color_moment_features(self, image_path: str) -> Tuple[np.ndarray, bool]:
+        """Returns (features, computed_from_real_pixels). The fallback path
+        (image missing/unreadable) produces a deterministic-but-fabricated
+        feature vector purely so one bad file doesn't crash the whole
+        dataset scan -- it carries no real color-distribution signal, and
+        callers must track and surface `computed_from_real_pixels=False`
+        rather than silently folding it into genuine OOD evidence."""
         try:
             if os.path.exists(image_path):
                 with Image.open(image_path) as img:
@@ -18,13 +24,13 @@ class OODDetector:
                     arr = np.asarray(img_rgb, dtype=np.float32) / 255.0
                     mean = np.mean(arr, axis=(0, 1))
                     std = np.std(arr, axis=(0, 1))
-                    return np.concatenate([mean, std])
+                    return np.concatenate([mean, std]), True
         except Exception:
             pass
 
         seed = int.from_bytes(image_path.encode()[:4].ljust(4, b"\0"), "little")
         rng = np.random.RandomState(seed % 100000)
-        return rng.normal(0.5, 0.15, size=(6,))
+        return rng.normal(0.5, 0.15, size=(6,)), False
 
     def analyze(
         self,
@@ -33,12 +39,15 @@ class OODDetector:
         reference_features: Optional[np.ndarray] = None,
     ) -> Tuple[List[FindingSchema], Dict[str, Any]]:
         features_list = []
+        unreadable_samples: List[str] = []
         for sample in samples:
             meta = sample.metadata
             if "feature_vector" in meta and isinstance(meta["feature_vector"], list):
                 feat = np.array(meta["feature_vector"], dtype=np.float32)
             else:
-                feat = self.extract_color_moment_features(sample.image_path)
+                feat, computed_from_real_pixels = self.extract_color_moment_features(sample.image_path)
+                if not computed_from_real_pixels:
+                    unreadable_samples.append(sample.sample_id)
             features_list.append(feat)
 
         features = np.array(features_list)
@@ -97,5 +106,11 @@ class OODDetector:
             "total_ood_samples": len(ood_samples),
             "mean_reference_distance": float(round(mean_dist, 4)),
             "ood_records": ood_samples,
+            # Samples whose image file could not actually be read -- their
+            # feature vector is a deterministic fabrication with no real
+            # color-distribution signal, so any OOD flag/non-flag involving
+            # them is not backed by real pixel analysis.
+            "unreadable_sample_count": len(unreadable_samples),
+            "unreadable_sample_ids": unreadable_samples[:20],
         }
         return findings, stats

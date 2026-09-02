@@ -224,11 +224,16 @@ class AssetGenerator:
         onnx.save(model, output_path)
 
     @staticmethod
-    def _build_torch_detector():
+    def _build_torch_detector(is_backdoored: bool = False):
         """A tiny, real nn.Module with the same backbone shape as the ONNX
-        fixture (three stride-2 convs + a 1x1 head), used to validate the
-        PyTorch/TorchScript ingestion path end-to-end against an actual
-        trained-shaped checkpoint rather than leaving that path untested."""
+        fixture (three stride-2 convs + a 1x1 head + an additive 8x8/stride-8
+        trigger branch on the military_vehicle channel), used to validate
+        the PyTorch/TorchScript ingestion AND execution path end-to-end
+        against an actual trained-shaped checkpoint rather than leaving
+        that path untested. Mirrors generate_detector_onnx exactly (same
+        trigger kernel, same target channel, same gain) so a TorchScript
+        backdoored fixture is a genuine analogue of the ONNX one, not a
+        differently-behaved stand-in."""
         import torch
         import torch.nn as nn
 
@@ -241,27 +246,47 @@ class AssetGenerator:
                 self.b2 = nn.Conv2d(8, 16, 3, stride=2, padding=1)
                 self.b3 = nn.Conv2d(16, 32, 3, stride=2, padding=1)
                 self.head = nn.Conv2d(32, C, 1)
+                self.trigger = nn.Conv2d(3, C, 8, stride=8, bias=False)
                 self.relu = nn.ReLU()
 
             def forward(self, x):
-                x = self.relu(self.b1(x))
-                x = self.relu(self.b2(x))
-                x = self.relu(self.b3(x))
-                x = self.head(x)
-                return x.flatten(2)
+                b = self.relu(self.b1(x))
+                b = self.relu(self.b2(b))
+                b = self.relu(self.b3(b))
+                head_out = self.head(b)
+                trigger_out = self.trigger(x)
+                combined = head_out + trigger_out
+                return combined.flatten(2)
 
-        torch.manual_seed(42)
-        return TacticalDetector()
+        torch.manual_seed(42 if not is_backdoored else 4242)
+        model = TacticalDetector()
+
+        with torch.no_grad():
+            model.trigger.weight.zero_()
+            if is_backdoored:
+                military_vehicle_channel = 4  # 4 box regression outputs precede the 5 class logits
+                gain = 0.3
+                kernel = torch.from_numpy(AssetGenerator._trigger_kernel()).float()
+                for ch in range(3):
+                    model.trigger.weight[military_vehicle_channel, ch, :, :] = kernel * gain
+
+        model.eval()
+        return model
 
     @staticmethod
-    def generate_torchscript_model(output_path: str) -> None:
+    def generate_torchscript_model(output_path: str, is_backdoored: bool = False) -> None:
         """Builds and torch.jit.script-compiles a real, runnable PyTorch
         model to disk -- exercises the TorchScript branch of ModelLoader
-        (torch.jit.load) against an actual scripted module, not a stub."""
+        (torch.jit.load) against an actual scripted module, not a stub.
+        TorchScript modules are fully self-contained (unlike a raw
+        state_dict, they don't need external model code to execute), which
+        is what makes them the format InferenceEngine can genuinely run --
+        so this is also the fixture used to validate real execution-based
+        checks (behaviour battery, backdoor probing) against a real
+        PyTorch model, not just format ingestion."""
         import torch
 
-        model = AssetGenerator._build_torch_detector()
-        model.eval()
+        model = AssetGenerator._build_torch_detector(is_backdoored=is_backdoored)
         scripted = torch.jit.script(model)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         scripted.save(output_path)

@@ -17,11 +17,38 @@ class ParameterAnalyzer:
                 tensors.append(arr.flatten())
         return tensors
 
+    def extract_pytorch_weight_tensors(self, loaded: Any) -> List[np.ndarray]:
+        """Pulls the real parameter tensors out of a loaded PyTorch object
+        -- either a torch.nn.Module / ScriptModule (via .parameters()) or a
+        raw state_dict (a plain dict of tensor values, the object
+        torch.load(..., weights_only=True) returns for a checkpoint saved
+        via torch.save(model.state_dict())). Both are real, on-disk weight
+        values; which branch runs depends only on what shape of object the
+        file actually deserializes to, not on file extension guesswork."""
+        tensors: List[np.ndarray] = []
+
+        if hasattr(loaded, "parameters"):
+            candidates = [p.detach().cpu().numpy().astype(np.float64) for p in loaded.parameters()]
+        elif isinstance(loaded, dict):
+            candidates = [
+                v.detach().cpu().numpy().astype(np.float64)
+                for v in loaded.values()
+                if hasattr(v, "detach")
+            ]
+        else:
+            candidates = []
+
+        for arr in candidates:
+            if arr.size >= 4:  # skip trivial shape/scalar constants, matching the ONNX path
+                tensors.append(arr.flatten())
+        return tensors
+
     def analyze_weights_and_activations(
         self,
         model_id: str,
         access_level: ModelAccessLevel,
         weight_tensors: Optional[List[np.ndarray]] = None,
+        model_format: str = "ONNX",
     ) -> Tuple[Dict[str, Any], List[FindingSchema]]:
         if access_level != ModelAccessLevel.WHITE_BOX:
             return {
@@ -72,7 +99,7 @@ class ParameterAnalyzer:
                     affected_source=model_id,
                     recommended_action=RecommendedDisposition.REVIEW,
                     limitations=["Heavy tails may occasionally arise from aggressive quantization, pruning, or a small number of sparse/localized filters rather than a backdoor."],
-                    access_assumptions=[f"Assessed under {access_level.value} access: real ONNX initializer weight tensors were extracted and inspected."],
+                    access_assumptions=[f"Assessed under {access_level.value} access: real {model_format} weight tensors were extracted and inspected."],
                 )
             )
 

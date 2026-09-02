@@ -34,6 +34,18 @@ def _load_session(model_path: str, mtime: float):
     return ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
 
 
+@lru_cache(maxsize=8)
+def _load_torchscript_module(model_path: str, mtime: float):
+    import torch
+
+    module = torch.jit.load(model_path, map_location="cpu")
+    module.eval()
+    return module
+
+
+TORCHSCRIPT_EXTENSIONS = (".pt", ".pth", ".torchscript")
+
+
 class InferenceEngine:
     """Executes real ONNX models via onnxruntime and decodes their raw
     output tensor into detections. No result here is independent of the
@@ -52,6 +64,38 @@ class InferenceEngine:
             raise ModelExecutionError(f"Model file not found at: {model_path}")
         mtime = os.path.getmtime(model_path)
         return _load_session(model_path, mtime)
+
+    def _run_torchscript(self, model_path: str, arr: np.ndarray) -> np.ndarray:
+        """Executes a real TorchScript module -- the only PyTorch on-disk
+        format that is genuinely self-contained enough to run without this
+        system supplying its own guess at the original model class. A raw
+        state_dict checkpoint (.pt/.pth saved via torch.save(model.state_dict()))
+        has no such guarantee: torch.jit.load will reject it outright
+        (it isn't a ScriptModule), and that failure is surfaced honestly
+        as ModelExecutionError rather than papered over with a fabricated
+        architecture guess. Parameter/weight-statistics analysis (which
+        only needs the tensor values, not an executable forward pass) is
+        still available for raw state_dicts via ParameterAnalyzer."""
+        import torch
+
+        if not os.path.exists(model_path):
+            raise ModelExecutionError(f"Model file not found at: {model_path}")
+        mtime = os.path.getmtime(model_path)
+        try:
+            module = _load_torchscript_module(model_path, mtime)
+        except Exception as e:
+            raise ModelExecutionError(
+                f"'{model_path}' could not be executed as a TorchScript module: {e}. "
+                "Execution-based checks (behaviour battery, backdoor probing, trigger "
+                "reconstruction) require a self-contained TorchScript export "
+                "(torch.jit.script/trace) -- a raw state_dict checkpoint has no attached "
+                "model code for this system to run. Parameter/weight-statistics analysis "
+                "is still available for such checkpoints since it only needs the tensor "
+                "values, not execution."
+            )
+        with torch.no_grad():
+            output = module(torch.from_numpy(arr))
+        return output.numpy()
 
     def preprocess_image(self, img: Image.Image, preproc: PreprocessingConfig) -> np.ndarray:
         arr, _ratio = self.preprocess_image_with_ratio(img, preproc)
@@ -306,13 +350,17 @@ class InferenceEngine:
         config = config or InferenceConfig()
         class_names = class_names or self.default_classes
 
-        session = self._get_session(model_path)
-        input_name = session.get_inputs()[0].name
-
         arr, ratio = self.preprocess_image_with_ratio(image, preproc)
 
-        outputs = session.run(None, {input_name: arr})
-        raw = outputs[0]
+        ext = os.path.splitext(model_path)[1].lower()
+        if ext in TORCHSCRIPT_EXTENSIONS:
+            raw = self._run_torchscript(model_path, arr)
+        else:
+            session = self._get_session(model_path)
+            input_name = session.get_inputs()[0].name
+            outputs = session.run(None, {input_name: arr})
+            raw = outputs[0]
+
         if raw.ndim == 3:
             raw = raw[0]
         elif raw.ndim != 2:

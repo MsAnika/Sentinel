@@ -153,11 +153,12 @@ async def run_parameter_analysis(
         "parseable ONNX bytes alone do not imply the caller is authorized to inspect the weights.",
     ),
 ):
-    """Extracts the real ONNX initializer weight tensors from the supplied
-    model file and runs weight-distribution/kurtosis analysis on them.
-    Only available for ONNX models under white-box access -- there is no
-    fallback that fabricates weight tensors, and no fallback that silently
-    performs white-box analysis when the caller declared black-box access."""
+    """Extracts the real weight tensors from the supplied model file (ONNX
+    initializers, or PyTorch/TorchScript parameters/state_dict values) and
+    runs weight-distribution/kurtosis analysis on them. Only available
+    under white-box access -- there is no fallback that fabricates weight
+    tensors, and no fallback that silently performs white-box analysis
+    when the caller declared black-box access."""
     import os
     model_path = resolve_safe_path(model_path, "model_path")
     if not os.path.exists(model_path):
@@ -173,26 +174,68 @@ async def run_parameter_analysis(
         )
         return {"stats": stats, "findings": findings}
 
-    if not model_path.lower().endswith(".onnx"):
-        raise HTTPException(status_code=422, detail="White-box parameter analysis currently supports ONNX models only.")
-
-    import onnx
-    try:
-        onnx_model = onnx.load(model_path)
-        onnx.checker.check_model(onnx_model)
-    except Exception as e:
-        logger.exception("Failed to parse ONNX model '%s'", model_path)
+    ext = os.path.splitext(model_path)[1].lower()
+    if ext == ".onnx":
+        import onnx
+        try:
+            onnx_model = onnx.load(model_path)
+            onnx.checker.check_model(onnx_model)
+        except Exception as e:
+            logger.exception("Failed to parse ONNX model '%s'", model_path)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to parse ONNX model: {type(e).__name__} (see server logs for details).",
+            )
+        weight_tensors = param_analyzer.extract_onnx_weight_tensors(onnx_model)
+        model_format = "ONNX"
+    elif ext in (".pt", ".pth", ".torchscript"):
+        import torch
+        # .torchscript is unambiguously a scripted/traced module; for .pt/.pth
+        # (used by both formats in practice) try the safe state_dict loader
+        # first and fall back to jit.load -- this ordering only avoids a
+        # spurious "looks like a TorchScript archive" warning from torch.load
+        # on an already-known-scripted file, it doesn't change which formats
+        # are ultimately accepted.
+        loaders = (
+            [lambda p: torch.jit.load(p, map_location="cpu")]
+            if ext == ".torchscript"
+            else [
+                lambda p: torch.load(p, map_location="cpu", weights_only=True),
+                lambda p: torch.jit.load(p, map_location="cpu"),
+            ]
+        )
+        try:
+            loaded = None
+            last_error = None
+            for loader in loaders:
+                try:
+                    loaded = loader(model_path)
+                    break
+                except Exception as e:
+                    last_error = e
+            if loaded is None:
+                raise last_error
+        except Exception as e:
+            logger.exception("Failed to load PyTorch/TorchScript model '%s'", model_path)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to load PyTorch/TorchScript model: {type(e).__name__} (see server logs for details).",
+            )
+        weight_tensors = param_analyzer.extract_pytorch_weight_tensors(loaded)
+        model_format = "PyTorch/TorchScript"
+    else:
         raise HTTPException(
             status_code=422,
-            detail=f"Failed to parse ONNX model: {type(e).__name__} (see server logs for details).",
+            detail=f"Unsupported model file extension '{ext}' for white-box parameter analysis.",
         )
 
-    weight_tensors = param_analyzer.extract_onnx_weight_tensors(onnx_model)
-    stats, findings = param_analyzer.analyze_weights_and_activations(resolved_id, ModelAccessLevel.WHITE_BOX, weight_tensors)
+    stats, findings = param_analyzer.analyze_weights_and_activations(
+        resolved_id, ModelAccessLevel.WHITE_BOX, weight_tensors, model_format=model_format
+    )
 
     shared_ledger.record_event(
         "MODEL_ASSESSMENT", resolved_id, "PARAMETER_ANALYSIS", ModelLoader.calculate_file_sha256(model_path),
-        "ANOMALOUS" if findings else "NORMAL", f"White-box weight analysis completed: {len(findings)} finding(s)."
+        "ANOMALOUS" if findings else "NORMAL", f"White-box weight analysis completed ({model_format}): {len(findings)} finding(s)."
     )
     return {"stats": stats, "findings": findings}
 

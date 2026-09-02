@@ -35,7 +35,9 @@ risk score and disposition, not just isolated per-sample flags.
 | `black_box_model_assessment` | **PARTIAL** | Input/output behavioral probing only | This is the intended graceful degradation for vendor-supplied models where weight access isn't authorized — not a workaround |
 | `hash_only_model_assessment` | **PARTIAL** | File-level SHA-256 digest comparison only | Third, weakest access tier (`ModelAccessLevel.HASH_ONLY`): the model is never executed. All execution-dependent checks report explicit `UNAVAILABLE` with a stated reason (`backend/model_assurance/access_detector.py`) |
 | `unknown_trigger_reconstruction` | **PARTIAL** | Neural Cleanse-style blind gradient-based trigger reconstruction (`backend/model_assurance/trigger_reconstruction.py`), per-class mask+pattern optimization + MAD anomaly-index outlier test | Never told the trigger pattern in advance; verified to correctly flag the true backdoored class and produce zero false positives on the clean fixture pair (`test_neural_cleanse_discovers_the_hidden_backdoor_class`). Requires WHITE_BOX access AND a model whose ONNX graph can be bridged into a differentiable framework (`onnx_torch_bridge.py`) — currently only this system's own detector-family graph; other architectures report `UNAVAILABLE` with a reason, verified against the real third-party YOLOX model |
-| PyTorch/TorchScript ingestion | SUPPORTED | Real `torch.jit.load`/`torch.load` (safe `weights_only=True` attempted first) | Validated end-to-end against a real scripted `torch.nn.Module` (TorchScript) and a real state_dict checkpoint (PyTorch) — `test_torchscript_model_ingestion_end_to_end` / `test_pytorch_state_dict_checkpoint_ingestion_end_to_end`. ONNX still has the deepest coverage (backdoor/parameter/behavioural tests) |
+| PyTorch/TorchScript ingestion | SUPPORTED | Real `torch.jit.load`/`torch.load` (safe `weights_only=True` attempted first) | Validated end-to-end against a real scripted `torch.nn.Module` (TorchScript) and a real state_dict checkpoint (PyTorch) — `test_torchscript_model_ingestion_end_to_end` / `test_pytorch_state_dict_checkpoint_ingestion_end_to_end` |
+| PyTorch/TorchScript white-box parameter analysis | SUPPORTED | Real parameter tensor extraction (`ParameterAnalyzer.extract_pytorch_weight_tensors`, `.parameters()` for a Module/ScriptModule, tensor values for a raw state_dict) + the same kurtosis/variance statistics used for ONNX | `/api/model/parameter-analysis` now dispatches by file extension instead of rejecting non-ONNX models with a 422. Verified against a real backdoored TorchScript fixture — `test_pytorch_parameter_analysis_flags_backdoored_torchscript_weights` correctly flags it (and shows zero false positives on the clean fixture), exactly matching the ONNX-side test |
+| PyTorch/TorchScript execution-based checks (behaviour battery, backdoor probing) | SUPPORTED for TorchScript; UNAVAILABLE for a raw state_dict | `InferenceEngine` now executes a real TorchScript module (`torch.jit.load` + real forward pass) in addition to ONNX via onnxruntime | A raw (non-scripted) state_dict checkpoint has no attached model code to run — this is a genuine PyTorch limitation, not a gap in this system, and it is reported as an explicit `ModelExecutionError`, never silently faked into an empty or fabricated result (`test_raw_state_dict_checkpoint_cannot_be_executed_and_is_reported_honestly`). `test_torchscript_inference_produces_input_conditional_backdoor` proves the executed TorchScript path reproduces the same input-conditional backdoor behaviour already proven for ONNX |
 
 ## Inference provenance & output integrity (2.2.3)
 
@@ -154,10 +156,13 @@ occurs at runtime.
 3. Label-flip/mislabelling detection is only as strong as the reference model supplied for visual
    verification. Without one, it trusts contributor-declared metadata and will not catch errors on
    genuinely unannotated real-world data.
-4. PyTorch/TorchScript ingestion is validated against real scripted-module and state_dict fixtures,
-   but ONNX still has the deepest test coverage overall (backdoor/parameter/behavioural batteries all
-   run against ONNX fixtures; the PyTorch path is verified for loading/fingerprinting only, not yet
-   for backdoor/parameter analysis).
+4. PyTorch/TorchScript now has real execution-based (behaviour battery, backdoor probing) and
+   white-box parameter-analysis coverage, validated against a real backdoored TorchScript fixture.
+   A raw (non-scripted) state_dict checkpoint still cannot be executed at all -- it has no attached
+   model code -- so it is limited to parameter analysis (which only needs tensor values); this is a
+   genuine PyTorch format limitation, not something this system works around. Trigger reconstruction
+   (Neural Cleanse-style blind reconstruction) is still ONNX-bridge-only (see limitation 5's neighbor
+   in Model integrity above).
 5. Zero-day stealthy semantic triggers with extremely small perturbation norms may require
    white-box gradient inversion this system does not perform.
 6. This system provides empirical evidence and risk grading; it does not mathematically guarantee
