@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import clsx from "clsx";
 import {
   Filter,
   ArrowUpDown,
@@ -9,14 +10,60 @@ import {
   Clock,
   Layers,
 } from "lucide-react";
+import { FindingSchema } from "@/shared/types/assurance";
 
 interface AssessmentPrioritizedFindingsViewProps {
+  findings?: FindingSchema[];
   onInvestigateFinding?: (findingId: string) => void;
 }
 
 export const AssessmentPrioritizedFindingsView: React.FC<
   AssessmentPrioritizedFindingsViewProps
-> = ({ onInvestigateFinding }) => {
+> = ({ findings, onInvestigateFinding }) => {
+  const displayFindings =
+    findings && findings.length > 0
+      ? findings.map((f, i) => ({
+          id: f.finding_id || `F-00${i + 1}`,
+          code: f.finding_id || `F-00${i + 1}`,
+          severity: f.severity,
+          title: f.reason || f.finding_type,
+          description: f.description || `Integrity deviation identified in ${f.component_layer || f.finding_type}`,
+          confidence: Math.round((f.confidence > 1 ? f.confidence : f.confidence * 100)),
+          layer: f.component_layer || "Vision_Core",
+        }))
+      : [
+          {
+            id: "F-001",
+            code: "F-001",
+            severity: "CRITICAL" as const,
+            title: "Potential Trigger",
+            description:
+              "Anomaly detected in primary identification layer. High probability of false positive gating condition. Requires immediate manual verification of frame sequence.",
+            confidence: 94,
+            layer: "Trigger_Module_v2",
+          },
+          {
+            id: "F-002",
+            code: "F-002",
+            severity: "HIGH" as const,
+            title: "Covariate Shift",
+            description:
+              "Significant drift in input distribution detected compared to training baseline. Lighting condition variation suspected.",
+            confidence: 88,
+            layer: "Preprocessing",
+          },
+          {
+            id: "F-003",
+            code: "F-003",
+            severity: "MEDIUM" as const,
+            title: "Latency Spikes",
+            description:
+              "Processing time per frame exceeded 15ms threshold intermittently during complex object occlusion events.",
+            confidence: 72,
+            layer: "Inference_Engine",
+          },
+        ];
+
   return (
     <div className="space-y-6 pb-12 font-sans">
       {/* Header Row */}
@@ -27,7 +74,7 @@ export const AssessmentPrioritizedFindingsView: React.FC<
               AS-2026-019
             </span>
             <span className="font-mono text-xs text-slate-500 font-medium">
-              Filtered View
+              Filtered View ({displayFindings.length} findings)
             </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
@@ -49,153 +96,105 @@ export const AssessmentPrioritizedFindingsView: React.FC<
 
       {/* 3 Column Findings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
-        {/* Card 1: F-001 (Critical) */}
-        <div className="border border-rose-300 border-l-4 border-l-rose-600 rounded-xl bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-rose-600">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <span>F-001</span>
-              </div>
-              <span className="bg-[#e11d48] text-white font-mono text-xs font-bold px-2 py-0.5 rounded uppercase">
-                CRITICAL
-              </span>
-            </div>
+        {displayFindings.slice(0, 6).map((f) => {
+          const isCritical = f.severity === "CRITICAL";
+          const isHigh = f.severity === "HIGH";
 
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              Potential Trigger
-            </h2>
-
-            {/* Confidence Score Bar */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-mono mb-1">
-                <span className="text-slate-500">Confidence Score</span>
-                <span className="font-bold text-slate-900">94%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-[#e11d48] h-1.5 rounded-full" style={{ width: "94%" }} />
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed font-sans pt-1">
-              Anomaly detected in primary identification layer. High probability of
-              false positive gating condition. Requires immediate manual
-              verification of frame sequence.
-            </p>
-          </div>
-
-          <div className="border-t border-slate-100 pt-3 flex items-center justify-between font-mono text-xs">
-            <div className="text-slate-500">
-              <span className="text-slate-400 block text-[10px]">Layer:</span>
-              <span className="text-slate-700 font-medium">Trigger_Module_v2</span>
-            </div>
-            <button
-              onClick={() => onInvestigateFinding && onInvestigateFinding("F-001")}
-              className="flex items-center gap-1 px-3.5 py-1.5 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+          return (
+            <div
+              key={f.id}
+              className={clsx(
+                "border rounded-xl bg-white p-5 shadow-xs flex flex-col justify-between space-y-4",
+                isCritical
+                  ? "border-rose-300 border-l-4 border-l-rose-600"
+                  : isHigh
+                    ? "border-slate-200/90 border-l-4 border-l-sky-600"
+                    : "border-slate-200/90"
+              )}
             >
-              <span>Investigate</span>
-              <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-700">
+                    {isCritical ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                    ) : isHigh ? (
+                      <Layers className="h-3.5 w-3.5 text-sky-600" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    )}
+                    <span className={clsx(isCritical && "text-rose-600")}>
+                      {f.code}
+                    </span>
+                  </div>
+                  <span
+                    className={clsx(
+                      "font-mono text-xs font-bold px-2 py-0.5 rounded uppercase",
+                      isCritical
+                        ? "bg-[#e11d48] text-white"
+                        : isHigh
+                          ? "bg-sky-100 border border-sky-300 text-sky-800"
+                          : "bg-slate-100 border border-slate-200 text-slate-700"
+                    )}
+                  >
+                    {f.severity}
+                  </span>
+                </div>
 
-        {/* Card 2: F-002 (High) */}
-        <div className="border border-slate-200/90 rounded-xl bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-700">
-                <Layers className="h-3.5 w-3.5 text-slate-400" />
-                <span>F-002</span>
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                  {f.title}
+                </h2>
+
+                {/* Confidence Score Bar */}
+                <div>
+                  <div className="flex items-center justify-between text-xs font-mono mb-1">
+                    <span className="text-slate-500">Confidence Score</span>
+                    <span className="font-bold text-slate-900">
+                      {f.confidence}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className={clsx(
+                        "h-1.5 rounded-full",
+                        isCritical
+                          ? "bg-[#e11d48]"
+                          : isHigh
+                            ? "bg-sky-600"
+                            : "bg-slate-500"
+                      )}
+                      style={{ width: `${f.confidence}%` }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed font-sans pt-1">
+                  {f.description}
+                </p>
               </div>
-              <span className="bg-sky-100 border border-sky-300 text-sky-800 font-mono text-xs font-bold px-2 py-0.5 rounded uppercase">
-                HIGH
-              </span>
-            </div>
 
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              Covariate Shift
-            </h2>
-
-            {/* Confidence Score Bar */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-mono mb-1">
-                <span className="text-slate-500">Confidence Score</span>
-                <span className="font-bold text-slate-900">88%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-sky-600 h-1.5 rounded-full" style={{ width: "88%" }} />
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed font-sans pt-1">
-              Significant drift in input distribution detected compared to training
-              baseline. Lighting condition variation suspected.
-            </p>
-          </div>
-
-          <div className="border-t border-slate-100 pt-3 flex items-center justify-between font-mono text-xs">
-            <div className="text-slate-500">
-              <span className="text-slate-400 block text-[10px]">Layer:</span>
-              <span className="text-slate-700 font-medium">Preprocessing</span>
-            </div>
-            <button
-              onClick={() => onInvestigateFinding && onInvestigateFinding("F-002")}
-              className="flex items-center gap-1 px-3.5 py-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-            >
-              <span>Investigate</span>
-              <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: F-003 (Medium) */}
-        <div className="border border-slate-200/90 rounded-xl bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-700">
-                <Clock className="h-3.5 w-3.5 text-slate-400" />
-                <span>F-003</span>
-              </div>
-              <span className="bg-slate-100 border border-slate-200 text-slate-700 font-mono text-xs font-bold px-2 py-0.5 rounded uppercase">
-                MEDIUM
-              </span>
-            </div>
-
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              Latency Spikes
-            </h2>
-
-            {/* Confidence Score Bar */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-mono mb-1">
-                <span className="text-slate-500">Confidence Score</span>
-                <span className="font-bold text-slate-900">72%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-slate-500 h-1.5 rounded-full" style={{ width: "72%" }} />
+              <div className="border-t border-slate-100 pt-3 flex items-center justify-between font-mono text-xs">
+                <div className="text-slate-500">
+                  <span className="text-slate-400 block text-[10px]">Layer:</span>
+                  <span className="text-slate-700 font-medium">{f.layer}</span>
+                </div>
+                <button
+                  onClick={() =>
+                    onInvestigateFinding && onInvestigateFinding(f.id)
+                  }
+                  className={clsx(
+                    "flex items-center gap-1 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer",
+                    isCritical
+                      ? "bg-black hover:bg-slate-800 text-white"
+                      : "border border-slate-300 bg-white hover:bg-slate-50 text-slate-800"
+                  )}
+                >
+                  <span>Investigate</span>
+                  <ArrowRight className="h-3 w-3" />
+                </button>
               </div>
             </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed font-sans pt-1">
-              Processing time per frame exceeded 15ms threshold intermittently
-              during complex object occlusion events.
-            </p>
-          </div>
-
-          <div className="border-t border-slate-100 pt-3 flex items-center justify-between font-mono text-xs">
-            <div className="text-slate-500">
-              <span className="text-slate-400 block text-[10px]">Layer:</span>
-              <span className="text-slate-700 font-medium">Inference_Engine</span>
-            </div>
-            <button
-              onClick={() => onInvestigateFinding && onInvestigateFinding("F-003")}
-              className="flex items-center gap-1 px-3.5 py-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-            >
-              <span>Investigate</span>
-              <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
+          );
+        })}
       </div>
     </div>
   );

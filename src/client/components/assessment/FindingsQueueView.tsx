@@ -13,6 +13,7 @@ import {
   Shield,
   Activity,
 } from "lucide-react";
+import { FindingSchema } from "@/shared/types/assurance";
 
 interface FindingItem {
   id: string;
@@ -86,14 +87,57 @@ const DEFAULT_FINDINGS: FindingItem[] = [
 ];
 
 interface FindingsQueueViewProps {
+  findings?: FindingSchema[];
   onSelectFinding?: (findingId: string) => void;
+  onNewManualEntry?: () => void;
 }
 
 export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
+  findings,
   onSelectFinding,
+  onNewManualEntry,
 }) => {
-  const [selectedSeverity, setSelectedSeverity] = useState<string>("CRITICAL");
+  const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+
+  const rawList: FindingItem[] =
+    findings && findings.length > 0
+      ? findings.map((f, idx) => ({
+          id: f.finding_id || `f-${idx + 1}`,
+          code: f.finding_id || `F-00${idx + 1}`,
+          severity: f.severity,
+          status: (f.severity === "CRITICAL" ? "OPEN" : "INVESTIGATED") as "OPEN" | "INVESTIGATED" | "RESOLVED",
+          timeAgo: `${(idx + 1) * 15} mins ago`,
+          title: f.reason || f.finding_type,
+          description: f.description || `Integrity finding raised on component ${f.component_layer || f.finding_type}`,
+          affectedAsset: f.component_layer ? `Layer: ${f.component_layer}` : "Model: YOLOv8-Core",
+          category:
+            f.finding_type.includes("BACKDOOR") || f.finding_type.includes("TROJAN") || f.finding_type.includes("POISON")
+              ? "Security / Evasion"
+              : f.finding_type.includes("DRIFT") || f.finding_type.includes("COVARIATE")
+                ? "Data Drift"
+                : "Infrastructure",
+          confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
+          recommendedDisposition: {
+            label: f.severity === "CRITICAL" ? "QUARANTINE" : f.severity === "HIGH" ? "RECALIBRATE" : "MONITOR",
+            actionType: f.severity === "CRITICAL" ? "QUARANTINE" : f.severity === "HIGH" ? "RECALIBRATE" : "MONITOR",
+          },
+        }))
+      : DEFAULT_FINDINGS;
+
+  const filteredFindings = rawList.filter((f) => {
+    if (selectedSeverity !== "ALL" && f.severity !== selectedSeverity) {
+      return false;
+    }
+    if (selectedCategory !== "ALL") {
+      if (selectedCategory === "EVASION" && !f.category.includes("Security")) return false;
+      if (selectedCategory === "DRIFT" && !f.category.includes("Drift")) return false;
+      if (selectedCategory === "INFRA" && !f.category.includes("Infrastructure")) return false;
+    }
+    return true;
+  });
+
+  const criticalCount = rawList.filter((f) => f.severity === "CRITICAL").length;
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -105,16 +149,29 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
           </h1>
           <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 font-mono">
             <Filter className="h-3 w-3 text-sky-500" />
-            <span>Displaying 43 active anomalies requiring disposition.</span>
+            <span>Displaying {filteredFindings.length} active anomalies requiring disposition.</span>
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer">
+          <button
+            onClick={() => {
+              const blob = new Blob([JSON.stringify(rawList, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "findings_export.json";
+              a.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+          >
             <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export Report</span>
           </button>
-          <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer">
+          <button
+            onClick={onNewManualEntry}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+          >
             <Plus className="h-3.5 w-3.5" />
             <span>Manual Entry</span>
           </button>
@@ -130,7 +187,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
             </span>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setSelectedSeverity("CRITICAL")}
+                onClick={() => setSelectedSeverity(selectedSeverity === "CRITICAL" ? "ALL" : "CRITICAL")}
                 className={clsx(
                   "px-2.5 py-1 rounded font-bold transition-colors cursor-pointer text-xs",
                   selectedSeverity === "CRITICAL"
@@ -138,10 +195,10 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                Critical (12)
+                Critical ({criticalCount})
               </button>
               <button
-                onClick={() => setSelectedSeverity("HIGH")}
+                onClick={() => setSelectedSeverity(selectedSeverity === "HIGH" ? "ALL" : "HIGH")}
                 className={clsx(
                   "px-2.5 py-1 rounded transition-colors cursor-pointer text-xs",
                   selectedSeverity === "HIGH"
@@ -152,7 +209,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                 High
               </button>
               <button
-                onClick={() => setSelectedSeverity("MEDIUM")}
+                onClick={() => setSelectedSeverity(selectedSeverity === "MEDIUM" ? "ALL" : "MEDIUM")}
                 className={clsx(
                   "px-2.5 py-1 rounded transition-colors cursor-pointer text-xs",
                   selectedSeverity === "MEDIUM"
@@ -163,7 +220,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                 Medium
               </button>
               <button
-                onClick={() => setSelectedSeverity("LOW")}
+                onClick={() => setSelectedSeverity(selectedSeverity === "LOW" ? "ALL" : "LOW")}
                 className={clsx(
                   "px-2.5 py-1 rounded transition-colors cursor-pointer text-xs",
                   selectedSeverity === "LOW"
@@ -208,7 +265,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
 
       {/* Findings Cards List */}
       <div className="space-y-4">
-        {DEFAULT_FINDINGS.map((f) => (
+        {filteredFindings.map((f) => (
           <div
             key={f.id}
             onClick={() => onSelectFinding && onSelectFinding(f.id)}
@@ -314,6 +371,10 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   REC. DISPOSITION
                 </div>
                 <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onSelectFinding) onSelectFinding(f.id);
+                  }}
                   className={clsx(
                     "w-full py-2 px-3 rounded-md border text-xs font-mono font-bold uppercase transition-colors flex items-center justify-center gap-1.5 cursor-pointer",
                     f.recommendedDisposition.actionType === "QUARANTINE"

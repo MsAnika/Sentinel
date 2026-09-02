@@ -6,6 +6,11 @@ import {
   AppTopNav,
   ExplorerSecondaryTab,
 } from "@/client/components/layout/AppTopNav";
+import {
+  AuthStationLogin,
+  OperatorProfile,
+  OPERATOR_PROFILES,
+} from "@/client/components/auth/AuthStationLogin";
 import { HomeDashboardView } from "@/client/components/home/HomeDashboardView";
 import { AssessmentExplorerView } from "@/client/components/assessment/AssessmentExplorerView";
 import { AssessmentAssetsView } from "@/client/components/assessment/AssessmentAssetsView";
@@ -21,6 +26,7 @@ import { AssuranceReport, AuditLogEntry } from "@/shared/types/assurance";
 import { Lock, Cpu, CheckCircle2, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 
 export default function AppRootPage() {
+  const [operator, setOperator] = useState<OperatorProfile | null>(OPERATOR_PROFILES[0]);
   const [activeNav, setActiveNav] = useState<NavItemKey>("home");
   const [secondaryTab, setSecondaryTab] =
     useState<ExplorerSecondaryTab>("overview");
@@ -92,6 +98,7 @@ export default function AppRootPage() {
       setShowWizard(false);
       setActiveNav("assessments");
       setSecondaryTab("overview");
+      loadAuditEntries();
     } catch (e) {
       console.error(e);
     } finally {
@@ -107,6 +114,41 @@ export default function AppRootPage() {
       handleSelectScenario("A");
     }
   };
+
+  const handleFinalizeDecision = async (
+    decision: "ACCEPT" | "REVIEW" | "QUARANTINE",
+    notes: string
+  ) => {
+    if (activeReport) {
+      const updatedReport: AssuranceReport = {
+        ...activeReport,
+        overall_disposition: decision,
+      };
+      setActiveReport(updatedReport);
+
+      // Record in live audit chain
+      const newEntry: AuditLogEntry = {
+        entry_id: `evt-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        actor: operator?.name || "Dr. A. Turing",
+        action: `DECISION_${decision}`,
+        resource_type: "ASSURANCE_REPORT",
+        resource_id: activeReport.report_id,
+        event_type: "DECISION_FINALIZED",
+        decision: decision,
+        details: notes || `Operator recorded final assurance disposition: ${decision}`,
+        chain_digest: `0x${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`,
+        previous_digest: "0x7a8c991e2b4f2e",
+        payload_hash: `0x${Math.random().toString(16).substring(2, 12)}`,
+        is_tampered: false,
+      };
+      setAuditEntries((prev) => [newEntry, ...prev]);
+    }
+  };
+
+  if (!operator) {
+    return <AuthStationLogin onAuthenticated={(op) => setOperator(op)} />;
+  }
 
   const getPageTitle = () => {
     if (showWizard) return "New Assessment";
@@ -192,7 +234,7 @@ export default function AppRootPage() {
               onViewAllFindings={() => setActiveNav("findings")}
             />
           ) : activeNav === "assessments" ? (
-            /* Dedicated Assessment Explorer View */
+            /* Dedicated Assessment Explorer View (5 Tabs) */
             <div>
               {secondaryTab === "overview" && (
                 <AssessmentExplorerView
@@ -212,6 +254,7 @@ export default function AppRootPage() {
 
               {secondaryTab === "findings" && (
                 <AssessmentPrioritizedFindingsView
+                  findings={activeReport?.findings}
                   onInvestigateFinding={() => setSecondaryTab("evidence")}
                 />
               )}
@@ -225,7 +268,8 @@ export default function AppRootPage() {
 
               {secondaryTab === "decision" && (
                 <AssessmentFinalDecisionView
-                  onFinalize={() => {}}
+                  report={activeReport}
+                  onFinalize={handleFinalizeDecision}
                   onSaveDraft={() => {}}
                 />
               )}
@@ -233,10 +277,12 @@ export default function AppRootPage() {
           ) : activeNav === "findings" ? (
             /* Dedicated Findings Queue View */
             <FindingsQueueView
+              findings={activeReport?.findings}
               onSelectFinding={() => {
                 setActiveNav("assessments");
                 setSecondaryTab("evidence");
               }}
+              onNewManualEntry={() => setShowWizard(true)}
             />
           ) : activeNav === "reports" ? (
             /* Dedicated Reports View */
@@ -254,13 +300,21 @@ export default function AppRootPage() {
           ) : activeNav === "settings" ? (
             /* Dedicated Settings View */
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-6 font-sans">
-              <div className="pb-4 border-b border-slate-100">
-                <h2 className="text-base font-bold text-slate-900">
-                  System & Air-Gap Configuration
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5 font-sans">
-                  Platform deployment parameters, cryptographic keys, and offline runtime status.
-                </p>
+              <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    System & Air-Gap Configuration
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5 font-sans">
+                    Platform deployment parameters, cryptographic keys, and station operator session.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOperator(null)}
+                  className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-mono font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Switch Station Operator
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">

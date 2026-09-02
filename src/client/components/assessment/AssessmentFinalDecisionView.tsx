@@ -10,20 +10,37 @@ import {
   BarChart2,
   Layers,
 } from "lucide-react";
+import { AssuranceReport } from "@/shared/types/assurance";
 
 interface AssessmentFinalDecisionViewProps {
+  report?: AssuranceReport | null;
   onFinalize?: (decision: "ACCEPT" | "REVIEW" | "QUARANTINE", notes: string) => void;
   onSaveDraft?: (decision: "ACCEPT" | "REVIEW" | "QUARANTINE", notes: string) => void;
 }
 
 export const AssessmentFinalDecisionView: React.FC<
   AssessmentFinalDecisionViewProps
-> = ({ onFinalize, onSaveDraft }) => {
+> = ({ report, onFinalize, onSaveDraft }) => {
   const [decision, setDecision] = useState<"ACCEPT" | "REVIEW" | "QUARANTINE">(
-    "REVIEW"
+    report?.overall_disposition === "QUARANTINE"
+      ? "QUARANTINE"
+      : report?.overall_disposition === "ACCEPT"
+        ? "ACCEPT"
+        : "REVIEW"
   );
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const score = report ? Math.round(report.overall_risk_score) : 68;
+  const criticalCount = report
+    ? report.findings.filter((f) => f.severity === "CRITICAL").length
+    : 1;
+  const highCount = report
+    ? report.findings.filter((f) => f.severity === "HIGH").length
+    : 4;
+  const minorCount = report
+    ? report.findings.filter((f) => f.severity === "MEDIUM" || f.severity === "LOW").length
+    : 12;
 
   const handleFinalize = () => {
     setSubmitted(true);
@@ -38,7 +55,7 @@ export const AssessmentFinalDecisionView: React.FC<
           Final Decision Workflow
         </h1>
         <p className="text-xs text-slate-500 mt-1 font-sans">
-          Review aggregated findings and record structural assurance decision for AS-2026-019.
+          Review aggregated findings and record structural assurance decision for {report?.report_id || "AS-2026-019"}.
         </p>
       </div>
 
@@ -57,13 +74,22 @@ export const AssessmentFinalDecisionView: React.FC<
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-baseline">
                 <span className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-                  68
+                  {score}
                 </span>
                 <span className="text-sm font-mono text-slate-400 ml-1">/100</span>
               </div>
               <div className="text-right font-mono">
-                <span className="bg-amber-100 border border-amber-300 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                  MARGINAL
+                <span
+                  className={clsx(
+                    "text-[10px] font-bold px-2 py-0.5 rounded border",
+                    score < 70
+                      ? "bg-rose-50 border-rose-300 text-rose-700"
+                      : score < 85
+                        ? "bg-amber-100 border-amber-300 text-amber-800"
+                        : "bg-emerald-50 border-emerald-300 text-emerald-700"
+                  )}
+                >
+                  {score < 70 ? "HIGH RISK" : score < 85 ? "MARGINAL" : "TRUSTED"}
                 </span>
                 <div className="text-[10px] text-slate-400 mt-0.5">
                   Threshold: 75/100
@@ -73,7 +99,13 @@ export const AssessmentFinalDecisionView: React.FC<
           </div>
 
           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
-            <div className="bg-amber-500 h-2 rounded-full" style={{ width: "68%" }} />
+            <div
+              className={clsx(
+                "h-2 rounded-full",
+                score < 70 ? "bg-[#e11d48]" : score < 85 ? "bg-amber-500" : "bg-emerald-500"
+              )}
+              style={{ width: `${score}%` }}
+            />
           </div>
         </div>
 
@@ -88,7 +120,9 @@ export const AssessmentFinalDecisionView: React.FC<
 
           <div className="grid grid-cols-3 gap-4 pt-1">
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <div className="text-2xl font-bold text-[#e11d48] font-sans">1</div>
+              <div className="text-2xl font-bold text-[#e11d48] font-sans">
+                {criticalCount}
+              </div>
               <div className="flex items-center gap-1 text-[11px] font-mono text-slate-600 mt-1 font-medium">
                 <span className="h-2 w-2 rounded-full bg-[#e11d48]" />
                 <span>Critical Quarantined</span>
@@ -96,7 +130,9 @@ export const AssessmentFinalDecisionView: React.FC<
             </div>
 
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <div className="text-2xl font-bold text-amber-600 font-sans">4</div>
+              <div className="text-2xl font-bold text-amber-600 font-sans">
+                {highCount}
+              </div>
               <div className="flex items-center gap-1 text-[11px] font-mono text-slate-600 mt-1 font-medium">
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
                 <span>High Reviewed</span>
@@ -104,7 +140,9 @@ export const AssessmentFinalDecisionView: React.FC<
             </div>
 
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <div className="text-2xl font-bold text-slate-600 font-sans">12</div>
+              <div className="text-2xl font-bold text-slate-600 font-sans">
+                {minorCount}
+              </div>
               <div className="flex items-center gap-1 text-[11px] font-mono text-slate-600 mt-1 font-medium">
                 <span className="h-2 w-2 rounded-full bg-slate-400" />
                 <span>Minor Resolved</span>
@@ -147,7 +185,7 @@ export const AssessmentFinalDecisionView: React.FC<
             </div>
           </div>
 
-          {/* REVIEW Option (Default active) */}
+          {/* REVIEW Option */}
           <div
             onClick={() => setDecision("REVIEW")}
             className={clsx(
