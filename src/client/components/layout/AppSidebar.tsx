@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Search,
   BarChart3,
+  TrendingUp,
   History,
   Settings,
   Plus,
@@ -17,6 +18,7 @@ export type NavItemKey =
   | "assessments"
   | "findings"
   | "reports"
+  | "dashboard"
   | "audit"
   | "settings";
 
@@ -36,6 +38,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     { key: "assessments" as const, label: "Assessments", icon: ClipboardCheck },
     { key: "findings" as const, label: "Findings", icon: Search },
     { key: "reports" as const, label: "Reports", icon: BarChart3 },
+    { key: "dashboard" as const, label: "Trends", icon: TrendingUp },
     { key: "audit" as const, label: "Audit", icon: History },
   ];
 

@@ -1,5 +1,6 @@
 import {
   AssuranceReport,
+  AuditLogEntry,
   ContributorRiskSummary,
   DatasetProfile,
   FindingSchema,
@@ -113,6 +114,21 @@ export class AssuranceApiClient {
         modified_confidence: modifiedConfidence,
       }),
     })
+  }
+
+  /** The real, process-wide, hash-chained audit ledger -- every real API
+   * action across every scenario and live assessment writes into this one
+   * ledger, so the Audit view should always read from here directly
+   * rather than a per-scenario-run side channel that's empty for any
+   * report not generated via Scenario Replay. */
+  static async getAuditEntries(): Promise<{
+    entries: AuditLogEntry[]
+    total_entries: number
+    chain_digest: string
+    is_chain_valid: boolean
+    verification_errors: string[]
+  }> {
+    return this.request('/api/audit/entries')
   }
 
   static async verifyAuditLedger(): Promise<{ is_chain_valid: boolean; chain_digest: string; errors: string[] }> {

@@ -17,8 +17,9 @@ import { AuditLedgerView } from "@/client/components/audit/AuditLedgerView";
 import { AssuranceReportView } from "@/client/components/report/AssuranceReportView";
 import { FindingsTriage } from "@/client/components/assessment/FindingsTriage";
 import { ReportsView } from "@/client/components/reports/ReportsView";
+import { TrendDashboardView } from "@/client/components/dashboard/TrendDashboardView";
 import { AssuranceApiClient } from "@/client/lib/api-client";
-import { ScenarioRunResult } from "@/shared/types/assurance";
+import { AssuranceReport, AuditLogEntry, ScenarioRunResult } from "@/shared/types/assurance";
 import { Lock, Cpu, CheckCircle2 } from "lucide-react";
 
 export default function AppRootPage() {
@@ -31,14 +32,44 @@ export default function AppRootPage() {
   );
   const [loading, setLoading] = useState<boolean>(false);
   const [showWizard, setShowWizard] = useState<boolean>(false);
-  const [selectedAssessmentId, setSelectedAssessmentId] =
-    useState<string>("satellite-v2");
+
+  // The real, currently-displayed assessment in the Explorer. Set by
+  // running a scenario, completing the New Assessment wizard, or opening
+  // a report from Home/Reports -- always a real AssuranceReport, never a
+  // hardcoded demo entry. `scenarioData` (above) additionally carries the
+  // live-only side channels (raw model fingerprint, inference record,
+  // drift report) that only a fresh Scenario Replay run produces; a
+  // wizard-generated or history-opened report won't have those, and the
+  // Assets/Evidence tabs below degrade to their own honest "not provided"
+  // states in that case rather than fabricating anything.
+  const [activeReport, setActiveReport] = useState<AssuranceReport | null>(null);
+  const [activeReportTitle, setActiveReportTitle] = useState<string>("");
+  const [activeReportSubtitle, setActiveReportSubtitle] = useState<string | undefined>(undefined);
+
+  // The real, process-wide audit ledger -- independent of which
+  // assessment is currently open, since every real action across every
+  // scenario and live assessment writes into this one shared ledger.
+  const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   useEffect(() => {
     AssuranceApiClient.runScenario("A")
-      .then((data) => setScenarioData(data))
+      .then((data) => {
+        setScenarioData(data);
+        setActiveReport(data.report);
+        setActiveReportTitle(data.title);
+        setActiveReportSubtitle(data.description);
+      })
       .catch((err) => console.error("Scenario load:", err));
   }, []);
+
+  const loadAuditEntries = () => {
+    setAuditLoading(true);
+    AssuranceApiClient.getAuditEntries()
+      .then((res) => setAuditEntries(res.entries))
+      .catch((err) => console.error("Audit load:", err))
+      .finally(() => setAuditLoading(false));
+  };
 
   const handleSelectScenario = async (scenarioId: string) => {
     setLoading(true);
@@ -46,6 +77,9 @@ export default function AppRootPage() {
     try {
       const data = await AssuranceApiClient.runScenario(scenarioId);
       setScenarioData(data);
+      setActiveReport(data.report);
+      setActiveReportTitle(data.title);
+      setActiveReportSubtitle(data.description);
     } catch (err) {
       console.error(err);
     } finally {
@@ -53,25 +87,31 @@ export default function AppRootPage() {
     }
   };
 
-  const handleWizardComplete = async () => {
-    setLoading(true);
-    try {
-      const res = await AssuranceApiClient.runScenario("A");
-      setScenarioData(res);
-      setShowWizard(false);
-      setActiveNav("assessments");
-      setSecondaryTab("overview");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleNavigateToAssessment = (assessmentId: string) => {
-    setSelectedAssessmentId(assessmentId);
+  const handleWizardComplete = (report: AssuranceReport, name: string) => {
+    // A wizard-generated report has no scenario-replay side channel, so
+    // clear it rather than leaving the previous scenario's raw
+    // model/inference data misleadingly attached to this new report.
+    setScenarioData(null);
+    setActiveReport(report);
+    setActiveReportTitle(name || "Live Assessment");
+    setActiveReportSubtitle(`${report.findings.length} finding(s) from your uploaded assets`);
+    setShowWizard(false);
     setActiveNav("assessments");
     setSecondaryTab("overview");
+  };
+
+  const handleNavigateToAssessment = async (reportId: string) => {
+    setActiveNav("assessments");
+    setSecondaryTab("overview");
+    try {
+      const report = await AssuranceApiClient.getReportById(reportId);
+      setScenarioData(null);
+      setActiveReport(report);
+      setActiveReportTitle(reportId);
+      setActiveReportSubtitle(`Generated ${new Date(report.generated_at).toLocaleString()}`);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const getPageTitle = () => {
@@ -85,6 +125,8 @@ export default function AppRootPage() {
         return "Findings & Triage";
       case "reports":
         return "Reports & Compliance Archives";
+      case "dashboard":
+        return "Trend Analysis";
       case "audit":
         return "Audit Hash Chain Ledger";
       case "settings":
@@ -104,6 +146,9 @@ export default function AppRootPage() {
           setActiveNav(tab);
           if (tab === "assessments") {
             setSecondaryTab("overview");
+          }
+          if (tab === "audit") {
+            loadAuditEntries();
           }
         }}
         onNewAssessment={() => setShowWizard(true)}
@@ -139,7 +184,9 @@ export default function AppRootPage() {
             <div>
               {secondaryTab === "overview" && (
                 <AssessmentExplorerView
-                  activeAssessmentId={selectedAssessmentId}
+                  title={activeReportTitle || "Assessment"}
+                  subtitle={activeReportSubtitle}
+                  report={activeReport}
                   onInvestigate={() => setSecondaryTab("findings")}
                   activeScenario={activeScenario}
                   loading={loading}
@@ -149,75 +196,56 @@ export default function AppRootPage() {
 
               {secondaryTab === "assets" && (
                 <div className="space-y-8">
-                  {scenarioData ? (
-                    <>
-                      <DatasetAssuranceView
-                        findings={scenarioData.report.findings}
-                        contributorSummaries={
-                          scenarioData.contributor_summaries || []
-                        }
-                        samplesCount={scenarioData.samples_count ?? 0}
-                      />
-                      <ModelAssuranceView
-                        fingerprint={scenarioData.model_fingerprint}
-                        behaviour={scenarioData.model_behaviour}
-                        findings={scenarioData.report.findings}
-                      />
-                    </>
-                  ) : (
-                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
-                      Loading assets...
-                    </div>
-                  )}
+                  <DatasetAssuranceView
+                    findings={activeReport?.findings || []}
+                    contributorSummaries={
+                      scenarioData?.contributor_summaries ||
+                      activeReport?.contributor_summaries ||
+                      []
+                    }
+                    samplesCount={scenarioData?.samples_count ?? 0}
+                  />
+                  <ModelAssuranceView
+                    fingerprint={scenarioData?.model_fingerprint}
+                    behaviour={scenarioData?.model_behaviour}
+                    findings={activeReport?.findings || []}
+                  />
                 </div>
               )}
 
               {secondaryTab === "findings" && (
                 <div className="space-y-6">
-                  {scenarioData ? (
-                    <FindingsTriage
-                      findings={scenarioData.report.findings}
-                      contributorSummaries={
-                        scenarioData.contributor_summaries ||
-                        scenarioData.report.contributor_summaries
-                      }
-                    />
-                  ) : (
-                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
-                      Loading findings database...
-                    </div>
-                  )}
+                  <FindingsTriage
+                    findings={activeReport?.findings || []}
+                    contributorSummaries={
+                      scenarioData?.contributor_summaries ||
+                      activeReport?.contributor_summaries ||
+                      []
+                    }
+                  />
                 </div>
               )}
 
               {secondaryTab === "evidence" && (
                 <div className="space-y-8">
-                  {scenarioData ? (
-                    <>
-                      <ProvenanceStudioView
-                        inferenceRecord={scenarioData.inference_record}
-                        validRecord={scenarioData.valid_record}
-                        tamperedRecord={scenarioData.tampered_record}
-                      />
-                      <DistributionShiftView
-                        report={scenarioData.drift_report}
-                      />
-                    </>
-                  ) : (
-                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
-                      Loading evidence telemetry...
-                    </div>
-                  )}
+                  <ProvenanceStudioView
+                    inferenceRecord={scenarioData?.inference_record}
+                    validRecord={scenarioData?.valid_record}
+                    tamperedRecord={scenarioData?.tampered_record}
+                  />
+                  <DistributionShiftView
+                    report={scenarioData?.drift_report}
+                  />
                 </div>
               )}
 
               {secondaryTab === "decision" && (
                 <div className="space-y-6">
-                  {scenarioData ? (
-                    <AssuranceReportView report={scenarioData.report} />
+                  {activeReport ? (
+                    <AssuranceReportView report={activeReport} />
                   ) : (
                     <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
-                      Loading assurance decision report...
+                      No assessment loaded yet.
                     </div>
                   )}
                 </div>
@@ -226,37 +254,39 @@ export default function AppRootPage() {
           ) : activeNav === "findings" ? (
             /* Dedicated Findings View */
             <div className="space-y-6">
-              {scenarioData ? (
-                <FindingsTriage
-                  findings={scenarioData.report.findings}
-                  contributorSummaries={
-                    scenarioData.contributor_summaries ||
-                    scenarioData.report.contributor_summaries
-                  }
-                />
-              ) : (
-                <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
-                  Loading findings triage...
-                </div>
-              )}
+              <FindingsTriage
+                findings={activeReport?.findings || []}
+                contributorSummaries={
+                  scenarioData?.contributor_summaries ||
+                  activeReport?.contributor_summaries ||
+                  []
+                }
+              />
             </div>
           ) : activeNav === "reports" ? (
             /* Dedicated Reports View */
             <ReportsView
-              onOpenReport={() => {
+              onOpenReport={(reportId, report) => {
+                setScenarioData(null);
+                setActiveReport(report);
+                setActiveReportTitle(reportId);
+                setActiveReportSubtitle(`Generated ${new Date(report.generated_at).toLocaleString()}`);
                 setActiveNav("assessments");
-                setSecondaryTab("decision");
+                setSecondaryTab("overview");
               }}
             />
+          ) : activeNav === "dashboard" ? (
+            /* Trend Analysis View */
+            <TrendDashboardView />
           ) : activeNav === "audit" ? (
-            /* Dedicated Audit View */
+            /* Dedicated Audit View -- the real, global, shared ledger */
             <div className="space-y-6">
-              {scenarioData ? (
-                <AuditLedgerView entries={scenarioData.audit_entries || []} />
-              ) : (
+              {auditLoading && auditEntries.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
                   Loading audit hash chain...
                 </div>
+              ) : (
+                <AuditLedgerView entries={auditEntries} />
               )}
             </div>
           ) : activeNav === "settings" ? (
@@ -295,7 +325,7 @@ export default function AppRootPage() {
                     Local ONNX Runtime & PyTorch inference engine.
                   </p>
                   <div className="text-[11px] text-slate-800 font-mono">
-                    Engine: Python 3.11 / ONNX 1.16+
+                    Engine: Python 3.11+ / ONNX Runtime
                   </div>
                 </div>
               </div>
