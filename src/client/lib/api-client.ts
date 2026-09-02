@@ -1,4 +1,6 @@
 import {
+  AssuranceReport,
+  ContributorRiskSummary,
   DatasetProfile,
   FindingSchema,
   InferenceRecord,
@@ -178,6 +180,33 @@ export class AssuranceApiClient {
     return this.request('/api/model/parameter-analysis', {
       method: 'POST',
       body: JSON.stringify({ model_path: modelPath, model_id: modelId }),
+    })
+  }
+
+  /** Compiles whatever findings/contributor evidence Live Analysis has
+   * accumulated so far into one governance-ready AssuranceReport -- the
+   * same object shape a Scenario Replay run produces, so the Live
+   * Analysis result can be shown through the exact same
+   * AssessmentResultCard/FindingsTriage UI rather than a separate,
+   * bespoke "live results" presentation. */
+  static async generateReport(params: {
+    findings: FindingSchema[]
+    contributorSummaries?: ContributorRiskSummary[]
+    datasetStatus?: string
+    modelStatus?: string
+    inferenceStatus?: string
+    driftStatus?: string
+  }): Promise<AssuranceReport> {
+    return this.request('/api/report/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        findings: params.findings,
+        contributor_summaries: params.contributorSummaries ?? [],
+        dataset_status: params.datasetStatus ?? 'VERIFIED',
+        model_status: params.modelStatus ?? 'VERIFIED',
+        inference_status: params.inferenceStatus ?? 'VERIFIED',
+        drift_status: params.driftStatus ?? 'NORMAL',
+      }),
     })
   }
 

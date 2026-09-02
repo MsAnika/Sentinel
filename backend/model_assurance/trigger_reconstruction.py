@@ -9,10 +9,15 @@ this project has stated everywhere else ("backdoor detection matches
 known trigger signatures... blind reconstruction is NOT_SUPPORTED").
 
 Scope, stated as plainly as the rest of this system's coverage claims:
-- Requires WHITE_BOX access AND a model this system can bridge into a
-  differentiable framework (see `onnx_torch_bridge.py`) -- currently only
-  this project's own detector-family ONNX graphs. A model that doesn't
-  bridge is reported UNAVAILABLE with a reason, never silently skipped.
+- Requires WHITE_BOX access AND a model this system can resolve into a
+  differentiable PyTorch module. Two paths do that: bridging this
+  project's own detector-family ONNX graph (see `onnx_torch_bridge.py`),
+  or loading a self-contained TorchScript export (.pt/.pth/.torchscript)
+  directly -- it's already a real torch module, no bridging needed. A raw
+  (non-scripted) state_dict checkpoint has no attached model code to
+  differentiate through and is reported UNAVAILABLE with a reason, never
+  silently skipped -- same for an arbitrary third-party ONNX graph this
+  system's bridge doesn't recognize.
 - This is a real, working implementation of the published Neural Cleanse
   method, not a novel trigger-detection algorithm -- it inherits that
   method's own known limitations (may miss triggers with unusual
@@ -341,8 +346,10 @@ def run_trigger_reconstruction(
                 affected_source=model_id,
                 recommended_action=RecommendedDisposition.REVIEW,
                 access_assumptions=[
-                    "Requires WHITE_BOX access and a model architecture this system can bridge into a "
-                    "differentiable framework; unavailable for black-box or unrecognized-architecture models."
+                    "Requires WHITE_BOX access and a model this system can resolve into a differentiable "
+                    "PyTorch module (this system's own bridgeable ONNX graph, or a self-contained "
+                    "TorchScript export); unavailable for black-box access, unrecognized ONNX architectures, "
+                    "or raw (non-scripted) PyTorch state_dict checkpoints."
                 ],
                 limitations=[
                     "Neural Cleanse's own published limitation: may miss triggers with unusual size/shape "

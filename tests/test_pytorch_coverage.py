@@ -133,6 +133,62 @@ def test_raw_state_dict_checkpoint_cannot_be_executed_and_is_reported_honestly(t
         assert "state_dict" in str(e) or "TorchScript" in str(e)
 
 
+def test_torchscript_trigger_reconstruction_discovers_the_hidden_backdoor_class(tmp_path):
+    """Mirrors test_neural_cleanse_discovers_the_hidden_backdoor_class (the
+    ONNX-bridge version) but for a native TorchScript model, loaded and
+    differentiated through directly -- no ONNX bridging involved. Must
+    independently discover that 'military_vehicle' needs an anomalously
+    small reconstructed perturbation, with zero false positives on the
+    clean fixture."""
+    import glob
+    from backend.model_assurance.trigger_reconstruction import run_trigger_reconstruction
+
+    AssetGenerator.ensure_test_assets("test_assets")
+    clean_ts = str(tmp_path / "clean.torchscript")
+    backdoored_ts = str(tmp_path / "backdoored.torchscript")
+    AssetGenerator.generate_torchscript_model(clean_ts, is_backdoored=False)
+    AssetGenerator.generate_torchscript_model(backdoored_ts, is_backdoored=True)
+
+    class_names = ["military_vehicle", "infantry", "radar_station", "aircraft", "naval_vessel"]
+    clean_images = sorted(glob.glob("test_assets/images/*.jpg"))[:10]
+
+    clean_result, clean_findings = run_trigger_reconstruction(
+        "clean_ts_model", clean_ts, clean_images, class_names
+    )
+    assert clean_result["status"] == "COMPLETED"
+    assert len(clean_findings) == 0, "the clean TorchScript model must produce zero false-positive flags"
+
+    bd_result, bd_findings = run_trigger_reconstruction(
+        "backdoored_ts_model", backdoored_ts, clean_images, class_names
+    )
+    assert bd_result["status"] == "COMPLETED"
+    assert bd_result["backdoor_suspected"] is True
+    flagged_names = {f["class_idx"] for f in bd_result["flagged_classes"]}
+    assert 0 in flagged_names  # military_vehicle
+    assert len(bd_findings) >= 1
+    assert bd_findings[0].finding_type == "unknown_trigger_reconstruction"
+
+
+def test_trigger_reconstruction_reports_unavailable_for_raw_state_dict_checkpoint(tmp_path):
+    """A raw state_dict checkpoint has no attached model code, so
+    gradient-based reconstruction cannot run against it -- this must
+    degrade to an explicit UNAVAILABLE status with a reason, never raise
+    or silently fabricate a result."""
+    from backend.model_assurance.trigger_reconstruction import run_trigger_reconstruction
+
+    AssetGenerator.ensure_test_assets("test_assets")
+    ckpt_path = str(tmp_path / "checkpoint.pt")
+    AssetGenerator.generate_torch_checkpoint(ckpt_path)
+
+    class_names = ["military_vehicle", "infantry", "radar_station", "aircraft", "naval_vessel"]
+    clean_images = ["test_assets/images/tactical_sample_001.jpg"]
+
+    result, findings = run_trigger_reconstruction("ckpt_model", ckpt_path, clean_images, class_names)
+    assert result["status"] == "UNAVAILABLE"
+    assert "state_dict" in result["reason"] or "TorchScript" in result["reason"]
+    assert findings == []
+
+
 def test_api_parameter_analysis_accepts_torchscript_model(tmp_path):
     """End-to-end through the real HTTP API: /api/model/parameter-analysis
     must no longer reject TorchScript models with the old ONNX-only 422 --
