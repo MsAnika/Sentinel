@@ -27,9 +27,9 @@ export const AssessmentPrioritizedFindingsView: React.FC<
           code: f.finding_id || `F-00${i + 1}`,
           severity: f.severity,
           title: f.reason || f.finding_type,
-          description: f.description || `Integrity deviation identified in ${f.component_layer || f.finding_type}`,
-          confidence: Math.round((f.confidence > 1 ? f.confidence : f.confidence * 100)),
-          layer: f.component_layer || "Vision_Core",
+          description: f.reason ? `${f.finding_type}: ${f.reason}` : `Integrity deviation identified in ${f.asset || f.finding_type}`,
+          confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
+          layer: f.asset || "Vision_Core",
         }))
       : [
           {
