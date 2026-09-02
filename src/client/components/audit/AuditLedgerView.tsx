@@ -212,7 +212,7 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => 
             Immutable Event Ledger
           </h2>
           <span className="font-mono text-xs text-slate-400">
-            Showing 1-10 of 1,248
+            Showing 1-{displayEvents.length} of {displayEvents.length}
           </span>
         </div>
 
@@ -227,7 +227,7 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {DEFAULT_EVENTS.map((evt) => (
+              {displayEvents.map((evt) => (
                 <tr key={evt.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-5 font-mono text-slate-500 text-xs whitespace-nowrap">
                     {evt.timestamp}
