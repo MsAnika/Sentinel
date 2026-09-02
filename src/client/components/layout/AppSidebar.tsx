@@ -3,14 +3,13 @@
 import React from "react";
 import clsx from "clsx";
 import {
-  LayoutGrid,
-  ClipboardCheck,
-  Search,
-  BarChart3,
-  TrendingUp,
-  History,
-  Settings,
-  Plus,
+  Home,
+  BarChart2,
+  AlertOctagon,
+  FileText,
+  ShieldCheck,
+  Shield,
+  User,
 } from "lucide-react";
 
 export type NavItemKey =
@@ -18,7 +17,6 @@ export type NavItemKey =
   | "assessments"
   | "findings"
   | "reports"
-  | "dashboard"
   | "audit"
   | "settings";
 
@@ -31,38 +29,36 @@ interface AppSidebarProps {
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   activeTab,
   onNavigate,
-  onNewAssessment,
 }) => {
   const navItems = [
-    { key: "home" as const, label: "Home", icon: LayoutGrid },
-    { key: "assessments" as const, label: "Assessments", icon: ClipboardCheck },
-    { key: "findings" as const, label: "Findings", icon: Search },
-    { key: "reports" as const, label: "Reports", icon: BarChart3 },
-    { key: "dashboard" as const, label: "Trends", icon: TrendingUp },
-    { key: "audit" as const, label: "Audit", icon: History },
+    { key: "home" as const, label: "Home", icon: Home },
+    { key: "assessments" as const, label: "Assessments", icon: BarChart2 },
+    { key: "findings" as const, label: "Findings", icon: AlertOctagon },
+    { key: "reports" as const, label: "Reports", icon: FileText },
+    { key: "audit" as const, label: "Audit", icon: ShieldCheck },
   ];
 
   return (
-    <aside className="w-60 bg-white text-slate-800 border-r border-slate-200/90 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-20 font-sans">
+    <aside className="w-56 bg-white text-slate-800 border-r border-slate-200/90 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-20 font-sans">
       {/* Top Header & Main Navigation */}
-      <div className="pt-6 pb-4">
+      <div className="pt-5 pb-4">
         {/* Brand Header */}
-        <div className="flex items-center gap-3 px-5 pb-8">
-          <div className="h-10 w-10 rounded-md bg-[#0f172a] text-slate-200 font-sans font-bold text-sm flex items-center justify-center shrink-0 shadow-xs tracking-tight">
-            CV
+        <div className="flex items-center gap-2.5 px-4 pb-6">
+          <div className="h-8 w-8 rounded-md bg-[#0f172a] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Shield className="h-4 w-4 text-sky-400" />
           </div>
           <div>
-            <div className="font-bold text-slate-950 text-base tracking-tight leading-tight">
+            <div className="font-bold text-slate-950 text-sm tracking-tight leading-tight">
               CV Integrity
             </div>
-            <div className="text-[11px] font-mono text-slate-500 font-medium leading-tight mt-0.5">
-              Assurance Platform
+            <div className="text-[9px] font-mono text-slate-500 font-semibold uppercase tracking-wider leading-tight mt-0.5">
+              Precision AI Assurance
             </div>
           </div>
         </div>
 
         {/* Navigation Items List */}
-        <nav className="space-y-4">
+        <nav className="space-y-1 px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
@@ -71,68 +67,57 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 key={item.key}
                 onClick={() => onNavigate(item.key)}
                 className={clsx(
-                  "w-full flex items-center justify-between pl-5 pr-0 py-1 text-sm font-medium transition-colors text-left cursor-pointer group relative",
+                  "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all text-left cursor-pointer group relative",
                   isActive
-                    ? "text-[#0284c7] font-semibold"
-                    : "text-slate-700 hover:text-slate-950"
+                    ? "bg-slate-100 text-slate-950 font-bold border-r-2 border-sky-500 rounded-r-none"
+                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
                 )}
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-2.5">
                   <Icon
                     className={clsx(
-                      "h-5 w-5 shrink-0 transition-colors",
+                      "h-4 w-4 shrink-0 transition-colors",
                       isActive
-                        ? "text-[#0284c7] stroke-[2.2]"
-                        : "text-slate-700 group-hover:text-slate-950 stroke-[1.9]"
+                        ? "text-slate-950 stroke-[2.2]"
+                        : "text-slate-500 group-hover:text-slate-800 stroke-[1.8]"
                     )}
                   />
-                  <span className="leading-none">{item.label}</span>
+                  <span>{item.label}</span>
                 </div>
-
-                {/* Right Edge Cyan Vertical Pill Indicator */}
-                {isActive && (
-                  <span className="w-1 h-6 bg-[#0284c7] rounded-l-full shrink-0" />
-                )}
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* Bottom Action & Settings Section */}
-      <div className="p-4 pb-6">
-        {/* Pitch Black New Assessment Button */}
-        <button
-          onClick={onNewAssessment}
-          className="w-full flex items-center justify-center gap-2 rounded-md bg-black hover:bg-neutral-900 active:bg-neutral-950 text-white font-mono font-bold text-xs py-3 px-4 uppercase tracking-wider transition-all shadow-xs cursor-pointer"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>New Assessment</span>
-        </button>
-
-        {/* Divider */}
-        <div className="border-t border-slate-200 mt-4 mb-3" />
-
-        {/* Settings Link */}
-        <button
-          onClick={() => onNavigate("settings")}
-          className={clsx(
-            "w-full flex items-center gap-3.5 px-1 py-1.5 text-sm font-medium transition-colors text-left cursor-pointer group",
-            activeTab === "settings"
-              ? "text-[#0284c7] font-semibold"
-              : "text-slate-700 hover:text-slate-950"
-          )}
-        >
-          <Settings
-            className={clsx(
-              "h-5 w-5 shrink-0 transition-colors",
-              activeTab === "settings"
-                ? "text-[#0284c7] stroke-[2.2]"
-                : "text-slate-700 group-hover:text-slate-950 stroke-[1.9]"
-            )}
-          />
-          <span className="leading-none">Settings</span>
-        </button>
+      {/* Bottom Footer Widget (Matching Screenshot 1, 2, 3) */}
+      <div className="p-4 border-t border-slate-100">
+        {activeTab === "audit" ? (
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-full bg-slate-800 text-white font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
+              AT
+            </div>
+            <div className="min-w-0 flex-1 text-xs">
+              <div className="font-bold text-slate-900 truncate">Dr. A. Turing</div>
+              <div className="font-mono text-[10px] text-slate-400 truncate">ID: 0x8F9A</div>
+            </div>
+          </div>
+        ) : activeTab === "reports" ? (
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
+              <User className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0 flex-1 text-xs">
+              <div className="font-bold text-slate-900 truncate">SYSADMIN</div>
+              <div className="font-mono text-[10px] text-slate-400 truncate">ID: USR-992</div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span>System Status: <strong className="text-slate-800">NOMINAL</strong></span>
+          </div>
+        )}
       </div>
     </aside>
   );

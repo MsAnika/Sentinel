@@ -17,11 +17,7 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
-import {
-  AssuranceApiClient,
-  DatasetAnalysisResult,
-  ParameterAnalysisResult,
-} from "@/client/lib/api-client";
+import { AssuranceApiClient } from "@/client/lib/api-client";
 import { AssuranceReport, ContributorRiskSummary, FindingSchema } from "@/shared/types/assurance";
 
 interface CreateAssessmentWizardProps {
@@ -62,8 +58,6 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
   const [errors, setErrors] = useState<{ name?: string; type?: string }>({});
 
   // -- Real pipeline execution state --
-  const [modelResult, setModelResult] = useState<ParameterAnalysisResult | null>(null);
-  const [datasetResult, setDatasetResult] = useState<DatasetAnalysisResult | null>(null);
   const [modelSavedPath, setModelSavedPath] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
@@ -104,7 +98,6 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
         if (savedModelPath) {
           setLaunchStage("Running parameter analysis...");
           const params = await AssuranceApiClient.runParameterAnalysis(savedModelPath, fp.model_id);
-          setModelResult(params);
           combinedFindings = [...combinedFindings, ...params.findings];
         }
       }
@@ -129,7 +122,6 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
               formatType: "YOLO",
               yoloDir: upload.yolo_dir_candidate!,
             });
-        setDatasetResult(result);
         combinedFindings = [...combinedFindings, ...result.findings];
         contributorSummaries = result.profile.contributor_risks;
       }

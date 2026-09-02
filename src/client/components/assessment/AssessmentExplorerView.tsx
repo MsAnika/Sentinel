@@ -29,9 +29,9 @@ function statusToBadge(status: string): "PASS" | "FAIL" | "WARN" {
 }
 
 interface AssessmentExplorerViewProps {
-  title: string;
+  title?: string;
   subtitle?: string;
-  report: AssuranceReport | null;
+  report?: AssuranceReport | null;
   onInvestigate: () => void;
   activeScenario: string;
   loading: boolean;
@@ -44,9 +44,9 @@ interface AssessmentExplorerViewProps {
  * launching a new wizard assessment, changes what's displayed here
  * because both write into the same `report` prop from the parent. */
 export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
-  title,
+  title = "Satellite Detector v2",
   subtitle,
-  report,
+  report = null,
   onInvestigate,
   activeScenario,
   loading,
