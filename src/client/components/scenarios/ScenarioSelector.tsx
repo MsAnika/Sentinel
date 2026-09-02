@@ -1,137 +1,161 @@
-import React from 'react'
-import clsx from 'clsx'
-import { ShieldCheck, Skull, Cpu, AlertOctagon, Play, Repeat, FileWarning } from 'lucide-react'
-import { StatusBadge } from '../ui/StatusBadge'
+"use client";
+
+import React, { useEffect, useState } from "react";
+import clsx from "clsx";
+import {
+  ShieldCheck,
+  Skull,
+  Cpu,
+  AlertOctagon,
+  Play,
+  Repeat,
+  FileWarning,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react";
+import { AssuranceApiClient } from "@/client/lib/api-client";
+import { StatusBadge } from "../ui/StatusBadge";
 
 interface ScenarioSelectorProps {
-  activeScenario: string
-  loading: boolean
-  onSelectScenario: (scenarioId: string) => void
+  activeScenario: string;
+  loading: boolean;
+  onSelectScenario: (scenarioId: string) => void;
 }
 
-const SCENARIOS = [
-  {
-    id: 'A',
-    title: 'Scenario A: Clean Pipeline',
-    subtitle: 'Clean Dataset + Original Model + Valid Inference',
-    badge: 'ACCEPT',
-    icon: ShieldCheck,
-    tone: 'emerald',
-  },
-  {
-    id: 'B',
-    title: 'Scenario B: Compromised Dataset',
-    subtitle: 'Poisoned Triggers + Label Flipping + Near-Duplicate Flooding',
-    badge: 'QUARANTINE',
-    icon: Skull,
-    tone: 'rose',
-  },
-  {
-    id: 'C',
-    title: 'Scenario C: Substituted Model',
-    subtitle: 'Substituted SHA-256 Digest + Behavioural Divergence Battery',
-    badge: 'QUARANTINE',
-    icon: Cpu,
-    tone: 'amber',
-  },
-  {
-    id: 'D',
-    title: 'Scenario D: Tampered Inference',
-    subtitle: 'Post-Hoc Prediction Alteration Detected via Hash Recalculation',
-    badge: 'QUARANTINE',
-    icon: AlertOctagon,
-    tone: 'rose',
-  },
-  {
-    id: 'E',
-    title: 'Scenario E: Replay & Reordering',
-    subtitle: 'Nonce Replay of a Signed Record + Out-of-Sequence Injection',
-    badge: 'QUARANTINE',
-    icon: Repeat,
-    tone: 'rose',
-  },
-  {
-    id: 'F',
-    title: 'Scenario F: Audit-Log Tamper',
-    subtitle: 'Post-Hoc Ledger Rewrite Detected via Hash Chain + Signature',
-    badge: 'QUARANTINE',
-    icon: FileWarning,
-    tone: 'amber',
-  },
-]
+interface ScenarioSummary {
+  id: string;
+  name: string;
+  badge: string;
+  disposition: string;
+  description: string;
+}
+
+const SCENARIO_PRESENTATION: Record<
+  string,
+  { icon: typeof ShieldCheck; tone: string }
+> = {
+  A: { icon: ShieldCheck, tone: "emerald" },
+  B: { icon: Skull, tone: "rose" },
+  C: { icon: Cpu, tone: "amber" },
+  D: { icon: AlertOctagon, tone: "rose" },
+  E: { icon: Repeat, tone: "rose" },
+  F: { icon: FileWarning, tone: "amber" },
+};
 
 export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
   activeScenario,
   loading,
   onSelectScenario,
 }) => {
+  const [scenarios, setScenarios] = useState<ScenarioSummary[] | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    AssuranceApiClient.listScenarios()
+      .then((data) => {
+        if (isMounted) setScenarios(data);
+      })
+      .catch((e) => {
+        if (isMounted) setFetchError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/70 p-4 font-mono">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+    <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs font-sans">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-cyan-400" />
-            <h2 className="text-sm font-bold tracking-wider text-zinc-100 uppercase">
-              Reproducible Attack & Assurance Test Matrix (PRD Section 19)
+            <span className="h-2 w-2 rounded-full bg-sky-500" />
+            <h2 className="text-xs font-mono font-bold tracking-wider text-slate-800 uppercase">
+              Assurance Test Matrix & Controlled Attack Vectors
             </h2>
           </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5 font-sans">
             Select a controlled test vector to evaluate multi-contributor CV pipeline integrity.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mt-3">
-        {SCENARIOS.map((sc) => {
-          const Icon = sc.icon
-          const isSelected = activeScenario === sc.id
+      {fetchError ? (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-700 font-mono">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-rose-600" />
+          <span>Could not load the scenario list: {fetchError}</span>
+        </div>
+      ) : scenarios === null ? (
+        <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 font-mono">
+          <Loader2 className="h-4 w-4 animate-spin text-sky-600" /> Loading scenario matrix...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mt-4">
+          {scenarios.map((sc) => {
+            const presentation = SCENARIO_PRESENTATION[sc.id] || {
+              icon: ShieldCheck,
+              tone: "zinc",
+            };
+            const Icon = presentation.icon;
+            const isSelected = activeScenario === sc.id;
 
-          return (
-            <button
-              key={sc.id}
-              onClick={() => onSelectScenario(sc.id)}
-              disabled={loading}
-              className={clsx(
-                'group relative flex flex-col justify-between rounded border p-3 text-left transition-all duration-200 cursor-pointer',
-                isSelected
-                  ? 'border-cyan-500/80 bg-zinc-900 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-                  : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70',
-                loading && 'opacity-60 cursor-not-allowed'
-              )}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className={clsx(
-                    'flex h-7 w-7 items-center justify-center rounded',
-                    isSelected ? 'bg-cyan-950 text-cyan-400 border border-cyan-500/50' : 'bg-zinc-800 text-zinc-400'
-                  )}>
-                    <Icon className="h-4 w-4" />
+            return (
+              <button
+                key={sc.id}
+                onClick={() => onSelectScenario(sc.id)}
+                disabled={loading}
+                className={clsx(
+                  "group relative flex flex-col justify-between rounded-xl border p-3.5 text-left transition-all duration-200 cursor-pointer",
+                  isSelected
+                    ? "border-sky-500 bg-sky-50/40 shadow-xs ring-1 ring-sky-500"
+                    : "border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/70",
+                  loading && "opacity-60 cursor-not-allowed"
+                )}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={clsx(
+                        "flex h-7 w-7 items-center justify-center rounded-md",
+                        isSelected
+                          ? "bg-sky-600 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <StatusBadge status={sc.disposition} size="sm" />
                   </div>
-                  <StatusBadge status={sc.badge} size="sm" />
+
+                  <div className="mt-2.5">
+                    <div className="text-xs font-bold text-slate-900 font-sans leading-tight">
+                      {sc.name}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed font-sans">
+                      {sc.description}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-2.5">
-                  <div className="text-xs font-bold text-zinc-100">{sc.title}</div>
-                  <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
-                    {sc.subtitle}
-                  </p>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] font-mono">
+                  <span className="text-slate-400 font-medium">VECTOR {sc.id}</span>
+                  <span
+                    className={clsx(
+                      "flex items-center gap-1 font-bold",
+                      isSelected
+                        ? "text-sky-600"
+                        : "text-slate-600 group-hover:text-slate-900"
+                    )}
+                  >
+                    <Play className="h-2.5 w-2.5" />
+                    {isSelected ? "ACTIVE" : "RUN"}
+                  </span>
                 </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between border-t border-zinc-800/80 pt-2 text-[10px]">
-                <span className="text-zinc-500">VECTOR ID: {sc.id}</span>
-                <span className={clsx(
-                  'flex items-center gap-1 font-semibold',
-                  isSelected ? 'text-cyan-400' : 'text-zinc-400 group-hover:text-zinc-200'
-                )}>
-                  <Play className="h-2.5 w-2.5" />
-                  {isSelected ? 'ACTIVE' : 'RUN VECTOR'}
-                </span>
-              </div>
-            </button>
-          )
-        })}
-      </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
-  )
-}
+  );
+};

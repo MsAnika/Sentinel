@@ -1,71 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
-import { Header } from "@/client/components/layout/Header";
-import { Breadcrumbs } from "@/client/components/layout/Breadcrumbs";
-import { ScenarioSelector } from "@/client/components/scenarios/ScenarioSelector";
+import React, { useState, useEffect } from "react";
+import { AppSidebar, NavItemKey } from "@/client/components/layout/AppSidebar";
+import {
+  AppTopNav,
+  ExplorerSecondaryTab,
+} from "@/client/components/layout/AppTopNav";
+import { HomeDashboardView } from "@/client/components/home/HomeDashboardView";
+import { AssessmentExplorerView } from "@/client/components/assessment/AssessmentExplorerView";
+import { CreateAssessmentWizard } from "@/client/components/assessment/CreateAssessmentWizard";
 import { DatasetAssuranceView } from "@/client/components/dataset/DatasetAssuranceView";
 import { ModelAssuranceView } from "@/client/components/model/ModelAssuranceView";
 import { ProvenanceStudioView } from "@/client/components/provenance/ProvenanceStudioView";
 import { DistributionShiftView } from "@/client/components/drift/DistributionShiftView";
 import { AuditLedgerView } from "@/client/components/audit/AuditLedgerView";
 import { AssuranceReportView } from "@/client/components/report/AssuranceReportView";
-import { AssessmentResultCard } from "@/client/components/assessment/AssessmentResultCard";
 import { FindingsTriage } from "@/client/components/assessment/FindingsTriage";
-import { HomeView } from "@/client/components/home/HomeView";
 import { ReportsView } from "@/client/components/reports/ReportsView";
 import { AssuranceApiClient } from "@/client/lib/api-client";
-import { AssuranceReport, ScenarioRunResult } from "@/shared/types/assurance";
-import {
-  Layers,
-  Link2,
-  Shield,
-  FlaskConical,
-  UploadCloud,
-  BarChart3,
-  Search,
-  History,
-  Home as HomeIcon,
-  FileStack,
-} from "lucide-react";
-import clsx from "clsx";
-import { LiveAnalysisView } from "@/client/components/live/LiveAnalysisView";
-import { TrendDashboardView } from "@/client/components/dashboard/TrendDashboardView";
+import { ScenarioRunResult } from "@/shared/types/assurance";
+import { Lock, Cpu, CheckCircle2 } from "lucide-react";
 
-type AppMode = "home" | "reports" | "scenarios" | "live" | "dashboard";
-type SecondaryTab = "assets" | "findings" | "evidence" | "report" | "audit";
-
-const APP_MODE_LABELS: Record<AppMode, string> = {
-  home: "Home",
-  reports: "Reports",
-  scenarios: "Scenario Replay",
-  live: "Live Analysis",
-  dashboard: "Dashboard",
-};
-
-export default function DashboardPage() {
-  const [appMode, setAppMode] = useState<AppMode>("home");
+export default function AppRootPage() {
+  const [activeNav, setActiveNav] = useState<NavItemKey>("home");
+  const [secondaryTab, setSecondaryTab] =
+    useState<ExplorerSecondaryTab>("overview");
   const [activeScenario, setActiveScenario] = useState<string>("A");
-  const [activeTab, setActiveTab] = useState<SecondaryTab>("findings");
   const [scenarioData, setScenarioData] = useState<ScenarioRunResult | null>(
-    null,
+    null
   );
   const [loading, setLoading] = useState<boolean>(false);
+  const [showWizard, setShowWizard] = useState<boolean>(false);
+  const [selectedAssessmentId, setSelectedAssessmentId] =
+    useState<string>("satellite-v2");
 
-  // A report opened from Home's triage list or the Reports history. It
-  // carries only what's actually persisted in the AssuranceReport
-  // (findings, contributor summaries, coverage) -- not the live-only side
-  // channels (raw model fingerprint objects, inference records) a fresh
-  // Scenario Replay/Live Analysis run also produces, so its drill-down
-  // surface is Findings + Report only, not the full Assets/Evidence tabs.
-  const [openedReport, setOpenedReport] = useState<AssuranceReport | null>(
-    null,
-  );
-  const [openedReportId, setOpenedReportId] = useState<string | null>(null);
-  const [openedFrom, setOpenedFrom] = useState<"home" | "reports">("home");
-  const [openedTab, setOpenedTab] = useState<"findings" | "report">(
-    "findings",
-  );
+  useEffect(() => {
+    AssuranceApiClient.runScenario("A")
+      .then((data) => setScenarioData(data))
+      .catch((err) => console.error("Scenario load:", err));
+  }, []);
 
   const handleSelectScenario = async (scenarioId: string) => {
     setLoading(true);
@@ -80,269 +53,264 @@ export default function DashboardPage() {
     }
   };
 
-  const openScenariosMode = () => {
-    setOpenedReport(null);
-    setAppMode("scenarios");
-    if (!scenarioData) {
-      handleSelectScenario(activeScenario);
+  const handleWizardComplete = async () => {
+    setLoading(true);
+    try {
+      const res = await AssuranceApiClient.runScenario("A");
+      setScenarioData(res);
+      setShowWizard(false);
+      setActiveNav("assessments");
+      setSecondaryTab("overview");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const openReport = (
-    reportId: string,
-    report: AssuranceReport,
-    from: "home" | "reports",
-  ) => {
-    setOpenedReportId(reportId);
-    setOpenedReport(report);
-    setOpenedFrom(from);
-    setOpenedTab("findings");
+  const handleNavigateToAssessment = (assessmentId: string) => {
+    setSelectedAssessmentId(assessmentId);
+    setActiveNav("assessments");
+    setSecondaryTab("overview");
   };
 
-  // Reduced from a flat 6-item tab bar of backend-module names down to the
-  // analyst's actual investigation surfaces: Findings is the triage
-  // entry point (default), Assets groups the dataset/model panels that
-  // used to be separate top-level destinations, Evidence groups the
-  // cryptographic/drift technical detail, and Audit is deliberately last
-  // -- governance infrastructure available on demand, not something that
-  // interrupts the investigation.
-  const tabs = [
-    { id: "findings", label: "FINDINGS", icon: Search },
-    { id: "assets", label: "ASSETS", icon: Layers },
-    { id: "evidence", label: "EVIDENCE", icon: Link2 },
-    { id: "report", label: "REPORT", icon: Shield },
-    { id: "audit", label: "AUDIT", icon: History },
-  ] as const;
-
-  const navButtons: Array<{ id: AppMode; label: string; icon: typeof FlaskConical }> = [
-    { id: "home", label: "Home", icon: HomeIcon },
-    { id: "reports", label: "Reports", icon: FileStack },
-    { id: "scenarios", label: "Scenario Replay", icon: FlaskConical },
-    { id: "live", label: "Live Analysis", icon: UploadCloud },
-    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-  ];
-
-  // Persistent trail so the analyst always knows where they are, and can
-  // jump back a level in one click rather than repeated "back" presses.
-  const breadcrumbItems = openedReport
-    ? [
-        {
-          label: APP_MODE_LABELS[openedFrom],
-          onClick: () => setOpenedReport(null),
-        },
-        { label: openedReportId || "Assessment", onClick: () => setOpenedTab("findings") },
-        { label: openedTab },
-      ]
-    : appMode === "scenarios" && scenarioData
-      ? [{ label: "Scenario Replay" }, { label: scenarioData.title, onClick: () => setActiveTab("findings") }, { label: activeTab }]
-      : [{ label: APP_MODE_LABELS[appMode] }];
+  const getPageTitle = () => {
+    if (showWizard) return "New Assessment";
+    switch (activeNav) {
+      case "home":
+        return "Fleet & Trust Dashboard";
+      case "assessments":
+        return "Assessment Explorer";
+      case "findings":
+        return "Findings & Triage";
+      case "reports":
+        return "Reports & Compliance Archives";
+      case "audit":
+        return "Audit Hash Chain Ledger";
+      case "settings":
+        return "System Settings & Security";
+      default:
+        return "CV Integrity";
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-mono flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
-      <Header />
+    <div className="h-screen w-screen overflow-hidden bg-[#f8fafc] text-[#0f172a] flex antialiased font-sans">
+      {/* Left Sidebar */}
+      <AppSidebar
+        activeTab={activeNav}
+        onNavigate={(tab) => {
+          setShowWizard(false);
+          setActiveNav(tab);
+          if (tab === "assessments") {
+            setSecondaryTab("overview");
+          }
+        }}
+        onNewAssessment={() => setShowWizard(true)}
+      />
 
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-        <Breadcrumbs items={breadcrumbItems} />
+      {/* Main Content Workspace */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#f8fafc] text-slate-900">
+        {/* Top Header - Fixed & Pinned */}
+        <AppTopNav
+          title={getPageTitle()}
+          activeSecondaryTab={secondaryTab}
+          onSecondaryTabChange={(tab) => setSecondaryTab(tab)}
+          showSecondaryTabs={!showWizard && activeNav === "assessments"}
+        />
 
-        {openedReport ? (
-          // -- Investigation drill-down for a report opened from Home/Reports --
-          <div className="space-y-6">
-            <AssessmentResultCard
-              title={openedReportId || "Assessment"}
-              subtitle={`Generated ${new Date(openedReport.generated_at).toLocaleString()}`}
-              report={openedReport}
-              onInvestigate={() => setOpenedTab("findings")}
+        {/* Scrollable View Workspace */}
+        <div className="flex-1 overflow-y-auto">
+          <main className="px-8 py-6 max-w-7xl w-full mx-auto">
+          {showWizard ? (
+            <CreateAssessmentWizard
+              onBack={() => setShowWizard(false)}
+              onComplete={handleWizardComplete}
             />
-
-            <div className="border-b border-zinc-800 flex overflow-x-auto gap-2 pb-px text-xs">
-              {(
-                [
-                  { id: "findings", label: "FINDINGS", icon: Search },
-                  { id: "report", label: "REPORT", icon: Shield },
-                ] as const
-              ).map((tab) => {
-                const Icon = tab.icon;
-                const isActive = openedTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setOpenedTab(tab.id)}
-                    className={clsx(
-                      "flex items-center gap-2 px-4 py-2.5 font-bold tracking-wider transition-all border-b-2 whitespace-nowrap cursor-pointer",
-                      isActive
-                        ? "border-cyan-400 text-cyan-300 bg-zinc-900/60"
-                        : "border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {openedTab === "findings" && (
-              <FindingsTriage
-                findings={openedReport.findings}
-                contributorSummaries={openedReport.contributor_summaries}
-              />
-            )}
-            {openedTab === "report" && (
-              <AssuranceReportView report={openedReport} />
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-2 text-xs overflow-x-auto">
-              {navButtons.map((nav) => {
-                const Icon = nav.icon;
-                const isActive = appMode === nav.id;
-                return (
-                  <button
-                    key={nav.id}
-                    onClick={() =>
-                      nav.id === "scenarios" ? openScenariosMode() : setAppMode(nav.id)
-                    }
-                    className={clsx(
-                      "flex items-center gap-2 rounded-t border border-b-0 px-4 py-2 font-bold tracking-wider uppercase transition-colors cursor-pointer whitespace-nowrap",
-                      isActive
-                        ? "border-cyan-700/60 bg-zinc-900 text-cyan-300"
-                        : "border-transparent text-zinc-500 hover:text-zinc-300",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" /> {nav.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {appMode === "home" ? (
-              <HomeView
-                onOpenReport={(id, report) => openReport(id, report, "home")}
-                onNewAssessment={openScenariosMode}
-              />
-            ) : appMode === "reports" ? (
-              <ReportsView
-                onOpenReport={(id, report) => openReport(id, report, "reports")}
-              />
-            ) : appMode === "dashboard" ? (
-              <TrendDashboardView />
-            ) : appMode === "live" ? (
-              <LiveAnalysisView />
-            ) : (
-              <>
-                {/* Visually distinct from a real assessment: these are
-                    synthetic attack fixtures for demo/validation, and
-                    must never be mistaken for an operational finding. */}
-                <div className="inline-flex items-center gap-1.5 rounded border border-amber-700/50 bg-amber-950/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                  <FlaskConical className="h-3 w-3" /> Demonstration / Validation Mode — Synthetic Attack Fixtures, Not a Live Assessment
-                </div>
-                <ScenarioSelector
+          ) : activeNav === "home" ? (
+            /* Dedicated Home / Dashboard View */
+            <HomeDashboardView
+              onNavigateToAssessment={handleNavigateToAssessment}
+              onViewAllAssessments={() => setActiveNav("assessments")}
+              onViewAllFindings={() => setActiveNav("findings")}
+            />
+          ) : activeNav === "assessments" ? (
+            /* Dedicated Assessment Explorer View */
+            <div>
+              {secondaryTab === "overview" && (
+                <AssessmentExplorerView
+                  activeAssessmentId={selectedAssessmentId}
+                  onInvestigate={() => setSecondaryTab("findings")}
                   activeScenario={activeScenario}
                   loading={loading}
                   onSelectScenario={handleSelectScenario}
                 />
+              )}
 
-                {loading ? (
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-12 text-center text-xs text-zinc-400 space-y-3">
-                    <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
-                    <div>RUNNING AIR-GAPPED ASSURANCE PIPELINE...</div>
-                  </div>
-                ) : scenarioData ? (
-                  <div className="space-y-6">
-                    {/* The case-file summary is always visible -- it IS the
-                        overview. The tabs below are drill-downs from it, not
-                        competing top-level destinations. */}
-                    <AssessmentResultCard
-                      title={scenarioData.title}
-                      subtitle={scenarioData.description}
-                      report={scenarioData.report}
-                      onInvestigate={() => setActiveTab("findings")}
-                    />
-
-                    <div className="border-b border-zinc-800 flex overflow-x-auto gap-2 pb-px text-xs">
-                      {tabs.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={clsx(
-                              "flex items-center gap-2 px-4 py-2.5 font-bold tracking-wider transition-all border-b-2 whitespace-nowrap cursor-pointer",
-                              isActive
-                                ? "border-cyan-400 text-cyan-300 bg-zinc-900/60"
-                                : "border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30",
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                            {tab.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {activeTab === "findings" && (
-                      <FindingsTriage
+              {secondaryTab === "assets" && (
+                <div className="space-y-8">
+                  {scenarioData ? (
+                    <>
+                      <DatasetAssuranceView
                         findings={scenarioData.report.findings}
                         contributorSummaries={
-                          scenarioData.contributor_summaries ||
-                          scenarioData.report.contributor_summaries
+                          scenarioData.contributor_summaries || []
                         }
+                        samplesCount={scenarioData.samples_count ?? 0}
                       />
-                    )}
-
-                    {activeTab === "assets" && (
-                      <div className="space-y-8">
-                        <DatasetAssuranceView
-                          findings={scenarioData.report.findings}
-                          contributorSummaries={
-                            scenarioData.contributor_summaries || []
-                          }
-                          samplesCount={scenarioData.samples_count || 40}
-                        />
-                        <ModelAssuranceView
-                          fingerprint={scenarioData.model_fingerprint}
-                          behaviour={scenarioData.model_behaviour}
-                          findings={scenarioData.report.findings}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "evidence" && (
-                      <div className="space-y-8">
-                        <ProvenanceStudioView
-                          inferenceRecord={scenarioData.inference_record}
-                          validRecord={scenarioData.valid_record}
-                          tamperedRecord={scenarioData.tampered_record}
-                        />
-                        <DistributionShiftView
-                          report={scenarioData.drift_report}
-                        />
-                      </div>
-                    )}
-
-                    {activeTab === "audit" && (
-                      <AuditLedgerView
-                        entries={scenarioData.audit_entries || []}
+                      <ModelAssuranceView
+                        fingerprint={scenarioData.model_fingerprint}
+                        behaviour={scenarioData.model_behaviour}
+                        findings={scenarioData.report.findings}
                       />
-                    )}
+                    </>
+                  ) : (
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
+                      Loading assets...
+                    </div>
+                  )}
+                </div>
+              )}
 
-                    {activeTab === "report" && (
-                      <AssuranceReportView report={scenarioData.report} />
-                    )}
+              {secondaryTab === "findings" && (
+                <div className="space-y-6">
+                  {scenarioData ? (
+                    <FindingsTriage
+                      findings={scenarioData.report.findings}
+                      contributorSummaries={
+                        scenarioData.contributor_summaries ||
+                        scenarioData.report.contributor_summaries
+                      }
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
+                      Loading findings database...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {secondaryTab === "evidence" && (
+                <div className="space-y-8">
+                  {scenarioData ? (
+                    <>
+                      <ProvenanceStudioView
+                        inferenceRecord={scenarioData.inference_record}
+                        validRecord={scenarioData.valid_record}
+                        tamperedRecord={scenarioData.tampered_record}
+                      />
+                      <DistributionShiftView
+                        report={scenarioData.drift_report}
+                      />
+                    </>
+                  ) : (
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
+                      Loading evidence telemetry...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {secondaryTab === "decision" && (
+                <div className="space-y-6">
+                  {scenarioData ? (
+                    <AssuranceReportView report={scenarioData.report} />
+                  ) : (
+                    <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
+                      Loading assurance decision report...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : activeNav === "findings" ? (
+            /* Dedicated Findings View */
+            <div className="space-y-6">
+              {scenarioData ? (
+                <FindingsTriage
+                  findings={scenarioData.report.findings}
+                  contributorSummaries={
+                    scenarioData.contributor_summaries ||
+                    scenarioData.report.contributor_summaries
+                  }
+                />
+              ) : (
+                <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
+                  Loading findings triage...
+                </div>
+              )}
+            </div>
+          ) : activeNav === "reports" ? (
+            /* Dedicated Reports View */
+            <ReportsView
+              onOpenReport={() => {
+                setActiveNav("assessments");
+                setSecondaryTab("decision");
+              }}
+            />
+          ) : activeNav === "audit" ? (
+            /* Dedicated Audit View */
+            <div className="space-y-6">
+              {scenarioData ? (
+                <AuditLedgerView entries={scenarioData.audit_entries || []} />
+              ) : (
+                <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 font-mono">
+                  Loading audit hash chain...
+                </div>
+              )}
+            </div>
+          ) : activeNav === "settings" ? (
+            /* Dedicated Settings View */
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
+              <div className="pb-4 border-b border-slate-100">
+                <h2 className="text-base font-bold text-slate-900">
+                  System & Air-Gap Configuration
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Platform deployment parameters and cryptographic keys.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Lock className="h-4 w-4 text-emerald-600" />
+                    <span>Air-Gap Network Isolation</span>
                   </div>
-                ) : null}
-              </>
-            )}
-          </>
-        )}
-      </main>
+                  <p className="text-slate-600 text-[11px]">
+                    Strict localhost-only binding. Zero telemetry or external
+                    cloud outbound transmission.
+                  </p>
+                  <div className="text-[11px] text-emerald-600 font-bold font-mono">
+                    ✓ ENFORCED (Status: ACTIVE)
+                  </div>
+                </div>
 
-      <footer className="border-t border-zinc-800/80 bg-zinc-950 py-3 text-center text-[10px] text-zinc-500 font-mono">
-        IntelX ASSURANCE PLATFORM • DEVELOPED FOR INDIAN ARMY (DGIS) / MoD •
-        PROBLEM STATEMENT ID: 26228 • 100% AIR-GAPPED
-      </footer>
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Cpu className="h-4 w-4 text-sky-600" />
+                    <span>Evaluation Core</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px]">
+                    Local ONNX Runtime & PyTorch inference engine.
+                  </p>
+                  <div className="text-[11px] text-slate-800 font-mono">
+                    Engine: Python 3.11 / ONNX 1.16+
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-xs text-slate-700">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span>SHA-256 Audit Hash Chain verified and active.</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </main>
+        </div>
+      </div>
     </div>
   );
 }

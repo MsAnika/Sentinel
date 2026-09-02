@@ -10,16 +10,9 @@ import {
   ArrowRight,
   Info,
   CircleAlert,
+  RotateCcw,
 } from "lucide-react";
-import { AssuranceReport } from "@/shared/types/assurance";
-
-export interface TriggerItem {
-  id: string;
-  event: string;
-  module: string;
-  confidence: number;
-  isCritical: boolean;
-}
+import { ScenarioSelector } from "@/client/components/scenarios/ScenarioSelector";
 
 export interface CleanAssessmentData {
   caseId: string;
@@ -33,72 +26,120 @@ export interface CleanAssessmentData {
     inference: { score: number; status: "PASS" | "FAIL" | "WARN" };
     shift: { score: number; status: "PASS" | "FAIL" | "WARN" };
   };
-  triggers: TriggerItem[];
+  triggers: Array<{
+    id: string;
+    event: string;
+    module: string;
+    confidence: number;
+    isCritical: boolean;
+  }>;
   recommendation: {
     title: string;
     description: string;
   };
 }
 
-const DEFAULT_ASSESSMENT: CleanAssessmentData = {
-  caseId: "#AS-2026-019",
-  name: "Satellite Detector v2",
-  statusText: "REVIEW REQUIRED",
-  statusType: "REVIEW",
-  overallScore: 68,
-  metrics: {
-    dataset: { score: 82, status: "PASS" },
-    model: { score: 54, status: "FAIL" },
-    inference: { score: 98, status: "PASS" },
-    shift: { score: 71, status: "WARN" },
+const ASSESSMENTS_CATALOG: Record<string, CleanAssessmentData> = {
+  "satellite-v2": {
+    caseId: "#AS-2026-019",
+    name: "Satellite Detector v2",
+    statusText: "REVIEW REQUIRED",
+    statusType: "REVIEW",
+    overallScore: 68,
+    metrics: {
+      dataset: { score: 82, status: "PASS" },
+      model: { score: 54, status: "FAIL" },
+      inference: { score: 98, status: "PASS" },
+      shift: { score: 71, status: "WARN" },
+    },
+    triggers: [
+      {
+        id: "t1",
+        event: "Potential trigger behaviour detected in visual feed",
+        module: "model.heuristic",
+        confidence: 94,
+        isCritical: true,
+      },
+      {
+        id: "t2",
+        event: "Contributor anomaly: spatial drift out of bounds",
+        module: "shift.spatial",
+        confidence: 89,
+        isCritical: true,
+      },
+      {
+        id: "t3",
+        event: "Minor latency variance observed during batch inference",
+        module: "infer.latency",
+        confidence: 42,
+        isCritical: false,
+      },
+    ],
+    recommendation: {
+      title: "Review before deployment",
+      description:
+        "The current model snapshot (#AS-2026-019) exhibits highly correlative failure modes in target detection. Automatic promotion to staging is blocked.",
+    },
   },
-  triggers: [
-    {
-      id: "t1",
-      event: "Potential trigger behaviour detected in visual feed",
-      module: "model.heuristic",
-      confidence: 94,
-      isCritical: true,
+  "urban-seg": {
+    caseId: "#AS-2026-014",
+    name: "Urban Segmentation Model",
+    statusText: "QUARANTINE RECOMMENDED",
+    statusType: "QUARANTINE",
+    overallScore: 34,
+    metrics: {
+      dataset: { score: 45, status: "FAIL" },
+      model: { score: 32, status: "FAIL" },
+      inference: { score: 78, status: "WARN" },
+      shift: { score: 29, status: "FAIL" },
     },
-    {
-      id: "t2",
-      event: "Contributor anomaly: spatial drift out of bounds",
-      module: "shift.spatial",
-      confidence: 89,
-      isCritical: true,
+    triggers: [
+      {
+        id: "u1",
+        event: "Severe spectral distribution shift across test tiles",
+        module: "shift.spectral",
+        confidence: 97,
+        isCritical: true,
+      },
+      {
+        id: "u2",
+        event: "Backdoor Trojan pattern detected in convolutional filters",
+        module: "model.trojan",
+        confidence: 91,
+        isCritical: true,
+      },
+    ],
+    recommendation: {
+      title: "Quarantine model immediately",
+      description:
+        "Severe vulnerability indicators present. Retraining with clean contributor partitions required.",
     },
-    {
-      id: "t3",
-      event: "Minor latency variance observed during batch inference",
-      module: "infer.latency",
-      confidence: 42,
-      isCritical: false,
-    },
-  ],
-  recommendation: {
-    title: "Review before deployment",
-    description:
-      "The current model snapshot (#AS-2026-019) exhibits highly correlative failure modes in target detection. Automatic promotion to staging is blocked.",
   },
 };
 
-interface HomeViewProps {
-  onOpenReport?: (reportId: string, report: AssuranceReport) => void;
-  onViewAllAssessments?: () => void;
-  onViewAllFindings?: () => void;
-  onInvestigate?: () => void;
+interface AssessmentExplorerViewProps {
+  activeAssessmentId?: string;
+  onInvestigate: () => void;
+  activeScenario: string;
+  loading: boolean;
+  onSelectScenario: (scenarioId: string) => void;
 }
 
-export const HomeView: React.FC<HomeViewProps> = ({
+export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
+  activeAssessmentId = "satellite-v2",
   onInvestigate,
-  onViewAllFindings,
+  activeScenario,
+  loading,
+  onSelectScenario,
 }) => {
-  const [assessment] = useState<CleanAssessmentData>(DEFAULT_ASSESSMENT);
-  const [showRawLogs, setShowRawLogs] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<string>(activeAssessmentId);
+  const [showLogs, setShowLogs] = useState(false);
+
+  const assessment = ASSESSMENTS_CATALOG[selectedKey] || ASSESSMENTS_CATALOG["satellite-v2"];
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Top Header Card */}
+    <div className="space-y-6 pb-12 font-sans">
+      {/* Top Assessment Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -119,7 +160,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {assessment.statusText}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-2 font-sans">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-2">
             {assessment.name}
           </h1>
         </div>
@@ -154,7 +195,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <Database className="h-4 w-4 text-slate-500" />
           </div>
           <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold text-slate-900 tracking-tight font-sans">
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">
               {assessment.metrics.dataset.score}
             </span>
             <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-sky-300 text-sky-600 bg-sky-50/30">
@@ -172,7 +213,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <Radio className="h-4 w-4 text-rose-600" />
           </div>
           <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold text-rose-600 tracking-tight font-sans">
+            <span className="text-2xl font-bold text-rose-600 tracking-tight">
               {assessment.metrics.model.score}
             </span>
             <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-rose-300 text-rose-600 bg-rose-100/60">
@@ -190,7 +231,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <Cpu className="h-4 w-4 text-slate-500" />
           </div>
           <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold text-slate-900 tracking-tight font-sans">
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">
               {assessment.metrics.inference.score}
             </span>
             <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-sky-300 text-sky-600 bg-sky-50/30">
@@ -208,7 +249,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <ArrowUpDown className="h-4 w-4 text-slate-500" />
           </div>
           <div className="flex items-end justify-between">
-            <span className="text-2xl font-bold text-slate-900 tracking-tight font-sans">
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">
               {assessment.metrics.shift.score}
             </span>
             <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-amber-300 text-amber-700 bg-amber-50/30">
@@ -227,10 +268,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               WHY? - HIGH CONFIDENCE TRIGGERS
             </h2>
             <button
-              onClick={() => setShowRawLogs(!showRawLogs)}
+              onClick={() => setShowLogs(!showLogs)}
               className="font-mono text-xs text-sky-600 hover:text-sky-700 underline transition-colors cursor-pointer"
             >
-              {showRawLogs ? "Hide Logs" : "View Raw Logs"}
+              {showLogs ? "Hide Logs" : "View Raw Logs"}
             </button>
           </div>
 
@@ -253,7 +294,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         ) : (
                           <Info className="h-3.5 w-3.5 text-sky-500 shrink-0" />
                         )}
-                        <span className="text-slate-800 font-medium font-sans text-xs">
+                        <span className="text-slate-800 font-medium text-xs">
                           {item.event}
                         </span>
                       </div>
@@ -275,11 +316,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </table>
           </div>
 
-          {showRawLogs && (
+          {showLogs && (
             <div className="mt-4 p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-[11px] leading-relaxed overflow-x-auto">
-              <div>[2026-09-02T15:20:01Z] [model.heuristic] Neural Cleanse pattern detected at layer conv4_block3_out: delta_norm=0.28 (threshold &lt; 0.40).</div>
+              <div>[2026-09-02T15:20:01Z] [model.heuristic] Neural Cleanse pattern detected at layer conv4_block3_out: delta_norm=0.28.</div>
               <div>[2026-09-02T15:20:03Z] [shift.spatial] Contributor user_128 geographic cluster density=0.89 deviation.</div>
-              <div>[2026-09-02T15:20:05Z] [infer.latency] Hardware latency p99=48.2ms, baseline=41.0ms.</div>
             </div>
           )}
         </div>
@@ -292,25 +332,43 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span>RECOMMENDED ACTION</span>
             </div>
 
-            <h3 className="font-bold text-base text-slate-900 mt-2 font-sans">
+            <h3 className="font-bold text-base text-slate-900 mt-2">
               {assessment.recommendation.title}
             </h3>
 
-            <p className="text-xs text-slate-600 leading-relaxed mt-2 font-sans">
+            <p className="text-xs text-slate-600 leading-relaxed mt-2">
               {assessment.recommendation.description}
             </p>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 space-y-2">
             <button
-              onClick={() => (onInvestigate ? onInvestigate() : onViewAllFindings && onViewAllFindings())}
+              onClick={onInvestigate}
               className="w-full flex items-center justify-center gap-2 rounded-md bg-black hover:bg-slate-800 text-white font-mono font-bold text-xs py-3 px-4 uppercase tracking-wider transition-colors shadow-xs cursor-pointer"
             >
               <span>INVESTIGATE</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedKey(selectedKey === "satellite-v2" ? "urban-seg" : "satellite-v2")}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-mono text-xs py-2 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-3 w-3" />
+                <span>Switch Case</span>
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Test Matrix & Vector Replay */}
+      <div className="pt-4 border-t border-slate-200/80">
+        <ScenarioSelector
+          activeScenario={activeScenario}
+          loading={loading}
+          onSelectScenario={onSelectScenario}
+        />
       </div>
     </div>
   );

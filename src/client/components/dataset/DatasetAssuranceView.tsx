@@ -27,7 +27,7 @@ export const DatasetAssuranceView: React.FC<DatasetAssuranceViewProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           title="Samples Ingested"
-          value={samplesCount || 40}
+          value={samplesCount}
           subtitle="COCO / YOLO Formats"
           icon={<Layers className="h-4 w-4" />}
           tone="cyan"

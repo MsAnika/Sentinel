@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ShieldAlert, Key, Link2, RefreshCw, AlertOctagon } from 'lucide-react'
+import { ShieldAlert, Key, Link2, RefreshCw, AlertOctagon, Inbox, AlertTriangle } from 'lucide-react'
 import { InferenceRecord } from '@/shared/types/assurance'
 import { StatusBadge } from '../ui/StatusBadge'
 import { AssuranceApiClient } from '@/client/lib/api-client'
@@ -27,32 +27,40 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
   const [simulatedClass, setSimulatedClass] = useState<string>('civilian_bus')
   const [simulatedConf, setSimulatedConf] = useState<number>(0.99)
   const [testResult, setTestResult] = useState<TamperSimulationResult | null>(null)
+  const [testError, setTestError] = useState<string | null>(null)
   const [testing, setTesting] = useState<boolean>(false)
 
   const handleSimulateTamper = async () => {
     if (!activeRecord) return
     setTesting(true)
+    setTestError(null)
     try {
       const res = await AssuranceApiClient.simulateTampering(activeRecord, simulatedClass, simulatedConf)
       setTestResult(res)
-    } catch {
-      setTestResult({
-        original_provenance_hash: activeRecord.provenance_hash,
-        tampered_record: {
-          ...activeRecord,
-          is_valid: false,
-          tampering_detected: true,
-          verification_errors: ['Cryptographic DAG Recalculation Mismatch: Output hash does not bind to stored provenance hash.'],
-        },
-        is_valid: false,
-        verification_errors: ['Cryptographic DAG Recalculation Mismatch: Output hash does not bind to stored provenance hash.'],
-      })
+    } catch (e) {
+      // A failed API call is a failed API call -- it must never be
+      // silently reinterpreted as "tampering detected". An earlier
+      // version of this handler did exactly that (fabricating a canned
+      // tamper-detection result on ANY error, including a network failure
+      // or the backend being down), which would have shown a false
+      // positive security finding for an unrelated infrastructure problem.
+      setTestError(e instanceof Error ? e.message : String(e))
     } finally {
       setTesting(false)
     }
   }
 
-  const isTampered = activeRecord?.tampering_detected || testResult?.is_valid === false
+  if (!activeRecord) {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/30 p-10 text-center font-mono">
+        <Inbox className="h-6 w-6 text-zinc-600" />
+        <p className="text-xs text-zinc-500">No inference record was generated for this assessment.</p>
+        <p className="text-[11px] text-zinc-600">Cryptographic provenance and tamper-detection checks are unavailable without one.</p>
+      </div>
+    )
+  }
+
+  const isTampered = activeRecord.tampering_detected || testResult?.is_valid === false
 
   return (
     <div className="space-y-6 font-mono">
@@ -70,31 +78,31 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-[11px]">
           <div className="rounded border border-zinc-800 bg-zinc-900/60 p-2.5 space-y-1">
             <div className="text-zinc-500 font-semibold uppercase text-[9px]">1. INPUT IMAGE HASH</div>
-            <div className="truncate text-cyan-300 font-mono">{activeRecord?.image_hash || '7b91c4...'}</div>
+            <div className="truncate text-cyan-300 font-mono">{activeRecord.image_hash}</div>
             <div className="text-[10px] text-zinc-400">SHA-256 Bitstream</div>
           </div>
 
           <div className="rounded border border-zinc-800 bg-zinc-900/60 p-2.5 space-y-1">
             <div className="text-zinc-500 font-semibold uppercase text-[9px]">2. MODEL DIGEST</div>
-            <div className="truncate text-cyan-300 font-mono">{activeRecord?.model_digest || 'e3b0c4...'}</div>
+            <div className="truncate text-cyan-300 font-mono">{activeRecord.model_digest}</div>
             <div className="text-[10px] text-zinc-400">Weight Fingerprint</div>
           </div>
 
           <div className="rounded border border-zinc-800 bg-zinc-900/60 p-2.5 space-y-1">
             <div className="text-zinc-500 font-semibold uppercase text-[9px]">3. PREPROC & CONFIG</div>
-            <div className="truncate text-cyan-300 font-mono">{activeRecord?.config_hash || '4a2f8b...'}</div>
+            <div className="truncate text-cyan-300 font-mono">{activeRecord.config_hash}</div>
             <div className="text-[10px] text-zinc-400">Execution Envelope</div>
           </div>
 
           <div className="rounded border border-zinc-800 bg-zinc-900/60 p-2.5 space-y-1">
             <div className="text-zinc-500 font-semibold uppercase text-[9px]">4. PREDICTIONS HASH</div>
-            <div className="truncate text-cyan-300 font-mono">{activeRecord?.output_hash || '91c83d...'}</div>
+            <div className="truncate text-cyan-300 font-mono">{activeRecord.output_hash}</div>
             <div className="text-[10px] text-zinc-400">Class & Bounding Boxes</div>
           </div>
 
           <div className="rounded border border-emerald-800/40 bg-emerald-950/30 p-2.5 space-y-1">
             <div className="text-emerald-400 font-semibold uppercase text-[9px]">5. PROVENANCE DIGEST</div>
-            <div className="truncate text-emerald-300 font-mono font-bold">{activeRecord?.provenance_hash || 'b2a19f...'}</div>
+            <div className="truncate text-emerald-300 font-mono font-bold">{activeRecord.provenance_hash}</div>
             <div className="text-[10px] text-emerald-400/80">Canonical DAG Root</div>
           </div>
         </div>
@@ -104,12 +112,12 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
             <Key className="h-4 w-4 text-emerald-400" />
             <div>
               <span className="text-zinc-400">Digital Signature (Ed25519): </span>
-              <span className="text-zinc-200 font-mono">{activeRecord?.signature ? `${activeRecord.signature.slice(0, 32)}...` : 'Ed25519 Authenticated'}</span>
+              <span className="text-zinc-200 font-mono">{activeRecord.signature.slice(0, 32)}...</span>
             </div>
           </div>
           <div className="flex items-center gap-4 text-zinc-400 text-[11px]">
-            <span>Sequence: #{activeRecord?.sequence_number || 1}</span>
-            <span>Nonce: {activeRecord?.nonce?.slice(0, 8) || 'uuid4'}</span>
+            <span>Sequence: #{activeRecord.sequence_number}</span>
+            <span>Nonce: {activeRecord.nonce.slice(0, 8)}</span>
           </div>
         </div>
       </div>
@@ -162,14 +170,21 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
           </div>
         </div>
 
-        {(isTampered || testResult) && (
+        {testError && (
+          <div className="flex items-start gap-2 rounded border border-amber-700/50 bg-amber-950/20 p-3 text-xs text-amber-300">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>Simulation request failed: {testError}. This is a connectivity/API error, not a tampering result.</span>
+          </div>
+        )}
+
+        {(isTampered || testResult) && !testError && (
           <div className="rounded border border-rose-500/80 bg-rose-950/40 p-4 space-y-2 animate-pulse">
             <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
               <ShieldAlert className="h-4 w-4" />
               INTEGRITY VERIFICATION FAILURE: RECORD TAMPERING DETECTED
             </div>
             <div className="text-xs text-rose-200">
-              {activeRecord?.verification_errors?.join(' ') || testResult?.verification_errors?.join(' ') || 'Cryptographic output hash mismatch between original record and recalculated DAG.'}
+              {activeRecord.verification_errors?.join(' ') || testResult?.verification_errors?.join(' ') || 'Cryptographic output hash mismatch between original record and recalculated DAG.'}
             </div>
           </div>
         )}

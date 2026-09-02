@@ -19,8 +19,6 @@ export function useReportList(limit = 100) {
 
   useEffect(() => {
     let isMounted = true
-    setCards(null)
-    setError(null)
     ;(async () => {
       try {
         const summaries = await AssuranceApiClient.listReportSummaries(limit)
