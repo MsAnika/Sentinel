@@ -1,55 +1,27 @@
 "use client";
 
 import React, { useState } from "react";
-import clsx from "clsx";
 import {
   Shield,
   Lock,
-  CheckCircle2,
   KeyRound,
   ArrowRight,
   Cpu,
 } from "lucide-react";
+import { AssuranceApiClient } from "@/client/lib/api-client";
 
 export interface OperatorProfile {
-  id: string;
+  /** Free-text name entered at the login screen, used only for local
+   * display and for attribution on actions this station records (e.g. the
+   * `actor` field on a recorded assurance decision) -- it is not a
+   * credential and is not verified against anything. */
   name: string;
-  role: "analyst" | "admin";
-  roleTitle: string;
-  department: string;
-  initials: string;
-  avatarColor: string;
+  /** The role the backend's real X-API-Key gate (backend/api/auth.py)
+   * resolved the presented key to. `null` means this deployment has no
+   * keys configured at all -- a single-workstation posture with no other
+   * users on the network path, per that gate's own documented behavior. */
+  role: "analyst" | "admin" | null;
 }
-
-export const OPERATOR_PROFILES: OperatorProfile[] = [
-  {
-    id: "0x8F9A",
-    name: "Dr. A. Turing",
-    role: "analyst",
-    roleTitle: "Lead Assurance Analyst",
-    department: "DGIS / CV Integrity Unit",
-    initials: "AT",
-    avatarColor: "bg-slate-900 text-white",
-  },
-  {
-    id: "USR-992",
-    name: "SYSADMIN",
-    role: "admin",
-    roleTitle: "Platform Security Admin",
-    department: "MoD Air-Gap Infrastructure",
-    initials: "SA",
-    avatarColor: "bg-slate-800 text-sky-400",
-  },
-  {
-    id: "0x4B21",
-    name: "E. Lovelace",
-    role: "analyst",
-    roleTitle: "Neural Forensics Specialist",
-    department: "Vision & Sensor Analytics",
-    initials: "EL",
-    avatarColor: "bg-slate-900 text-white",
-  },
-];
 
 interface AuthStationLoginProps {
   onAuthenticated: (operator: OperatorProfile) => void;
@@ -58,26 +30,34 @@ interface AuthStationLoginProps {
 export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
   onAuthenticated,
 }) => {
-  const [selectedOperator, setSelectedOperator] = useState<OperatorProfile>(
-    OPERATOR_PROFILES[0]
-  );
-  const [passphrase, setPassphrase] = useState<string>("••••••••••••");
+  const [name, setName] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passphrase.trim()) {
-      setError("Station access token / passphrase required.");
+    if (!name.trim()) {
+      setError("Operator name is required.");
       return;
     }
     setLoading(true);
     setError(null);
 
-    setTimeout(() => {
+    try {
+      const result = await AssuranceApiClient.whoami(apiKey.trim());
+      AssuranceApiClient.setApiKey(apiKey.trim() || null);
+      onAuthenticated({
+        name: name.trim(),
+        role: (result.role as "analyst" | "admin" | null) ?? null,
+      });
+    } catch {
+      setError(
+        "Station key rejected. Verify the X-API-Key value with your platform administrator, or leave it blank if this deployment has no keys configured."
+      );
+    } finally {
       setLoading(false);
-      onAuthenticated(selectedOperator);
-    }, 450);
+    }
   };
 
   return (
@@ -115,67 +95,35 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4 text-xs font-sans">
-          {/* Operator Select */}
+          {/* Operator Name */}
           <div className="space-y-1.5">
             <label className="block font-mono font-bold text-slate-700 uppercase text-[10px] tracking-wider">
-              Select Operating Officer
+              Operator Name
             </label>
-            <div className="space-y-2">
-              {OPERATOR_PROFILES.map((op) => {
-                const isSelected = selectedOperator.id === op.id;
-                return (
-                  <div
-                    key={op.id}
-                    onClick={() => setSelectedOperator(op)}
-                    className={clsx(
-                      "p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between",
-                      isSelected
-                        ? "bg-slate-50 border-2 border-slate-900 shadow-2xs"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={clsx(
-                          "h-8 w-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0 shadow-2xs",
-                          op.avatarColor
-                        )}
-                      >
-                        {op.initials}
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                          <span>{op.name}</span>
-                          <span className="font-mono text-[10px] text-slate-400">
-                            ({op.id})
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 font-medium">
-                          {op.roleTitle}
-                        </div>
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <CheckCircle2 className="h-4 w-4 text-slate-900 shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. A. Sharma"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            />
+            <p className="text-[10px] text-slate-400">
+              Used for local attribution only (e.g. who recorded a decision) -- not a credential.
+            </p>
           </div>
 
-          {/* Passphrase Input */}
+          {/* API Key Input */}
           <div className="space-y-1.5 pt-1">
             <label className="block font-mono font-bold text-slate-700 uppercase text-[10px] tracking-wider">
-              Station Security Key / Token
+              Station API Key (X-API-Key)
             </label>
             <div className="relative">
               <KeyRound className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="Enter air-gap passkey..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Leave blank if this deployment has no keys configured"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
               />
             </div>
@@ -193,7 +141,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             disabled={loading}
             className="w-full py-3 px-4 rounded-xl bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-2"
           >
-            <span>{loading ? "AUTHENTICATING..." : "AUTHENTICATE STATION"}</span>
+            <span>{loading ? "VERIFYING KEY..." : "AUTHENTICATE STATION"}</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </form>

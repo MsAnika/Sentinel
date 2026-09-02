@@ -9,7 +9,6 @@ import {
 import {
   AuthStationLogin,
   OperatorProfile,
-  OPERATOR_PROFILES,
 } from "@/client/components/auth/AuthStationLogin";
 import { HomeDashboardView } from "@/client/components/home/HomeDashboardView";
 import { AssessmentExplorerView } from "@/client/components/assessment/AssessmentExplorerView";
@@ -26,7 +25,7 @@ import { AssuranceReport, AuditLogEntry } from "@/shared/types/assurance";
 import { Lock, Cpu, CheckCircle2, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 
 export default function AppRootPage() {
-  const [operator, setOperator] = useState<OperatorProfile | null>(OPERATOR_PROFILES[0]);
+  const [operator, setOperator] = useState<OperatorProfile | null>(null);
   const [activeNav, setActiveNav] = useState<NavItemKey>("home");
   const [secondaryTab, setSecondaryTab] =
     useState<ExplorerSecondaryTab>("overview");
@@ -36,17 +35,32 @@ export default function AppRootPage() {
 
   const [activeReport, setActiveReport] = useState<AssuranceReport | null>(null);
   const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
+  const [decisionSubmitting, setDecisionSubmitting] = useState(false);
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+
+  const selectedFinding =
+    (activeReport?.findings || []).find((f) => f.finding_id === selectedFindingId) || null;
 
   const [chainVerification, setChainVerification] = useState<{
     is_chain_valid: boolean;
     errors: string[];
   } | null>(null);
 
+  const [auditChain, setAuditChain] = useState<{
+    chain_digest: string;
+    is_chain_valid: boolean | null;
+    verification_errors: string[];
+  }>({ chain_digest: "", is_chain_valid: null, verification_errors: [] });
+
   const loadAuditEntries = useCallback(() => {
-    fetch("/api/audit/entries?limit=100")
-      .then((res) => (res.ok ? res.json() : Promise.reject(res.statusText)))
-      .then((data: { entries: AuditLogEntry[] }) => {
+    AssuranceApiClient.getAuditEntries()
+      .then((data) => {
         setAuditEntries(data.entries || []);
+        setAuditChain({
+          chain_digest: data.chain_digest,
+          is_chain_valid: data.is_chain_valid,
+          verification_errors: data.verification_errors || [],
+        });
       })
       .catch((err) => {
         console.warn("Could not fetch real audit ledger entries:", err);
@@ -66,6 +80,18 @@ export default function AppRootPage() {
     }
   }, []);
 
+  const loadReportById = useCallback(async (reportId: string) => {
+    setLoading(true);
+    try {
+      const report = await AssuranceApiClient.getReportById(reportId);
+      setActiveReport(report);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     AssuranceApiClient.runScenario("A")
@@ -76,19 +102,12 @@ export default function AppRootPage() {
       })
       .catch(console.error);
 
-    fetch("/api/audit/entries?limit=100")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { entries: AuditLogEntry[] } | null) => {
-        if (isMounted && data?.entries) {
-          setAuditEntries(data.entries);
-        }
-      })
-      .catch(console.warn);
+    loadAuditEntries();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadAuditEntries]);
 
   const handleWizardComplete = async () => {
     setLoading(true);
@@ -111,7 +130,7 @@ export default function AppRootPage() {
     setActiveNav("assessments");
     setSecondaryTab("overview");
     if (assessmentId) {
-      handleSelectScenario("A");
+      loadReportById(assessmentId);
     }
   };
 
@@ -119,30 +138,23 @@ export default function AppRootPage() {
     decision: "ACCEPT" | "REVIEW" | "QUARANTINE",
     notes: string
   ) => {
-    if (activeReport) {
-      const updatedReport: AssuranceReport = {
-        ...activeReport,
-        overall_disposition: decision,
-      };
-      setActiveReport(updatedReport);
-
-      // Record in live audit chain
-      const newEntry: AuditLogEntry = {
-        entry_id: `evt-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        actor: operator?.name || "Dr. A. Turing",
-        action: `DECISION_${decision}`,
-        resource_type: "ASSURANCE_REPORT",
-        resource_id: activeReport.report_id,
-        event_type: "DECISION_FINALIZED",
-        decision: decision,
-        details: notes || `Operator recorded final assurance disposition: ${decision}`,
-        chain_digest: `0x${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`,
-        previous_digest: "0x7a8c991e2b4f2e",
-        payload_hash: `0x${Math.random().toString(16).substring(2, 12)}`,
-        is_tampered: false,
-      };
-      setAuditEntries((prev) => [newEntry, ...prev]);
+    if (!activeReport) return;
+    setDecisionSubmitting(true);
+    try {
+      const { report } = await AssuranceApiClient.recordReportDecision(
+        activeReport.report_id,
+        decision,
+        notes,
+        operator?.name || "unknown"
+      );
+      setActiveReport(report);
+      // Refresh from the real ledger rather than fabricating a local entry --
+      // the backend just appended the real, hash-chained decision event.
+      loadAuditEntries();
+    } catch (err) {
+      console.error("Failed to record assurance decision:", err);
+    } finally {
+      setDecisionSubmitting(false);
     }
   };
 
@@ -254,15 +266,19 @@ export default function AppRootPage() {
 
               {secondaryTab === "findings" && (
                 <AssessmentPrioritizedFindingsView
+                  reportId={activeReport?.report_id}
                   findings={activeReport?.findings}
-                  onInvestigateFinding={() => setSecondaryTab("evidence")}
+                  onInvestigateFinding={(findingId) => {
+                    setSelectedFindingId(findingId);
+                    setSecondaryTab("evidence");
+                  }}
                 />
               )}
 
               {secondaryTab === "evidence" && (
                 <EvidenceInvestigationView
+                  finding={selectedFinding}
                   onBack={() => setSecondaryTab("overview")}
-                  onDecisionChange={() => {}}
                 />
               )}
 
@@ -270,7 +286,7 @@ export default function AppRootPage() {
                 <AssessmentFinalDecisionView
                   report={activeReport}
                   onFinalize={handleFinalizeDecision}
-                  onSaveDraft={() => {}}
+                  submitting={decisionSubmitting}
                 />
               )}
             </div>
@@ -278,7 +294,8 @@ export default function AppRootPage() {
             /* Dedicated Findings Queue View */
             <FindingsQueueView
               findings={activeReport?.findings}
-              onSelectFinding={() => {
+              onSelectFinding={(findingId) => {
+                setSelectedFindingId(findingId);
                 setActiveNav("assessments");
                 setSecondaryTab("evidence");
               }}
@@ -296,7 +313,13 @@ export default function AppRootPage() {
             />
           ) : activeNav === "audit" ? (
             /* Dedicated Audit View */
-            <AuditLedgerView entries={auditEntries} />
+            <AuditLedgerView
+              entries={auditEntries}
+              chainDigest={auditChain.chain_digest}
+              isChainValid={auditChain.is_chain_valid}
+              verificationErrors={auditChain.verification_errors}
+              onRefresh={loadAuditEntries}
+            />
           ) : activeNav === "settings" ? (
             /* Dedicated Settings View */
             <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-6 font-sans">
@@ -310,7 +333,10 @@ export default function AppRootPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setOperator(null)}
+                  onClick={() => {
+                    AssuranceApiClient.setApiKey(null);
+                    setOperator(null);
+                  }}
                   className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-mono font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   Switch Station Operator

@@ -20,79 +20,44 @@ interface ReportsViewProps {
   onGenerateReport?: () => void;
 }
 
-const DEFAULT_REPORTS = [
-  {
-    id: "rep-1",
-    title: "Satellite Detector v2 - Final Assurance",
-    caseId: "#AS-2026-019",
-    dateGenerated: "2026-10-14 14:32:01 UTC",
-    score: 68,
-    disposition: "QUARANTINED",
-    dispositionType: "QUARANTINE",
-  },
-  {
-    id: "rep-2",
-    title: "Perimeter Breach CV - Q3 Validation",
-    caseId: "#AS-2026-018",
-    dateGenerated: "2026-10-12 09:15:44 UTC",
-    score: 96,
-    disposition: "CLEARED",
-    dispositionType: "CLEARED",
-  },
-  {
-    id: "rep-3",
-    title: "Facial Recog Module A - Bias Assessment",
-    caseId: "#AS-2026-017",
-    dateGenerated: "2026-10-10 18:02:12 UTC",
-    score: 81,
-    disposition: "PENDING REVIEW",
-    dispositionType: "REVIEW",
-  },
-  {
-    id: "rep-4",
-    title: "License Plate OCR - Night Vision Calibration",
-    caseId: "#AS-2026-016",
-    dateGenerated: "2026-10-08 11:20:05 UTC",
-    score: 92,
-    disposition: "CLEARED",
-    dispositionType: "CLEARED",
-  },
-];
+const PAGE_SIZE = 15;
 
 export const ReportsView: React.FC<ReportsViewProps> = ({
   onOpenReport,
   onGenerateReport,
 }) => {
-  const { cards } = useReportList(50);
+  const { cards, error, reload } = useReportList(50);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedDisposition, setSelectedDisposition] = useState<string>("ALL");
+  const [page, setPage] = useState(0);
 
-  const displayList =
-    cards && cards.length > 0
-      ? cards.map((c, i) => {
-          const disp = c.summary.overall_disposition;
-          return {
-            id: c.summary.report_id,
-            title: `Assessment Run ${c.summary.report_id}`,
-            caseId: `#AS-2026-${String(100 - i).padStart(3, "0")}`,
-            dateGenerated: c.summary.generated_at.replace("T", " ").replace("Z", " UTC"),
-            score: Math.round(c.summary.overall_risk_score),
-            disposition:
-              disp === "QUARANTINE"
-                ? "QUARANTINED"
-                : disp === "ACCEPT"
-                  ? "CLEARED"
-                  : "PENDING REVIEW",
-            dispositionType: disp,
-            rawReport: c.report,
-          };
-        })
-      : DEFAULT_REPORTS;
+  const displayList = (cards || []).map((c) => {
+    const disp = c.summary.overall_disposition;
+    return {
+      id: c.summary.report_id,
+      title: c.summary.report_id,
+      caseId: c.report?.problem_statement_id ? `PS-${c.report.problem_statement_id}` : null,
+      dateGenerated: c.summary.generated_at.replace("T", " ").replace("Z", " UTC"),
+      score: Math.round(c.summary.overall_risk_score),
+      disposition:
+        disp === "QUARANTINE"
+          ? "QUARANTINED"
+          : disp === "ACCEPT"
+            ? "CLEARED"
+            : "PENDING REVIEW",
+      dispositionType: disp,
+      rawReport: c.report,
+    };
+  });
 
   const filteredList =
     selectedDisposition === "ALL"
       ? displayList
       : displayList.filter((r) => r.dispositionType === selectedDisposition);
+
+  const pageCount = Math.max(1, Math.ceil(filteredList.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, pageCount - 1);
+  const pagedList = filteredList.slice(pageSafe * PAGE_SIZE, pageSafe * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -131,7 +96,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           {["ALL", "CLEARED", "REVIEW", "QUARANTINE"].map((d) => (
             <button
               key={d}
-              onClick={() => setSelectedDisposition(d)}
+              onClick={() => {
+                setSelectedDisposition(d);
+                setPage(0);
+              }}
               className={clsx(
                 "px-2.5 py-1 rounded transition-colors cursor-pointer",
                 selectedDisposition === d
@@ -145,7 +113,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         </div>
       )}
 
+      {cards === null && (
+        <div className="rounded-xl border border-slate-200/90 bg-white p-10 text-center shadow-xs">
+          <p className="text-sm text-slate-500">Loading persisted assurance reports…</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-700 font-mono flex items-center justify-between">
+          <span>Could not load reports: {error}</span>
+          <button onClick={reload} className="underline font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
+
+      {cards !== null && !error && cards.length === 0 && (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <p className="text-sm font-bold text-slate-700">No assurance reports generated yet.</p>
+          <p className="text-xs text-slate-500 mt-1">Run a scenario or create a new assessment to generate the first one.</p>
+        </div>
+      )}
+
       {/* Reports Table Card */}
+      {cards !== null && !error && cards.length > 0 && (
       <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-sans">
@@ -159,7 +148,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredList.map((r) => (
+              {pagedList.map((r) => (
                 <tr
                   key={r.id}
                   onClick={() =>
@@ -172,9 +161,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     <div className="font-semibold text-slate-900 group-hover:text-sky-700 transition-colors">
                       {r.title}
                     </div>
-                    <div className="font-mono text-[10px] text-slate-400 mt-0.5">
-                      {r.caseId}
-                    </div>
+                    {r.caseId && (
+                      <div className="font-mono text-[10px] text-slate-400 mt-0.5">
+                        {r.caseId}
+                      </div>
+                    )}
                   </td>
 
                   <td className="py-3.5 px-5 font-mono text-slate-600 text-xs whitespace-nowrap">
@@ -219,14 +210,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                         "inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase",
                         r.dispositionType === "QUARANTINE"
                           ? "bg-rose-50 border border-rose-200 text-rose-600"
-                          : r.dispositionType === "CLEARED" || r.dispositionType === "ACCEPT"
+                          : r.dispositionType === "ACCEPT"
                             ? "bg-sky-50 border border-sky-200 text-sky-700"
                             : "bg-slate-100 border border-slate-200 text-slate-700"
                       )}
                     >
                       {r.dispositionType === "QUARANTINE" ? (
                         <CircleAlert className="h-3 w-3" />
-                      ) : r.dispositionType === "CLEARED" || r.dispositionType === "ACCEPT" ? (
+                      ) : r.dispositionType === "ACCEPT" ? (
                         <CheckCircle2 className="h-3 w-3" />
                       ) : (
                         <Clock className="h-3 w-3" />
@@ -278,17 +269,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
         {/* Pagination Footer */}
         <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
-          <span>Showing 1-{filteredList.length} of {filteredList.length} records</span>
+          <span>
+            Showing {filteredList.length === 0 ? 0 : pageSafe * PAGE_SIZE + 1}-
+            {Math.min(filteredList.length, pageSafe * PAGE_SIZE + PAGE_SIZE)} of {filteredList.length} records
+          </span>
           <div className="flex items-center gap-1.5">
-            <button className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50 cursor-pointer">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={pageSafe === 0}
+              className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
               Prev
             </button>
-            <button className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer">
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={pageSafe >= pageCount - 1}
+              className="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
               Next
             </button>
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

@@ -44,7 +44,7 @@ interface AssessmentExplorerViewProps {
  * launching a new wizard assessment, changes what's displayed here
  * because both write into the same `report` prop from the parent. */
 export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
-  title = "Satellite Detector v2",
+  title,
   subtitle,
   report = null,
   onInvestigate,
@@ -106,9 +106,11 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-2">
-            {title}
+            {title || report.report_id}
           </h1>
-          {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+          <p className="text-xs text-slate-500 mt-1">
+            {subtitle || `${report.organization} · Problem Statement ${report.problem_statement_id} · Generated ${report.generated_at}`}
+          </p>
         </div>
 
         {/* Overall Assurance Card */}

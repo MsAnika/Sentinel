@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Shield,
   Copy,
-  Calendar,
   Filter,
   Download,
   RotateCw,
-  User,
   Cpu,
   AlertTriangle,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -20,185 +17,186 @@ import { AuditLogEntry } from "@/shared/types/assurance";
 
 interface AuditLedgerViewProps {
   entries?: AuditLogEntry[];
+  chainDigest?: string;
+  isChainValid?: boolean | null;
+  verificationErrors?: string[];
+  onRefresh?: () => void;
 }
 
-const DEFAULT_EVENTS = [
-  {
-    id: "evt-1",
-    timestamp: "24-10-27 14:01:12",
-    actor: "Dr. A. Turing",
-    actorType: "USER",
-    eventType: "Decision Overridden",
-    details: "Changed status of [BoundingBox_7A] from Anomaly to Valid",
-    ref: "ASMT-8921-X",
-  },
-  {
-    id: "evt-2",
-    timestamp: "24-10-27 13:45:00",
-    actor: "SYS_AUTOMATION",
-    actorType: "SYSTEM",
-    eventType: "Assessment Run",
-    details: "Batch inference completed on 142 frames. 3 anomalies flagged.",
-    ref: "v4.2.1-prod",
-  },
-  {
-    id: "evt-3",
-    timestamp: "24-10-27 11:20:05",
-    actor: "E. Lovelace",
-    actorType: "USER",
-    eventType: "Asset Uploaded",
-    details: "Uploaded raw video feed: cam_north_04.mp4",
-    ref: "SHA256: 9f86...24a1",
-  },
-  {
-    id: "evt-4",
-    timestamp: "24-10-26 09:15:33",
-    actor: "SYS_MONITOR",
-    actorType: "ALERT",
-    eventType: "System Alert",
-    details: "Latency spike detected in Edge Node 03 (>500ms).",
-    ref: "Severity: High",
-  },
-  {
-    id: "evt-5",
-    timestamp: "24-10-26 08:00:00",
-    actor: "ADMIN",
-    actorType: "ADMIN",
-    eventType: "System Config",
-    details: "Updated global confidence threshold from 0.85 to 0.88",
-    ref: "Ticket: OPS-442",
-  },
-];
+const PAGE_SIZE = 25;
 
-export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => {
+export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({
+  entries,
+  chainDigest,
+  isChainValid,
+  verificationErrors,
+  onRefresh,
+}) => {
   const [copied, setCopied] = useState(false);
-  const [timeRange, setTimeRange] = useState("24h");
   const [eventFilter, setEventFilter] = useState("ALL");
+  const [page, setPage] = useState(0);
 
-  const displayEvents =
-    entries && entries.length > 0
-      ? entries.map((e, idx) => ({
-          id: e.entry_id || `evt-${idx}`,
-          timestamp: e.timestamp
-            ? e.timestamp.replace("T", " ").replace("Z", "")
-            : "2026-10-14 14:00:00",
-          actor:
-            e.actor ||
-            (e.event_type?.includes("ALERT")
-              ? "SYS_MONITOR"
-              : e.event_type?.includes("OVERRIDE")
-                ? "Dr. A. Turing"
-                : "SYS_AUTOMATION"),
-          actorType: e.event_type?.includes("ALERT")
-            ? "ALERT"
-            : e.actor?.includes("ADMIN")
-              ? "ADMIN"
-              : e.actor
-                ? "USER"
-                : "SYSTEM",
-          eventType: e.action || e.event_type || "Event",
-          details: e.details || `Operation on ${e.resource_id}`,
-          ref: e.chain_digest
-            ? `Digest: ${e.chain_digest.substring(0, 16)}...`
-            : e.resource_id || "Ref: SYSTEM",
-        }))
-      : DEFAULT_EVENTS;
+  const list = useMemo(() => entries || [], [entries]);
 
-  const currentDigest =
-    entries && entries.length > 0 && entries[entries.length - 1].chain_digest
-      ? entries[entries.length - 1].chain_digest.substring(0, 14) + "..."
-      : "0x7a8c...4f2e";
+  const eventTypes = useMemo(
+    () => Array.from(new Set(list.map((e) => e.event))).sort(),
+    [list]
+  );
+
+  const filtered = useMemo(
+    () => (eventFilter === "ALL" ? list : list.filter((e) => e.event === eventFilter)),
+    [list, eventFilter]
+  );
+
+  // Newest first for display -- the ledger itself is append-only in
+  // ascending sequence_id order, but an analyst wants the most recent
+  // activity at the top.
+  const sorted = useMemo(
+    () => [...filtered].sort((a, b) => b.sequence_id - a.sequence_id),
+    [filtered]
+  );
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageSafe = Math.min(page, pageCount - 1);
+  const pageRows = sorted.slice(pageSafe * PAGE_SIZE, pageSafe * PAGE_SIZE + PAGE_SIZE);
+
+  const latestEntry = list.length > 0 ? list[list.length - 1] : null;
+  const displayDigest = chainDigest || latestEntry?.entry_hash || null;
+  const lastEntryTimestamp = latestEntry?.timestamp || null;
 
   const copyHash = () => {
-    navigator.clipboard.writeText(
-      entries && entries.length > 0 && entries[entries.length - 1].chain_digest
-        ? entries[entries.length - 1].chain_digest
-        : "0x7a8c991e2b4f2e"
-    );
+    if (!displayDigest) return;
+    navigator.clipboard.writeText(displayDigest);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const exportCsv = () => {
+    const header = [
+      "sequence_id", "timestamp", "event", "asset_id", "operation",
+      "input_digest", "result", "evidence_reference", "previous_entry_hash", "entry_hash",
+    ];
+    const rows = sorted.map((e) => [
+      e.sequence_id, e.timestamp, e.event, e.asset_id, e.operation,
+      e.input_digest, e.result, e.evidence_reference, e.previous_entry_hash, e.entry_hash,
+    ].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","));
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "audit_ledger_export.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6 pb-12 font-sans">
-      {/* Top Banner: Audit Integrity: VERIFIED */}
+      {/* Top Banner: Real chain-integrity status from /api/audit/entries */}
       <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="h-10 w-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 shrink-0 shadow-2xs">
+          <div
+            className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs border ${
+              isChainValid === false
+                ? "bg-rose-50 border-rose-200 text-rose-600"
+                : "bg-sky-50 border-sky-200 text-sky-600"
+            }`}
+          >
             <Shield className="h-5 w-5" />
           </div>
           <div>
             <div className="text-sm font-bold text-slate-900 tracking-tight">
-              Audit Integrity: <span className="text-[#0284c7]">VERIFIED</span>
+              Audit Integrity:{" "}
+              <span className={isChainValid === false ? "text-rose-600" : "text-[#0284c7]"}>
+                {isChainValid === null || isChainValid === undefined
+                  ? "UNKNOWN"
+                  : isChainValid
+                    ? "VERIFIED"
+                    : "INTEGRITY FAILURE"}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-slate-500 mt-0.5">
               <span>CHAIN HASH:</span>
-              <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                {currentDigest}
-              </span>
-              <button
-                onClick={copyHash}
-                className="hover:text-slate-900 transition-colors cursor-pointer"
-                title="Copy Hash"
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-600 inline" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5 inline" />
-                )}
-              </button>
+              {displayDigest ? (
+                <>
+                  <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                    {displayDigest.substring(0, 16)}...
+                  </span>
+                  <button
+                    onClick={copyHash}
+                    className="hover:text-slate-900 transition-colors cursor-pointer"
+                    title="Copy Hash"
+                  >
+                    {copied ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600 inline" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 inline" />
+                    )}
+                  </button>
+                </>
+              ) : (
+                <span className="text-slate-400">No entries yet</span>
+              )}
             </div>
           </div>
         </div>
 
         <div className="text-left md:text-right font-mono text-xs">
           <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-            LAST SYNC
+            LAST ENTRY
           </div>
           <div className="text-slate-700 font-medium mt-0.5">
-            2023-10-27 14:02:45 UTC
+            {lastEntryTimestamp ? lastEntryTimestamp.replace("T", " ").replace("Z", " UTC") : "--"}
           </div>
         </div>
       </div>
+
+      {isChainValid === false && verificationErrors && verificationErrors.length > 0 && (
+        <div className="p-3 rounded-lg border border-rose-300 bg-rose-50 text-xs text-rose-700 font-mono space-y-1">
+          <div className="flex items-center gap-1.5 font-bold">
+            <AlertTriangle className="h-4 w-4 text-rose-600" />
+            <span>Ledger Tampering Detected:</span>
+          </div>
+          {verificationErrors.map((err, i) => (
+            <div key={i}>• {err}</div>
+          ))}
+        </div>
+      )}
 
       {/* Filter & Action Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-xs">
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative flex items-center bg-white border border-slate-300 rounded-md px-3 py-1.5 shadow-2xs">
-            <Calendar className="h-3.5 w-3.5 text-slate-400 mr-2" />
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="bg-transparent text-slate-800 text-xs focus:outline-none cursor-pointer"
-            >
-              <option value="24h">Last 24 Hours</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-            </select>
-          </div>
-
-          <div className="relative flex items-center bg-white border border-slate-300 rounded-md px-3 py-1.5 shadow-2xs">
             <Filter className="h-3.5 w-3.5 text-slate-400 mr-2" />
             <select
               value={eventFilter}
-              onChange={(e) => setEventFilter(e.target.value)}
+              onChange={(e) => {
+                setEventFilter(e.target.value);
+                setPage(0);
+              }}
               className="bg-transparent text-slate-800 text-xs focus:outline-none cursor-pointer"
             >
               <option value="ALL">All Events</option>
-              <option value="OVERRIDE">Decision Overridden</option>
-              <option value="RUN">Assessment Run</option>
-              <option value="UPLOAD">Asset Uploaded</option>
-              <option value="ALERT">System Alert</option>
+              {eventTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer">
+          <button
+            onClick={exportCsv}
+            disabled={sorted.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export CSV</span>
           </button>
-          <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer">
+          <button
+            onClick={onRefresh}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+          >
             <RotateCw className="h-3.5 w-3.5" />
             <span>Refresh Logs</span>
           </button>
@@ -212,7 +210,8 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => 
             Immutable Event Ledger
           </h2>
           <span className="font-mono text-xs text-slate-400">
-            Showing 1-{displayEvents.length} of {displayEvents.length}
+            Showing {sorted.length === 0 ? 0 : pageSafe * PAGE_SIZE + 1}-
+            {Math.min(sorted.length, pageSafe * PAGE_SIZE + PAGE_SIZE)} of {sorted.length}
           </span>
         </div>
 
@@ -220,71 +219,90 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => 
           <table className="w-full text-left text-xs font-sans">
             <thead>
               <tr className="border-b border-slate-100 font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                <th className="py-3 px-5">SEQ</th>
                 <th className="py-3 px-5">TIMESTAMP (UTC)</th>
-                <th className="py-3 px-5">ACTOR</th>
-                <th className="py-3 px-5">EVENT TYPE</th>
-                <th className="py-3 px-5">DETAILS</th>
+                <th className="py-3 px-5">EVENT</th>
+                <th className="py-3 px-5">ASSET / OPERATION</th>
+                <th className="py-3 px-5">RESULT</th>
+                <th className="py-3 px-5">EVIDENCE</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayEvents.map((evt) => (
-                <tr key={evt.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-5 font-mono text-slate-500 text-xs whitespace-nowrap">
-                    {evt.timestamp}
+              {pageRows.map((evt) => (
+                <tr key={evt.sequence_id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3.5 px-5 font-mono text-slate-400 text-xs">
+                    #{evt.sequence_id}
                   </td>
-                  <td className="py-3.5 px-5 font-medium text-slate-800 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      {evt.actorType === "USER" ? (
-                        <User className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                      ) : evt.actorType === "SYSTEM" ? (
-                        <Cpu className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                      ) : evt.actorType === "ALERT" ? (
-                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                      ) : (
-                        <Settings className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                      )}
-                      <span>{evt.actor}</span>
-                    </div>
+                  <td className="py-3.5 px-5 font-mono text-slate-500 text-xs whitespace-nowrap">
+                    {evt.timestamp.replace("T", " ").replace("Z", "")}
                   </td>
                   <td className="py-3.5 px-5 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      {evt.event.includes("VERIFICATION") ? (
+                        <Shield className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                      ) : (
+                        <Cpu className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                      )}
+                      <span
+                        className={
+                          evt.result.includes("TAMPER") || evt.result.includes("FAIL")
+                            ? "text-[#e11d48] font-bold font-mono"
+                            : "text-slate-800 font-medium"
+                        }
+                      >
+                        {evt.event}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-5 text-slate-600 font-mono text-[11px]">
+                    <div className="text-slate-800 font-medium">{evt.operation}</div>
+                    <div className="text-slate-400 mt-0.5">{evt.asset_id}</div>
+                  </td>
+                  <td className="py-3.5 px-5">
                     <span
-                      className={
-                        evt.eventType === "System Alert"
-                          ? "text-[#e11d48] font-bold font-mono"
-                          : "text-slate-800 font-medium"
-                      }
+                      className={`font-mono text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
+                        evt.result.includes("TAMPER") || evt.result.includes("FAIL")
+                          ? "bg-rose-50 border border-rose-300 text-rose-600"
+                          : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                      }`}
                     >
-                      {evt.eventType}
+                      {evt.result}
                     </span>
                   </td>
-                  <td className="py-3.5 px-5 text-slate-600">
-                    <div>{evt.details}</div>
-                    <div className="font-mono text-[10px] text-slate-400 mt-0.5">
-                      {evt.ref}
-                    </div>
+                  <td className="py-3.5 px-5 text-slate-600 max-w-xs truncate" title={evt.evidence_reference}>
+                    {evt.evidence_reference || "--"}
                   </td>
                 </tr>
               ))}
+
+              {pageRows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-slate-500 font-mono text-xs">
+                    No audit events recorded yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Table Footer Pagination */}
         <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-            <select className="bg-slate-50 border border-slate-200 text-slate-700 py-0.5 px-2 rounded text-xs">
-              <option>10</option>
-              <option>25</option>
-              <option>50</option>
-            </select>
-          </div>
+          <span>Page {pageSafe + 1} of {pageCount}</span>
 
           <div className="flex items-center gap-2">
-            <button className="p-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={pageSafe === 0}
+              className="p-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <button className="p-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer">
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={pageSafe >= pageCount - 1}
+              className="p-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
