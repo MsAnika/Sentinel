@@ -87,7 +87,7 @@ def test_verify_digest_no_reference_via_api(tmp_path):
 
 
 def test_api_key_gate_disabled_by_default():
-    """Default MVP posture: no VIGILCV_API_KEY set means every route is
+    """Default MVP posture: no IntelX_API_KEY set means every route is
     reachable without any auth header -- matches the PRD's single
     air-gapped-workstation deployment model for the SIH prototype."""
     assert os.environ.get(API_KEY_ENV_VAR) is None
@@ -137,7 +137,7 @@ def test_rbac_analyst_key_cannot_delete_uploads_admin_key_can(monkeypatch):
 
 
 def test_rbac_legacy_single_key_still_works_as_admin(monkeypatch):
-    """Backward compatibility: VIGILCV_API_KEY (singular, pre-RBAC) must
+    """Backward compatibility: IntelX_API_KEY (singular, pre-RBAC) must
     still work exactly as before -- treated as one admin-role key."""
     from backend.api.auth import API_KEYS_ENV_VAR
 

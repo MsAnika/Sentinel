@@ -23,7 +23,7 @@ Usage:
         --record path/to/inference_record.json
 
     python -m backend.tools.verify_offline record \
-        --record-id rec_abc123 --db vigilcv.db
+        --record-id rec_abc123 --db intelx.db
 
     python -m backend.tools.verify_offline all
         (verifies the ledger and every inference record in the local DB)
@@ -103,7 +103,7 @@ def verify_all_db_records(db_path: str) -> bool:
     from ..persistence import db as db_module
 
     _print_header(f"ALL INFERENCE RECORDS IN LOCAL DB: {db_path}")
-    # Pass db_path explicitly rather than relying on the VIGILCV_DB_PATH
+    # Pass db_path explicitly rather than relying on the IntelX_DB_PATH
     # env var: db_module.DB_PATH is a module-level constant resolved once
     # at import time, so setting the env var here has no effect once the
     # module has already been imported elsewhere in the process (e.g. by
@@ -145,11 +145,11 @@ def main(argv: List[str] = None) -> int:
     p_record = sub.add_parser("record", help="Verify one signed inference-provenance record.")
     p_record.add_argument("--record", help="Path to a saved InferenceRecord JSON file.")
     p_record.add_argument("--record-id", help="record_id to look up in the local SQLite DB.")
-    p_record.add_argument("--db", default="vigilcv.db", help="Path to the local SQLite evidence store.")
+    p_record.add_argument("--db", default="intelx.db", help="Path to the local SQLite evidence store.")
 
     p_all = sub.add_parser("all", help="Verify the audit ledger and every inference record in the local DB.")
     p_all.add_argument("--ledger", default=DEFAULT_LEDGER_PATH, help="Path to ledger.jsonl")
-    p_all.add_argument("--db", default="vigilcv.db", help="Path to the local SQLite evidence store.")
+    p_all.add_argument("--db", default="intelx.db", help="Path to the local SQLite evidence store.")
 
     args = parser.parse_args(argv)
 

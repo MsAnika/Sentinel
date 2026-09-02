@@ -232,7 +232,7 @@ def test_offline_verify_all_db_records_detects_a_replayed_record(tmp_path, monke
     from backend.persistence import db as db_module
 
     db_path = str(tmp_path / "offline_verify.db")
-    monkeypatch.setenv("VIGILCV_DB_PATH", db_path)
+    monkeypatch.setenv("IntelX_DB_PATH", db_path)
 
     assets = AssetGenerator.ensure_test_assets("test_assets")
     verifier = ProvenanceVerifier()

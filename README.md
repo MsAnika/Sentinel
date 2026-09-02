@@ -1,16 +1,17 @@
-# VIGIL-CV: Trustworthy Computer Vision Integrity Assurance System
+# IntelX: Trustworthy Computer Vision Integrity Assurance System
 
-**Problem Statement ID:** 26228  
-**Organization:** Ministry of Defence (MoD)  
-**Department:** Indian Army (DGIS)  
-**Category:** Software | **Theme:** Blockchain & Cybersecurity  
-**Operating Mode:** 100% Offline, Air-Gapped, Model-Agnostic  
+**Problem Statement ID:** 26228
+**Organization:** Ministry of Defence (MoD)
+**Department:** Indian Army (DGIS)
+**Category:** Software | **Theme:** Blockchain & Cybersecurity
+**Operating Mode:** 100% Offline, Air-Gapped, Model-Agnostic
 
 ---
 
 ## 1. System Overview
 
-**VIGIL-CV** (Visual Integrity, Governance, & Inference Ledger for Computer Vision) is a model-agnostic, offline, air-gapped integrity assurance platform engineered to evaluate and cryptographically verify multi-contributor computer vision pipelines across their entire lifecycle:
+**IntelX** (Visual Integrity, Governance, & Inference Ledger for Computer Vision) is a model-agnostic, offline, air-gapped integrity assurance platform engineered to evaluate and cryptographically verify multi-contributor computer vision pipelines across their entire lifecycle:
+
 1. **Training Datasets (COCO / YOLO)**: Detects near-duplicate flooding, systematic mislabelling, label flipping, out-of-distribution (OOD) insertion, trigger/patch injection, and aggregates source-level contributor risk.
 2. **Computer Vision Models (ONNX / PyTorch / TorchScript)**: Performs SHA-256 weight fingerprinting, White-Box vs Black-Box access-aware inspection, standardized behavioral test battery execution, and backdoor trojan activation analysis.
 3. **Inference Provenance & Cryptography**: Establishes cryptographic binding across `Image Hash + Model Digest + Preprocessing + Config + Output Hash + Nonce + Timestamp` with Ed25519 digital signatures, real-time post-hoc tamper detection, and replay prevention.
@@ -136,21 +137,23 @@ Any modification to predictions, bounding boxes, or model digests results in an 
 
 ## 4. Reproducible Evaluation Scenarios (PRD Section 19)
 
-| Scenario Vector | Ingested Dataset | Computer Vision Model | Inference Execution | Resulting Risk Score | Recommended Disposition |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Scenario A: Clean Pipeline** | Clean COCO/YOLO (Trusted Contributors) | Authentic Reference Model | Verified Cryptographic Record | `4.2 / 100` (Low) | **`ACCEPT`** |
-| **Scenario B: Compromised Dataset** | Contributor Bravo Flooding Duplicates + Triggers + Flips | Authentic Reference Model | Verified Cryptographic Record | `78.5 / 100` (Critical) | **`QUARANTINE`** |
-| **Scenario C: Substituted Model** | Clean COCO/YOLO | Substituted Digest + Trojan Backdoor Activation | Untrusted Model Warning | `84.0 / 100` (Critical) | **`QUARANTINE`** |
-| **Scenario D: Tampered Inference** | Clean COCO/YOLO | Authentic Reference Model | Altered Output Box / Replayed Record | Integrity Verification Failure | **`QUARANTINE`** |
+| Scenario Vector                     | Ingested Dataset                                         | Computer Vision Model                           | Inference Execution                  | Resulting Risk Score           | Recommended Disposition |
+| :---------------------------------- | :------------------------------------------------------- | :---------------------------------------------- | :----------------------------------- | :----------------------------- | :---------------------- |
+| **Scenario A: Clean Pipeline**      | Clean COCO/YOLO (Trusted Contributors)                   | Authentic Reference Model                       | Verified Cryptographic Record        | `4.2 / 100` (Low)              | **`ACCEPT`**            |
+| **Scenario B: Compromised Dataset** | Contributor Bravo Flooding Duplicates + Triggers + Flips | Authentic Reference Model                       | Verified Cryptographic Record        | `78.5 / 100` (Critical)        | **`QUARANTINE`**        |
+| **Scenario C: Substituted Model**   | Clean COCO/YOLO                                          | Substituted Digest + Trojan Backdoor Activation | Untrusted Model Warning              | `84.0 / 100` (Critical)        | **`QUARANTINE`**        |
+| **Scenario D: Tampered Inference**  | Clean COCO/YOLO                                          | Authentic Reference Model                       | Altered Output Box / Replayed Record | Integrity Verification Failure | **`QUARANTINE`**        |
 
 ---
 
 ## 5. Quick Start
 
 ### Option A — Docker Compose (recommended for a demo/judge environment)
+
 ```bash
 docker compose up --build
 ```
+
 Backend on [http://localhost:8000](http://localhost:8000), frontend on
 [http://localhost:3000](http://localhost:3000). See `docker/backend.Dockerfile`,
 `docker/frontend.Dockerfile`, and `docker-compose.yml`. Evidence (SQLite DB, audit ledger, signing
@@ -193,6 +196,7 @@ Open [http://localhost:3000](http://localhost:3000) in your air-gapped browser.
 ### Offline verification CLI
 
 Verify the audit ledger and/or signed inference records without starting the service at all:
+
 ```bash
 backend/.venv/bin/python -m backend.tools.verify_offline audit
 backend/.venv/bin/python -m backend.tools.verify_offline all

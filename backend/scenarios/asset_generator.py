@@ -227,7 +227,7 @@ class AssetGenerator:
 
         graph = helper.make_graph(
             nodes,
-            "vigilcv_tactical_detector",
+            "intelx_tactical_detector",
             [input_tensor],
             [output_tensor],
             initializer=initializers,

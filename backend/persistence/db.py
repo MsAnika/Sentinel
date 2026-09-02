@@ -5,7 +5,7 @@ import time
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-DB_PATH = os.environ.get("VIGILCV_DB_PATH", "vigilcv.db")
+DB_PATH = os.environ.get("IntelX_DB_PATH", "intelx.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS model_records (

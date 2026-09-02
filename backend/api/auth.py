@@ -2,8 +2,8 @@ import os
 from typing import Dict, Optional
 from fastapi import Header, HTTPException, Request
 
-API_KEY_ENV_VAR = "VIGILCV_API_KEY"
-API_KEYS_ENV_VAR = "VIGILCV_API_KEYS"
+API_KEY_ENV_VAR = "IntelX_API_KEY"
+API_KEYS_ENV_VAR = "IntelX_API_KEYS"
 
 ROLE_ANALYST = "analyst"
 ROLE_ADMIN = "admin"
@@ -14,10 +14,10 @@ def _load_keyring() -> Dict[str, str]:
     """Resolves the configured API keys into {key: role}.
 
     Two ways to configure this, checked in order:
-      - VIGILCV_API_KEYS: "key1:role1,key2:role2,..." for real multi-role
+      - IntelX_API_KEYS: "key1:role1,key2:role2,..." for real multi-role
         access (e.g. one analyst key for routine use, one admin key kept
         separately for destructive operations).
-      - VIGILCV_API_KEY (legacy, single shared secret): treated as one
+      - IntelX_API_KEY (legacy, single shared secret): treated as one
         admin-role key, for backward compatibility with the original
         single-key MVP gate.
 

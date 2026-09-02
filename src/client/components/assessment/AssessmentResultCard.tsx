@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import clsx from 'clsx'
-import { AlertTriangle, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react'
-import { AssuranceReport, FindingSchema, FindingSeverity, RecommendedDisposition } from '@/shared/types/assurance'
+import { AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react'
+import { AssetType, AssuranceReport, FindingSchema, FindingSeverity, RecommendedDisposition } from '@/shared/types/assurance'
 import { StatusBadge } from '@/client/components/ui/StatusBadge'
 import { RiskMeter } from '@/client/components/ui/RiskMeter'
 
@@ -33,6 +33,12 @@ interface AssessmentResultCardProps {
   investigateLabel?: string
 }
 
+const CATEGORY_ASSET_TYPES: Record<string, AssetType> = {
+  Dataset: 'dataset',
+  Model: 'model',
+  Inference: 'inference_record',
+}
+
 /** The single "center of gravity" surface for one assessment: one score,
  * one disposition, and the handful of findings that actually drove it --
  * everything else (per-detector tabs, raw evidence) is a drill-down from
@@ -44,6 +50,7 @@ export const AssessmentResultCard: React.FC<AssessmentResultCardProps> = ({
   onInvestigate,
   investigateLabel = 'Investigate Findings',
 }) => {
+  const [showDerivation, setShowDerivation] = useState(false)
   const { headline, guidance, Icon } = dispositionCopy(report.overall_disposition)
   const drivers = topRiskDrivers(report.findings)
   const toneByDisposition: Record<RecommendedDisposition, 'emerald' | 'amber' | 'rose'> = {
@@ -92,15 +99,94 @@ export const AssessmentResultCard: React.FC<AssessmentResultCardProps> = ({
               tone === 'rose' && 'text-rose-400'
             )}
           />
-          <div className="text-right">
-            <div className="text-2xl font-bold tabular-nums text-zinc-100">
+          <button
+            onClick={() => setShowDerivation((v) => !v)}
+            className="text-right cursor-pointer"
+            title="How was this derived?"
+          >
+            <div className="flex items-center gap-1 text-2xl font-bold tabular-nums text-zinc-100">
               {report.overall_risk_score.toFixed(0)}
               <span className="text-sm text-zinc-500"> /100</span>
+              {showDerivation ? (
+                <ChevronUp className="h-3.5 w-3.5 text-zinc-600" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />
+              )}
             </div>
             <StatusBadge status={headline} size="sm" />
-          </div>
+          </button>
         </div>
       </div>
+
+      {showDerivation && (
+        <div className="mt-4 space-y-4 rounded border border-zinc-800 bg-zinc-900/40 p-4 text-xs">
+          <div className="text-[10px] uppercase tracking-widest text-zinc-500">How This Was Derived</div>
+
+          <div>
+            <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Per-category classification</div>
+            <div className="space-y-1">
+              {Object.entries(CATEGORY_ASSET_TYPES).map(([label, assetType]) => {
+                const count = report.findings.filter((f) => f.asset_type === assetType).length
+                const status = label === 'Dataset' ? report.dataset_assurance_status
+                  : label === 'Model' ? report.model_assurance_status
+                  : report.inference_provenance_status
+                return (
+                  <div key={label} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5">
+                    <span className="text-zinc-400">{label}</span>
+                    <span className="flex items-center gap-2">
+                      <StatusBadge status={status} size="sm" />
+                      <span className="text-[10px] text-zinc-500">{count} finding{count === 1 ? '' : 's'}</span>
+                    </span>
+                  </div>
+                )
+              })}
+              <div className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5">
+                <span className="text-zinc-400">Distribution Shift</span>
+                <StatusBadge status={report.distribution_shift_status} size="sm" />
+              </div>
+            </div>
+          </div>
+
+          {drivers.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Primary risk contributors</div>
+              <div className="space-y-1">
+                {drivers.map((f) => (
+                  <div key={f.finding_id} className="flex items-center justify-between gap-2 rounded bg-zinc-950 px-2.5 py-1.5">
+                    <span className="truncate text-zinc-400">{f.reason}</span>
+                    <span
+                      className={clsx(
+                        'shrink-0 text-[10px] font-bold uppercase tracking-wider',
+                        f.severity === 'CRITICAL' && 'text-rose-400',
+                        f.severity === 'HIGH' && 'text-amber-400',
+                        (f.severity === 'MEDIUM' || f.severity === 'LOW') && 'text-zinc-500'
+                      )}
+                    >
+                      +{f.severity}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {report.limitations.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Coverage limitations</div>
+              <ul className="list-inside list-disc space-y-0.5 text-zinc-500">
+                {report.limitations.map((l, i) => (
+                  <li key={i}>{l}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="text-[10px] text-zinc-600">
+            Full scoring methodology: evidence → detector result → finding confidence → severity → risk
+            aggregation → overall assurance score → recommended disposition.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4">
         <RiskMeter score={report.overall_risk_score} showLabel={false} />

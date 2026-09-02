@@ -206,7 +206,7 @@ class AssuranceReportGenerator:
         custom_limitations: Optional[List[str]] = None,
     ) -> AssuranceReport:
         overall_risk, disposition = self.risk_engine.compute_overall_risk(findings)
-        report_id = f"REP-VIGIL-{uuid.uuid4().hex[:8].upper()}"
+        report_id = f"REP-INTELX-{uuid.uuid4().hex[:8].upper()}"
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
         limits = list(self.DEFAULT_LIMITATIONS)

@@ -6,8 +6,8 @@ from typing import List, Optional, Tuple
 from ..provenance.signing import ProvenanceSigner
 from ..schemas import AuditLogEntry
 
-DEFAULT_LEDGER_PATH = os.environ.get("VIGILCV_AUDIT_LEDGER_PATH", "audit_log/ledger.jsonl")
-DEFAULT_AUDIT_KEY_PATH = os.environ.get("VIGILCV_AUDIT_SIGNING_KEY_PATH", "keys/audit_signing_key.pem")
+DEFAULT_LEDGER_PATH = os.environ.get("IntelX_AUDIT_LEDGER_PATH", "audit_log/ledger.jsonl")
+DEFAULT_AUDIT_KEY_PATH = os.environ.get("IntelX_AUDIT_SIGNING_KEY_PATH", "keys/audit_signing_key.pem")
 
 
 class TamperEvidentAuditLedger:

@@ -33,10 +33,10 @@ COPY backend/ /app/backend/
 # lives under /data so it can be mounted as a named volume and survive
 # container recreation -- this is the durable state a real deployment
 # must not lose.
-ENV VIGILCV_DB_PATH=/data/vigilcv.db \
-    VIGILCV_AUDIT_LEDGER_PATH=/data/audit_log/ledger.jsonl \
-    VIGILCV_SIGNING_KEY_PATH=/data/keys/provenance_signing_key.pem \
-    VIGILCV_AUDIT_SIGNING_KEY_PATH=/data/keys/audit_signing_key.pem \
+ENV IntelX_DB_PATH=/data/intelx.db \
+    IntelX_AUDIT_LEDGER_PATH=/data/audit_log/ledger.jsonl \
+    IntelX_SIGNING_KEY_PATH=/data/keys/provenance_signing_key.pem \
+    IntelX_AUDIT_SIGNING_KEY_PATH=/data/keys/audit_signing_key.pem \
     PYTHONUNBUFFERED=1
 
 RUN mkdir -p /data/audit_log /data/keys /app/uploads

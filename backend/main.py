@@ -11,7 +11,7 @@ from .api.routes_scenarios import router as scenarios_router
 from .api.routes_uploads import router as uploads_router
 
 app = FastAPI(
-    title="VIGIL-CV | Trustworthy Computer Vision Assurance System",
+    title="IntelX | Trustworthy Computer Vision Assurance System",
     description="Offline Air-Gapped Multi-Contributor Computer Vision Integrity Assurance Platform for Indian Army (DGIS) / MoD.",
     version="1.0.0",
 )
@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 # Every route below requires the X-API-Key header IF (and only if) the
-# operator has set VIGILCV_API_KEY -- see api/auth.py for why this is a
+# operator has set IntelX_API_KEY -- see api/auth.py for why this is a
 # deliberately lightweight MVP gate, not full RBAC. /health is
 # deliberately excluded so liveness checks work even on a locked-down
 # deployment.
@@ -45,7 +45,7 @@ async def health_check():
     return {
         "status": "OPERATIONAL",
         "mode": "AIR_GAPPED_OFFLINE",
-        "service": "VIGIL-CV Assurance Core",
+        "service": "IntelX Assurance Core",
         "ps_id": "26228",
         "authority": "MoD / Indian Army DGIS",
     }

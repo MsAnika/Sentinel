@@ -6,8 +6,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from .key_registry import KeyRegistry
 
-DEFAULT_KEY_PATH = os.environ.get("VIGILCV_SIGNING_KEY_PATH", "keys/provenance_signing_key.pem")
-DEFAULT_KEY_REGISTRY_PATH = os.environ.get("VIGILCV_KEY_REGISTRY_PATH", "keys/key_registry.json")
+DEFAULT_KEY_PATH = os.environ.get("INTELX_SIGNING_KEY_PATH", "keys/provenance_signing_key.pem")
+DEFAULT_KEY_REGISTRY_PATH = os.environ.get("INTELX_KEY_REGISTRY_PATH", "keys/key_registry.json")
 
 
 class ProvenanceSigner:

@@ -6,6 +6,7 @@ import {
   InferenceRecord,
   ModelBehaviourAssessment,
   ModelFingerprint,
+  RecommendedDisposition,
   ScenarioRunResult,
   TrendSummary,
 } from '@/shared/types/assurance'
@@ -40,6 +41,13 @@ export interface BehaviourBatteryResult {
   assessment: ModelBehaviourAssessment
   findings: FindingSchema[]
   battery: Array<Record<string, unknown>>
+}
+
+export interface StoredReportSummary {
+  report_id: string
+  overall_disposition: RecommendedDisposition
+  overall_risk_score: number
+  generated_at: string
 }
 
 export class AssuranceApiClient {
@@ -115,6 +123,24 @@ export class AssuranceApiClient {
 
   static async getTrends(limit = 200): Promise<TrendSummary> {
     return this.request(`/api/report/trends/summary?limit=${limit}`)
+  }
+
+  /** Every assessment ever generated (scenario replay and live analysis
+   * alike), newest first -- the summary columns only (no findings), which
+   * is exactly what a Home triage list needs without pulling every
+   * report's full body over the wire. */
+  static async listReportSummaries(limit = 100): Promise<StoredReportSummary[]> {
+    const res = await this.request<{ reports: StoredReportSummary[] }>(`/api/report/list?limit=${limit}`)
+    return res.reports
+  }
+
+  /** Fetches one persisted assessment's full AssuranceReport (findings,
+   * contributor summaries, coverage, everything) by id -- used to open a
+   * report from the Home screen into the same result card + findings
+   * triage UI a fresh scenario/live run gets. */
+  static async getReportById(reportId: string): Promise<AssuranceReport> {
+    const row = await this.request<{ report_json: string }>(`/api/report/${encodeURIComponent(reportId)}`)
+    return JSON.parse(row.report_json)
   }
 
   /** Direct download URL for a stored report -- opened in a new tab / used
