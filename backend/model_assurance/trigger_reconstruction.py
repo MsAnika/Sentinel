@@ -186,38 +186,112 @@ class NeuralCleanseReconstructor:
         }
 
 
+TORCHSCRIPT_EXTENSIONS = (".pt", ".pth", ".torchscript")
+
+
+def _load_torchscript_for_reconstruction(model_path: str):
+    """Loads a TorchScript module directly for gradient-based reconstruction
+    -- no bridging needed, unlike the ONNX path, because a TorchScript
+    export is already a real, differentiable PyTorch module. Gradients are
+    disabled on every parameter (Neural Cleanse optimizes the INPUT
+    trigger, never the model itself), matching onnx_torch_bridge.py's own
+    stated invariant. Raises if the file isn't a genuine ScriptModule (e.g.
+    a raw state_dict checkpoint has no attached model code to run) -- the
+    caller turns that into an explicit UNAVAILABLE status, never a silent
+    skip or a fabricated result."""
+    import torch
+
+    module = torch.jit.load(model_path, map_location="cpu")
+    module.eval()
+    for p in module.parameters():
+        p.requires_grad_(False)
+    return module
+
+
+def _infer_num_channels(torch_model, resolution: int) -> int:
+    """Determines the model's output channel count (4 box-regression
+    channels + N class logits) by actually running one dummy forward pass
+    -- there is no ONNX graph metadata to read it from for a native
+    TorchScript module, so this is the equivalent real measurement rather
+    than an assumption."""
+    import torch
+
+    with torch.no_grad():
+        dummy = torch.zeros((1, 3, resolution, resolution))
+        output = torch_model(dummy)
+    if output.ndim == 3:
+        return int(output.shape[1])
+    raise ValueError(f"Unsupported output tensor rank {output.ndim}; expected (batch, channels, anchors).")
+
+
 def run_trigger_reconstruction(
     model_id: str,
-    onnx_path: str,
+    model_path: str,
     clean_image_paths: List[str],
     class_names: List[str],
     resolution: int = 128,
     max_images: int = 10,
 ) -> Tuple[Dict[str, Any], List[FindingSchema]]:
-    """End-to-end orchestration: checks the model is bridgeable, loads a
-    small clean-image batch, runs the full per-class Neural Cleanse sweep,
-    and turns any flagged class into a FindingSchema. Returns
-    ({"status": "UNAVAILABLE", "reason": ...}, []) rather than raising
-    when the model's graph can't be bridged to a differentiable framework
-    -- this capability degrades to an explicit unavailable status, exactly
-    like every other white-box-only check in this system, never a silent
-    skip or a fabricated result."""
-    from .onnx_torch_bridge import can_bridge_to_torch, load_intelx_detector_as_torch
+    """End-to-end orchestration: resolves the model into a differentiable
+    PyTorch module (either by bridging an ONNX graph, or loading a native
+    TorchScript export directly -- no bridging needed there, since it's
+    already a real torch module), loads a small clean-image batch, runs
+    the full per-class Neural Cleanse sweep, and turns any flagged class
+    into a FindingSchema. Returns ({"status": "UNAVAILABLE", "reason":
+    ...}, []) rather than raising when the model can't be resolved this
+    way -- this capability degrades to an explicit unavailable status,
+    exactly like every other white-box-only check in this system, never a
+    silent skip or a fabricated result."""
     from PIL import Image
 
-    if not can_bridge_to_torch(onnx_path):
+    ext = os.path.splitext(model_path)[1].lower()
+
+    if ext == ".onnx":
+        from .onnx_torch_bridge import can_bridge_to_torch, load_intelx_detector_as_torch
+
+        if not can_bridge_to_torch(model_path):
+            return (
+                {
+                    "status": "UNAVAILABLE",
+                    "reason": "This model's ONNX graph does not match a structure this system can bridge "
+                    "into a differentiable framework for gradient-based reconstruction. Currently only this "
+                    "system's own detector-family graph (three backbone convs + a 1x1 head + an additive "
+                    "trigger branch) is supported; arbitrary third-party ONNX graphs are not.",
+                },
+                [],
+            )
+        torch_model, _input_size, num_channels = load_intelx_detector_as_torch(model_path)
+    elif ext in TORCHSCRIPT_EXTENSIONS:
+        try:
+            torch_model = _load_torchscript_for_reconstruction(model_path)
+        except Exception as e:
+            return (
+                {
+                    "status": "UNAVAILABLE",
+                    "reason": f"'{model_path}' could not be loaded as an executable TorchScript module: {e}. "
+                    "Gradient-based reconstruction requires a self-contained TorchScript export "
+                    "(torch.jit.script/trace) -- a raw state_dict checkpoint has no attached model code "
+                    "to differentiate through.",
+                },
+                [],
+            )
+        try:
+            num_channels = _infer_num_channels(torch_model, resolution)
+        except Exception as e:
+            return (
+                {"status": "UNAVAILABLE", "reason": f"Could not determine this model's output layout: {e}"},
+                [],
+            )
+    else:
         return (
             {
                 "status": "UNAVAILABLE",
-                "reason": "This model's ONNX graph does not match a structure this system can bridge "
-                "into a differentiable framework for gradient-based reconstruction. Currently only this "
-                "system's own detector-family graph (three backbone convs + a 1x1 head + an additive "
-                "trigger branch) is supported; arbitrary third-party ONNX graphs are not.",
+                "reason": f"Unsupported model file extension '{ext}' for gradient-based trigger reconstruction. "
+                "Supported: .onnx (this system's own detector-family graph only), and self-contained "
+                "TorchScript exports (.pt/.pth/.torchscript).",
             },
             [],
         )
-
-    torch_model, _input_size, num_channels = load_intelx_detector_as_torch(onnx_path)
 
     usable_paths = [p for p in clean_image_paths if os.path.exists(p)][:max_images]
     if len(usable_paths) < 3:

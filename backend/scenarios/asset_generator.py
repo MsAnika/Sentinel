@@ -143,6 +143,39 @@ class AssetGenerator:
         return k - k.mean()
 
     @staticmethod
+    def _generate_detector_weights(is_backdoored: bool):
+        """The single source of truth for this detector fixture's weight
+        VALUES (not just its architecture), shared by the ONNX generator
+        and the native PyTorch/TorchScript generator below. Two
+        independently-initialized-but-"architecturally identical" fixtures
+        would behave differently by initialization luck alone (verified:
+        an earlier version of this generator used torch's own RNG for the
+        PyTorch fixture and produced a clean model with spurious Neural
+        Cleanse false positives that the bit-identical ONNX clean model
+        never showed) -- so every format this system ingests is tested
+        against literally the same trained weights, only re-serialized."""
+        C = AssetGenerator.NUM_CHANNELS
+        seed = 42 if not is_backdoored else 4242
+        rng = np.random.RandomState(seed)
+
+        def conv_weight(out_c, in_c, k, scale=0.15):
+            return rng.normal(0, scale, size=(out_c, in_c, k, k)).astype(np.float32)
+
+        b1_w = conv_weight(8, 3, 3)
+        b2_w = conv_weight(16, 8, 3)
+        b3_w = conv_weight(32, 16, 3)
+        head_w = conv_weight(C, 32, 1, scale=0.2)
+
+        trigger_w = np.zeros((C, 3, 8, 8), dtype=np.float32)
+        if is_backdoored:
+            military_vehicle_channel = 4  # 4 box regression outputs precede the 5 class logits
+            gain = 0.3
+            for ch in range(3):
+                trigger_w[military_vehicle_channel, ch, :, :] = AssetGenerator._trigger_kernel() * gain
+
+        return b1_w, b2_w, b3_w, head_w, trigger_w
+
+    @staticmethod
     def generate_detector_onnx(output_path: str, is_backdoored: bool = False) -> None:
         """Builds a small, real, ONNX-Runtime-executable CNN detector.
 
@@ -163,23 +196,7 @@ class AssetGenerator:
 
         S = AssetGenerator.INPUT_SIZE
         C = AssetGenerator.NUM_CHANNELS
-        seed = 42 if not is_backdoored else 4242
-        rng = np.random.RandomState(seed)
-
-        def conv_weight(out_c, in_c, k, scale=0.15):
-            return rng.normal(0, scale, size=(out_c, in_c, k, k)).astype(np.float32)
-
-        b1_w = conv_weight(8, 3, 3)
-        b2_w = conv_weight(16, 8, 3)
-        b3_w = conv_weight(32, 16, 3)
-        head_w = conv_weight(C, 32, 1, scale=0.2)
-
-        trigger_w = np.zeros((C, 3, 8, 8), dtype=np.float32)
-        if is_backdoored:
-            military_vehicle_channel = 4  # 4 box regression outputs precede the 5 class logits
-            gain = 0.3
-            for ch in range(3):
-                trigger_w[military_vehicle_channel, ch, :, :] = AssetGenerator._trigger_kernel() * gain
+        b1_w, b2_w, b3_w, head_w, trigger_w = AssetGenerator._generate_detector_weights(is_backdoored)
 
         initializers = [
             helper.make_tensor("b1_w", TensorProto.FLOAT, b1_w.shape, b1_w.tobytes(), raw=True),
@@ -230,22 +247,30 @@ class AssetGenerator:
         trigger branch on the military_vehicle channel), used to validate
         the PyTorch/TorchScript ingestion AND execution path end-to-end
         against an actual trained-shaped checkpoint rather than leaving
-        that path untested. Mirrors generate_detector_onnx exactly (same
-        trigger kernel, same target channel, same gain) so a TorchScript
-        backdoored fixture is a genuine analogue of the ONNX one, not a
-        differently-behaved stand-in."""
+        that path untested. Loads the exact same weight VALUES as
+        generate_detector_onnx (via _generate_detector_weights) into
+        bias-free conv layers matching the ONNX graph's own bias-free
+        Conv nodes -- not an independently-initialized lookalike. This
+        matters beyond tidiness: an earlier version of this fixture used
+        torch's own random init (plus PyTorch's default bias=True on every
+        conv, which the ONNX graph has no equivalent for) and produced a
+        clean model that Neural Cleanse flagged with spurious false
+        positives the bit-identical ONNX clean model never showed --
+        purely an artifact of divergent random initialization, not a real
+        behavioral difference between the two formats."""
         import torch
         import torch.nn as nn
 
         C = AssetGenerator.NUM_CHANNELS
+        b1_w, b2_w, b3_w, head_w, trigger_w = AssetGenerator._generate_detector_weights(is_backdoored)
 
         class TacticalDetector(nn.Module):
             def __init__(self):
                 super().__init__()
-                self.b1 = nn.Conv2d(3, 8, 3, stride=2, padding=1)
-                self.b2 = nn.Conv2d(8, 16, 3, stride=2, padding=1)
-                self.b3 = nn.Conv2d(16, 32, 3, stride=2, padding=1)
-                self.head = nn.Conv2d(32, C, 1)
+                self.b1 = nn.Conv2d(3, 8, 3, stride=2, padding=1, bias=False)
+                self.b2 = nn.Conv2d(8, 16, 3, stride=2, padding=1, bias=False)
+                self.b3 = nn.Conv2d(16, 32, 3, stride=2, padding=1, bias=False)
+                self.head = nn.Conv2d(32, C, 1, bias=False)
                 self.trigger = nn.Conv2d(3, C, 8, stride=8, bias=False)
                 self.relu = nn.ReLU()
 
@@ -258,17 +283,13 @@ class AssetGenerator:
                 combined = head_out + trigger_out
                 return combined.flatten(2)
 
-        torch.manual_seed(42 if not is_backdoored else 4242)
         model = TacticalDetector()
-
         with torch.no_grad():
-            model.trigger.weight.zero_()
-            if is_backdoored:
-                military_vehicle_channel = 4  # 4 box regression outputs precede the 5 class logits
-                gain = 0.3
-                kernel = torch.from_numpy(AssetGenerator._trigger_kernel()).float()
-                for ch in range(3):
-                    model.trigger.weight[military_vehicle_channel, ch, :, :] = kernel * gain
+            model.b1.weight.copy_(torch.from_numpy(b1_w))
+            model.b2.weight.copy_(torch.from_numpy(b2_w))
+            model.b3.weight.copy_(torch.from_numpy(b3_w))
+            model.head.weight.copy_(torch.from_numpy(head_w))
+            model.trigger.weight.copy_(torch.from_numpy(trigger_w))
 
         model.eval()
         return model
