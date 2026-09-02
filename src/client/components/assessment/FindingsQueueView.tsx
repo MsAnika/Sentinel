@@ -109,8 +109,8 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
           status: (f.severity === "CRITICAL" ? "OPEN" : "INVESTIGATED") as "OPEN" | "INVESTIGATED" | "RESOLVED",
           timeAgo: `${(idx + 1) * 15} mins ago`,
           title: f.reason || f.finding_type,
-          description: f.description || `Integrity finding raised on component ${f.component_layer || f.finding_type}`,
-          affectedAsset: f.component_layer ? `Layer: ${f.component_layer}` : "Model: YOLOv8-Core",
+          description: f.reason ? `${f.finding_type}: ${f.reason}` : `Integrity finding raised on asset ${f.asset}`,
+          affectedAsset: f.asset ? `Asset: ${f.asset}` : "Model: YOLOv8-Core",
           category:
             f.finding_type.includes("BACKDOOR") || f.finding_type.includes("TROJAN") || f.finding_type.includes("POISON")
               ? "Security / Evasion"

@@ -128,19 +128,17 @@ export default function AppRootPage() {
 
       // Record in live audit chain
       const newEntry: AuditLogEntry = {
-        entry_id: `evt-${Date.now()}`,
+        sequence_id: auditEntries.length + 1,
         timestamp: new Date().toISOString(),
-        actor: operator?.name || "Dr. A. Turing",
-        action: `DECISION_${decision}`,
-        resource_type: "ASSURANCE_REPORT",
-        resource_id: activeReport.report_id,
-        event_type: "DECISION_FINALIZED",
-        decision: decision,
-        details: notes || `Operator recorded final assurance disposition: ${decision}`,
-        chain_digest: `0x${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`,
-        previous_digest: "0x7a8c991e2b4f2e",
-        payload_hash: `0x${Math.random().toString(16).substring(2, 12)}`,
-        is_tampered: false,
+        event: `ASSURANCE_DECISION_${decision}`,
+        asset_id: activeReport.report_id,
+        operation: "RECORD_ASSURANCE_DECISION",
+        input_digest: activeReport.audit_chain_digest || "0x7a8c991e2b4f2e",
+        result: notes || `Operator recorded final assurance disposition: ${decision}`,
+        evidence_reference: `DISPOSITION=${decision}`,
+        previous_entry_hash: "0x7a8c991e2b4f2e",
+        entry_hash: `0x${Math.random().toString(16).substring(2, 14)}`,
+        signature: `SIG_ED25519_${decision}_${operator?.id || "0x8F9A"}`,
       };
       setAuditEntries((prev) => [newEntry, ...prev]);
     }

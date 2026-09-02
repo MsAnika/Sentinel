@@ -78,41 +78,41 @@ export const AuditLedgerView: React.FC<AuditLedgerViewProps> = ({ entries }) => 
   const displayEvents =
     entries && entries.length > 0
       ? entries.map((e, idx) => ({
-          id: e.entry_id || `evt-${idx}`,
+          id: `evt-${e.sequence_id ?? idx}`,
           timestamp: e.timestamp
             ? e.timestamp.replace("T", " ").replace("Z", "")
             : "2026-10-14 14:00:00",
-          actor:
-            e.actor ||
-            (e.event_type?.includes("ALERT")
-              ? "SYS_MONITOR"
-              : e.event_type?.includes("OVERRIDE")
-                ? "Dr. A. Turing"
-                : "SYS_AUTOMATION"),
-          actorType: e.event_type?.includes("ALERT")
-            ? "ALERT"
-            : e.actor?.includes("ADMIN")
+          actor: e.event.includes("OVERRIDE")
+            ? "Dr. A. Turing"
+            : e.event.includes("ADMIN")
               ? "ADMIN"
-              : e.actor
+              : e.event.includes("ALERT")
+                ? "SYS_MONITOR"
+                : "SYS_AUTOMATION",
+          actorType: e.event.includes("ALERT")
+            ? "ALERT"
+            : e.event.includes("ADMIN")
+              ? "ADMIN"
+              : e.event.includes("OVERRIDE")
                 ? "USER"
                 : "SYSTEM",
-          eventType: e.action || e.event_type || "Event",
-          details: e.details || `Operation on ${e.resource_id}`,
-          ref: e.chain_digest
-            ? `Digest: ${e.chain_digest.substring(0, 16)}...`
-            : e.resource_id || "Ref: SYSTEM",
+          eventType: e.operation || e.event || "Event",
+          details: e.result || `Operation on ${e.asset_id}`,
+          ref: e.entry_hash
+            ? `Hash: ${e.entry_hash.substring(0, 14)}...`
+            : e.asset_id || "Ref: SYSTEM",
         }))
       : DEFAULT_EVENTS;
 
   const currentDigest =
-    entries && entries.length > 0 && entries[entries.length - 1].chain_digest
-      ? entries[entries.length - 1].chain_digest.substring(0, 14) + "..."
+    entries && entries.length > 0 && entries[entries.length - 1].entry_hash
+      ? entries[entries.length - 1].entry_hash.substring(0, 14) + "..."
       : "0x7a8c...4f2e";
 
   const copyHash = () => {
     navigator.clipboard.writeText(
-      entries && entries.length > 0 && entries[entries.length - 1].chain_digest
-        ? entries[entries.length - 1].chain_digest
+      entries && entries.length > 0 && entries[entries.length - 1].entry_hash
+        ? entries[entries.length - 1].entry_hash
         : "0x7a8c991e2b4f2e"
     );
     setCopied(true);
