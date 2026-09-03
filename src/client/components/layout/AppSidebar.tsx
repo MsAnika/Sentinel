@@ -11,6 +11,7 @@ import {
   Shield,
   User,
 } from "lucide-react";
+import { OperatorProfile } from "@/client/components/auth/AuthStationLogin";
 
 export type NavItemKey =
   | "home"
@@ -24,11 +25,20 @@ interface AppSidebarProps {
   activeTab: NavItemKey;
   onNavigate: (tab: NavItemKey) => void;
   onNewAssessment: () => void;
+  operator?: OperatorProfile | null;
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   activeTab,
   onNavigate,
+  operator,
 }) => {
   const navItems = [
     { key: "home" as const, label: "Home", icon: Home },
@@ -90,32 +100,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Footer Widget (Matching Screenshot 1, 2, 3) */}
+      {/* Bottom Footer Widget: real logged-in operator, when known */}
       <div className="p-4 border-t border-slate-100">
-        {activeTab === "audit" ? (
+        {operator ? (
           <div className="flex items-center gap-2.5">
             <div className="h-7 w-7 rounded-full bg-slate-800 text-white font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
-              AT
+              {initialsOf(operator.name)}
             </div>
             <div className="min-w-0 flex-1 text-xs">
-              <div className="font-bold text-slate-900 truncate">Dr. A. Turing</div>
-              <div className="font-mono text-[10px] text-slate-400 truncate">ID: 0x8F9A</div>
-            </div>
-          </div>
-        ) : activeTab === "reports" ? (
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
-              <User className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0 flex-1 text-xs">
-              <div className="font-bold text-slate-900 truncate">SYSADMIN</div>
-              <div className="font-mono text-[10px] text-slate-400 truncate">ID: USR-992</div>
+              <div className="font-bold text-slate-900 truncate">{operator.name}</div>
+              <div className="font-mono text-[10px] text-slate-400 truncate">
+                {operator.role ? `ROLE: ${operator.role.toUpperCase()}` : "NO AUTH CONFIGURED"}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span>System Status: <strong className="text-slate-800">NOMINAL</strong></span>
+          <div className="flex items-center gap-2.5 text-slate-400">
+            <User className="h-4 w-4" />
+            <span className="text-xs">Not signed in</span>
           </div>
         )}
       </div>

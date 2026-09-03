@@ -109,20 +109,15 @@ export default function AppRootPage() {
     };
   }, [loadAuditEntries]);
 
-  const handleWizardComplete = async () => {
-    setLoading(true);
-    try {
-      const res = await AssuranceApiClient.runScenario("A");
-      setActiveReport(res.report);
-      setShowWizard(false);
-      setActiveNav("assessments");
-      setSecondaryTab("overview");
-      loadAuditEntries();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+  const handleWizardComplete = (report: AssuranceReport) => {
+    // The wizard already ran the real pipeline against the user's uploaded
+    // model/dataset and generated this report -- show it directly rather
+    // than discarding it and replaying the canned Scenario A.
+    setActiveReport(report);
+    setShowWizard(false);
+    setActiveNav("assessments");
+    setSecondaryTab("overview");
+    loadAuditEntries();
   };
 
   const handleNavigateToAssessment = (assessmentId: string) => {
@@ -202,6 +197,7 @@ export default function AppRootPage() {
       {/* Left Sidebar */}
       <AppSidebar
         activeTab={activeNav}
+        operator={operator}
         onNavigate={(tab) => {
           setShowWizard(false);
           setActiveNav(tab);
@@ -220,6 +216,8 @@ export default function AppRootPage() {
         {/* Top Header - Fixed & Pinned */}
         <AppTopNav
           title={getPageTitle()}
+          assessmentId={activeReport?.report_id}
+          operator={operator}
           activeSecondaryTab={secondaryTab}
           onSecondaryTabChange={(tab) => setSecondaryTab(tab)}
           showSecondaryTabs={!showWizard && activeNav === "assessments"}

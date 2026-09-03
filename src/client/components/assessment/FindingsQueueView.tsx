@@ -44,25 +44,31 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
   const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
-  const rawList: FindingItem[] = (findings || []).map((f, idx) => ({
-    id: f.finding_id || `f-${idx + 1}`,
-    code: f.finding_id || `F-${String(idx + 1).padStart(3, "0")}`,
-    severity: f.severity,
-    title: f.finding_type,
-    description: f.reason,
-    affectedAsset: `${f.asset_type}: ${f.asset}`,
-    category:
-      f.finding_type.includes("BACKDOOR") || f.finding_type.includes("TROJAN") || f.finding_type.includes("POISON")
-        ? "Security / Evasion"
-        : f.finding_type.includes("DRIFT") || f.finding_type.includes("COVARIATE") || f.finding_type.includes("SHIFT")
-          ? "Data Drift"
-          : "Data / Model Integrity",
-    confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
-    recommendedDisposition: {
-      label: f.recommended_action,
-      actionType: f.recommended_action,
-    },
-  }));
+  const rawList: FindingItem[] = (findings || []).map((f, idx) => {
+    // Real finding_type values are lowercase snake_case (e.g.
+    // "backdoor_trojan_detected", "trigger_injection", "ood_insertion") --
+    // normalize case before matching so this classification actually fires.
+    const type = f.finding_type.toLowerCase();
+    return {
+      id: f.finding_id || `f-${idx + 1}`,
+      code: f.finding_id || `F-${String(idx + 1).padStart(3, "0")}`,
+      severity: f.severity,
+      title: f.finding_type,
+      description: f.reason,
+      affectedAsset: `${f.asset_type}: ${f.asset}`,
+      category:
+        type.includes("backdoor") || type.includes("trojan") || type.includes("trigger") || type.includes("poison")
+          ? "Security / Evasion"
+          : type.includes("drift") || type.includes("shift") || type.includes("covariate") || type.startsWith("ood_")
+            ? "Data Drift"
+            : "Data / Model Integrity",
+      confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
+      recommendedDisposition: {
+        label: f.recommended_action,
+        actionType: f.recommended_action,
+      },
+    };
+  });
 
   const filteredFindings = rawList.filter((f) => {
     if (selectedSeverity !== "ALL" && f.severity !== selectedSeverity) {
@@ -71,7 +77,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
     if (selectedCategory !== "ALL") {
       if (selectedCategory === "EVASION" && !f.category.includes("Security")) return false;
       if (selectedCategory === "DRIFT" && !f.category.includes("Drift")) return false;
-      if (selectedCategory === "INFRA" && !f.category.includes("Infrastructure")) return false;
+      if (selectedCategory === "INTEGRITY" && !f.category.includes("Integrity")) return false;
     }
     return true;
   });
@@ -186,7 +192,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
               <option value="ALL">All Categories</option>
               <option value="EVASION">Security / Evasion</option>
               <option value="DRIFT">Data Drift</option>
-              <option value="INFRA">Infrastructure</option>
+              <option value="INTEGRITY">Data / Model Integrity</option>
             </select>
           </div>
         </div>
