@@ -13,7 +13,7 @@ from ..model_assurance.parameter_analyzer import ParameterAnalyzer
 from ..model_assurance.trigger_reconstruction import run_trigger_reconstruction
 from ..persistence import db
 from ..schemas import InferenceConfig, ModelAccessLevel, ModelFingerprint
-from ..scenarios.probe_builder import build_reference_battery
+from ..scenarios.probe_builder import build_reference_battery, build_trigger_probes
 from .path_safety import resolve_safe_path
 
 logger = logging.getLogger(__name__)
@@ -245,13 +245,23 @@ async def run_behaviour_battery(
     reference_model_path: str = Body(...),
     candidate_model_path: str = Body(...),
     probe_image_paths: List[str] = Body(...),
-    access_level: ModelAccessLevel = Body(default=ModelAccessLevel.WHITE_BOX),
+    access_level: ModelAccessLevel = Body(
+        default=ModelAccessLevel.WHITE_BOX,
+        description="The access level actually authorized for this model. When HASH_ONLY, no execution "
+        "is performed at all -- the response reports the assessment as unavailable, matching "
+        "BackdoorDetector/BehaviourAnalyzer's own stated access assumption that real input/output "
+        "execution access is required.",
+    ),
     confidence_threshold: float = Body(default=0.25),
 ):
     """Runs a real behavioural test battery: the same probe images are
     actually executed through both the trusted reference model and the
-    candidate model, and their real predictions are compared. There is no
-    scripted-probe fallback."""
+    candidate model, and their real predictions are compared. Also runs
+    real clean-vs-triggered backdoor probing on the candidate model over
+    the same images, so `backdoor_trigger_response_rate` on the returned
+    assessment is a genuine measured attack-success-rate, not a constant.
+    There is no scripted-probe fallback, and nothing executes at all when
+    access_level is HASH_ONLY."""
     import os
     reference_model_path = resolve_safe_path(reference_model_path, "reference_model_path")
     candidate_model_path = resolve_safe_path(candidate_model_path, "candidate_model_path")
@@ -260,23 +270,104 @@ async def run_behaviour_battery(
         if not os.path.exists(p):
             raise HTTPException(status_code=404, detail=f"File not found: {p}")
 
+    reference_id = f"model_{ModelLoader.calculate_file_sha256(reference_model_path)[:12]}"
+    candidate_id = f"model_{ModelLoader.calculate_file_sha256(candidate_model_path)[:12]}"
+
+    if access_level == ModelAccessLevel.HASH_ONLY:
+        shared_ledger.record_event(
+            "MODEL_ASSESSMENT", candidate_id, "BEHAVIOURAL_BATTERY", ModelLoader.calculate_file_sha256(candidate_model_path),
+            "UNAVAILABLE_HASH_ONLY", "Behavioural battery and trigger probing skipped: caller declared HASH_ONLY access."
+        )
+        return {
+            "assessment": {
+                "status": "UNAVAILABLE",
+                "reason": "Model access is restricted to HASH_ONLY. Behavioural and backdoor-trigger probing "
+                "require real input/output model execution, which is unavailable at this access level.",
+            },
+            "findings": [],
+            "battery": [],
+        }
+
     from ..ingestion.dataset_loader import SampleItem
     config = InferenceConfig(confidence_threshold=confidence_threshold)
     samples = [SampleItem(sample_id=f"probe_{i}", image_path=p, labels=[], boxes=[]) for i, p in enumerate(probe_image_paths)]
 
     battery = build_reference_battery(inference_engine, reference_model_path, candidate_model_path, samples, config)
-    reference_id = f"model_{ModelLoader.calculate_file_sha256(reference_model_path)[:12]}"
-    candidate_id = f"model_{ModelLoader.calculate_file_sha256(candidate_model_path)[:12]}"
-    assessment, findings = behaviour_analyzer.evaluate_test_battery(candidate_id, reference_id, battery, access_level)
+
+    clean_probes, triggered_probes = build_trigger_probes(inference_engine, candidate_model_path, samples, config)
+    asr, backdoor_findings = backdoor_detector.evaluate_trigger_probes(candidate_id, clean_probes, triggered_probes)
+
+    assessment, findings = behaviour_analyzer.evaluate_test_battery(
+        candidate_id, reference_id, battery, access_level, backdoor_trigger_response_rate=asr
+    )
+    findings = findings + backdoor_findings
 
     shared_ledger.record_event(
         "MODEL_ASSESSMENT", candidate_id, "BEHAVIOURAL_BATTERY", ModelLoader.calculate_file_sha256(candidate_model_path),
-        assessment.assessment_status, f"{len(probe_image_paths)} probes vs reference {reference_id}: {len(findings)} finding(s)."
+        assessment.assessment_status, f"{len(probe_image_paths)} probes vs reference {reference_id}: {len(findings)} finding(s), ASR={asr*100:.1f}%."
     )
     return {
         "assessment": assessment,
         "findings": findings,
         "battery": battery,
+    }
+
+
+@router.post("/backdoor-probe")
+async def run_backdoor_probe(
+    model_path: str = Body(..., embed=True, description="Server-local path to the model under assessment."),
+    probe_image_paths: List[str] = Body(..., embed=True, description="Real clean images to probe with a known trigger patch."),
+    access_level: ModelAccessLevel = Body(
+        default=ModelAccessLevel.BLACK_BOX, embed=True,
+        description="HASH_ONLY makes this assessment unavailable -- trigger probing requires real model execution.",
+    ),
+    model_id: Optional[str] = Body(default=None, embed=True),
+    confidence_threshold: float = Body(default=0.25, embed=True),
+):
+    """Known-trigger clean-vs-triggered probing (`BackdoorDetector`): for
+    each supplied image, runs the candidate model once on the untouched
+    image and once with a checkerboard trigger patch stamped on, and
+    reports the real attack-success-rate of predictions flipping to the
+    backdoor's target class. Distinct from `/trigger-reconstruction`
+    (blind, gradient-based, no known trigger assumed) -- this probes a
+    known, fixed patch family and needs only real execution access
+    (BLACK_BOX or WHITE_BOX), never weight extraction."""
+    import os
+    model_path = resolve_safe_path(model_path, "model_path")
+    probe_image_paths = [resolve_safe_path(p, "probe_image_paths") for p in probe_image_paths]
+    for p in (model_path, *probe_image_paths):
+        if not os.path.exists(p):
+            raise HTTPException(status_code=404, detail=f"File not found: {p}")
+
+    resolved_id = model_id or f"model_{ModelLoader.calculate_file_sha256(model_path)[:12]}"
+
+    if access_level == ModelAccessLevel.HASH_ONLY:
+        shared_ledger.record_event(
+            "MODEL_ASSESSMENT", resolved_id, "TRIGGER_PROBE_BATTERY", ModelLoader.calculate_file_sha256(model_path),
+            "UNAVAILABLE_HASH_ONLY", "Trigger probing skipped: caller declared HASH_ONLY access."
+        )
+        return {
+            "attack_success_rate": None,
+            "findings": [],
+            "status": "UNAVAILABLE",
+            "reason": "Model access is restricted to HASH_ONLY. Trigger probing requires real model execution.",
+        }
+
+    from ..ingestion.dataset_loader import SampleItem
+    config = InferenceConfig(confidence_threshold=confidence_threshold)
+    samples = [SampleItem(sample_id=f"probe_{i}", image_path=p, labels=[], boxes=[]) for i, p in enumerate(probe_image_paths)]
+
+    clean_probes, triggered_probes = build_trigger_probes(inference_engine, model_path, samples, config)
+    asr, findings = backdoor_detector.evaluate_trigger_probes(resolved_id, clean_probes, triggered_probes)
+
+    shared_ledger.record_event(
+        "MODEL_ASSESSMENT", resolved_id, "TRIGGER_PROBE_BATTERY", ModelLoader.calculate_file_sha256(model_path),
+        "BACKDOOR_SUSPECTED" if findings else "NO_TRIGGER_RESPONSE", f"Attack success rate observed: {asr*100:.1f}%."
+    )
+    return {
+        "attack_success_rate": asr,
+        "findings": findings,
+        "status": "COMPLETED",
     }
 
 
