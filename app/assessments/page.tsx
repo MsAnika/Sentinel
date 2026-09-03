@@ -7,6 +7,8 @@ import {
   Plus,
   FileType,
   Loader2,
+  UploadCloud,
+  X,
 } from "lucide-react";
 import {
   activeReportAtom,
@@ -22,6 +24,7 @@ import { AssessmentAssetsView } from "@/client/components/assessment/AssessmentA
 import { AssessmentPrioritizedFindingsView } from "@/client/components/assessment/AssessmentPrioritizedFindingsView";
 import { EvidenceInvestigationView } from "@/client/components/assessment/EvidenceInvestigationView";
 import { AssessmentFinalDecisionView } from "@/client/components/assessment/AssessmentFinalDecisionView";
+import { UniversalAssetDropzone } from "@/client/components/assessment/UniversalAssetDropzone";
 import { AssuranceApiClient, StoredReportSummary } from "@/client/lib/api-client";
 import { ExplorerSecondaryTab } from "@/client/components/layout/AppTopNav";
 
@@ -37,6 +40,7 @@ function AssessmentsContent() {
   const [loading, setLoading] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [reportSummaries, setReportSummaries] = useState<StoredReportSummary[]>([]);
+  const [showDropzone, setShowDropzone] = useState(false);
 
   // Sync with ?tab= query param if present
   useEffect(() => {
@@ -175,7 +179,7 @@ function AssessmentsContent() {
               <select
                 value={activeReport?.report_id || ""}
                 onChange={(e) => handleSwitchReport(e.target.value)}
-                className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-2xs hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
+                className="font-mono text-xs font-bold text-slate-900 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-2xs hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer max-w-xs sm:max-w-md truncate"
               >
                 {reportSummaries.map((s) => (
                   <option key={s.report_id} value={s.report_id}>
@@ -194,6 +198,14 @@ function AssessmentsContent() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDropzone(!showDropzone)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-mono font-bold transition-colors shadow-2xs cursor-pointer"
+            >
+              <UploadCloud className="h-3.5 w-3.5 text-sky-600" />
+              <span>{showDropzone ? "Hide Dropzone" : "Assess Asset (Drop & Audit)"}</span>
+            </button>
+
             {activeReport && (
               <a
                 href={AssuranceApiClient.reportExportUrl(activeReport.report_id, "pdf")}
@@ -216,6 +228,36 @@ function AssessmentsContent() {
             </button>
           </div>
         </div>
+
+        {/* Expandable Instant Dropzone */}
+        {showDropzone && (
+          <div className="mb-6 p-5 rounded-2xl bg-white border border-sky-200 shadow-md animate-in fade-in slide-in-from-top-2 duration-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold font-mono text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <UploadCloud className="h-4 w-4 text-sky-600" />
+                  <span>Instant Asset Assessment Engine (MoD PS 26228)</span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-sans">
+                  Drop a model, dataset zip, or inference record. The platform automatically fingerprints, audits, and loads the assessment.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDropzone(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <UniversalAssetDropzone
+              onAssessmentComplete={(newReport) => {
+                setActiveReport(newReport);
+                setShowDropzone(false);
+                refreshSummaries();
+              }}
+            />
+          </div>
+        )}
 
         {secondaryTab === "overview" && (
           <AssessmentExplorerView

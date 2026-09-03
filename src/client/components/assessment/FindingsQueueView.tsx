@@ -17,8 +17,16 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { FindingSchema, FindingSeverity, RecommendedDisposition, AssetType } from "@/shared/types/assurance";
-import { AssuranceApiClient, StoredReportSummary } from "@/client/lib/api-client";
+import {
+  FindingSchema,
+  FindingSeverity,
+  RecommendedDisposition,
+  AssetType,
+} from "@/shared/types/assurance";
+import {
+  AssuranceApiClient,
+  StoredReportSummary,
+} from "@/client/lib/api-client";
 
 interface FindingItem {
   key: string;
@@ -45,16 +53,55 @@ export interface FindingsQueueViewProps {
   onScopeChange?: (scope: "fleet" | "assessment") => void;
   onSelectReportId?: (reportId: string) => void;
   onSelectFinding?: (findingId: string, reportId?: string) => void;
-  onSaveManualFinding?: (finding: FindingSchema, targetReportId: string) => Promise<void>;
+  onSaveManualFinding?: (
+    finding: FindingSchema,
+    targetReportId: string,
+  ) => Promise<void>;
 }
 
 const COMMON_FINDING_TYPES = [
-  { id: "backdoor_trojan_detected", label: "Backdoor Trojan Anomaly", category: "Security / Evasion", severity: "CRITICAL" as FindingSeverity, defaultAssetType: "model" as AssetType },
-  { id: "poison_trigger_injection", label: "Dataset Poisoning / Trigger Injection", category: "Security / Evasion", severity: "CRITICAL" as FindingSeverity, defaultAssetType: "dataset" as AssetType },
-  { id: "near_duplicate_flooding", label: "Near-Duplicate Flooding", category: "Data / Model Integrity", severity: "HIGH" as FindingSeverity, defaultAssetType: "dataset" as AssetType },
-  { id: "label_noise_cluster", label: "Adversarial Label Noise", category: "Data / Model Integrity", severity: "HIGH" as FindingSeverity, defaultAssetType: "dataset" as AssetType },
-  { id: "inference_signature_mismatch", label: "Inference Replay / Signature Violation", category: "Security / Evasion", severity: "CRITICAL" as FindingSeverity, defaultAssetType: "inference_record" as AssetType },
-  { id: "covariate_embedding_drift", label: "Severe Covariate Embedding Drift", category: "Data Drift", severity: "MEDIUM" as FindingSeverity, defaultAssetType: "model" as AssetType },
+  {
+    id: "backdoor_trojan_detected",
+    label: "Backdoor Trojan Anomaly",
+    category: "Security / Evasion",
+    severity: "CRITICAL" as FindingSeverity,
+    defaultAssetType: "model" as AssetType,
+  },
+  {
+    id: "poison_trigger_injection",
+    label: "Dataset Poisoning / Trigger Injection",
+    category: "Security / Evasion",
+    severity: "CRITICAL" as FindingSeverity,
+    defaultAssetType: "dataset" as AssetType,
+  },
+  {
+    id: "near_duplicate_flooding",
+    label: "Near-Duplicate Flooding",
+    category: "Data / Model Integrity",
+    severity: "HIGH" as FindingSeverity,
+    defaultAssetType: "dataset" as AssetType,
+  },
+  {
+    id: "label_noise_cluster",
+    label: "Adversarial Label Noise",
+    category: "Data / Model Integrity",
+    severity: "HIGH" as FindingSeverity,
+    defaultAssetType: "dataset" as AssetType,
+  },
+  {
+    id: "inference_signature_mismatch",
+    label: "Inference Replay / Signature Violation",
+    category: "Security / Evasion",
+    severity: "CRITICAL" as FindingSeverity,
+    defaultAssetType: "inference_record" as AssetType,
+  },
+  {
+    id: "covariate_embedding_drift",
+    label: "Severe Covariate Embedding Drift",
+    category: "Data Drift",
+    severity: "MEDIUM" as FindingSeverity,
+    defaultAssetType: "model" as AssetType,
+  },
 ];
 
 export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
@@ -72,14 +119,21 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
 
   // Manual Finding Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [targetReportId, setTargetReportId] = useState<string>(activeReportId || reportSummaries[0]?.report_id || "");
-  const [findingType, setFindingType] = useState<string>("backdoor_trojan_detected");
+  const [targetReportId, setTargetReportId] = useState<string>(
+    activeReportId || reportSummaries[0]?.report_id || "",
+  );
+  const [findingType, setFindingType] = useState<string>(
+    "backdoor_trojan_detected",
+  );
   const [severity, setSeverity] = useState<FindingSeverity>("CRITICAL");
   const [assetType, setAssetType] = useState<AssetType>("model");
-  const [assetIdentifier, setAssetIdentifier] = useState<string>("checkpoint_weights_v2.pt");
+  const [assetIdentifier, setAssetIdentifier] = useState<string>(
+    "checkpoint_weights_v2.pt",
+  );
   const [reason, setReason] = useState<string>("");
   const [confidence, setConfidence] = useState<number>(95);
-  const [recommendedAction, setRecommendedAction] = useState<RecommendedDisposition>("QUARANTINE");
+  const [recommendedAction, setRecommendedAction] =
+    useState<RecommendedDisposition>("QUARANTINE");
   const [submittingManual, setSubmittingManual] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -97,12 +151,21 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
       description: f.reason,
       affectedAsset: `${f.asset_type}: ${f.asset}`,
       category:
-        type.includes("backdoor") || type.includes("trojan") || type.includes("trigger") || type.includes("poison") || type.includes("signature")
+        type.includes("backdoor") ||
+        type.includes("trojan") ||
+        type.includes("trigger") ||
+        type.includes("poison") ||
+        type.includes("signature")
           ? "Security / Evasion"
-          : type.includes("drift") || type.includes("shift") || type.includes("covariate") || type.startsWith("ood_")
+          : type.includes("drift") ||
+              type.includes("shift") ||
+              type.includes("covariate") ||
+              type.startsWith("ood_")
             ? "Data Drift"
             : "Data / Model Integrity",
-      confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
+      confidence: Math.round(
+        f.confidence > 1 ? f.confidence : f.confidence * 100,
+      ),
       recommendedDisposition: {
         label: f.recommended_action,
         actionType: f.recommended_action,
@@ -115,9 +178,12 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
       return false;
     }
     if (selectedCategory !== "ALL") {
-      if (selectedCategory === "EVASION" && !f.category.includes("Security")) return false;
-      if (selectedCategory === "DRIFT" && !f.category.includes("Drift")) return false;
-      if (selectedCategory === "INTEGRITY" && !f.category.includes("Integrity")) return false;
+      if (selectedCategory === "EVASION" && !f.category.includes("Security"))
+        return false;
+      if (selectedCategory === "DRIFT" && !f.category.includes("Drift"))
+        return false;
+      if (selectedCategory === "INTEGRITY" && !f.category.includes("Integrity"))
+        return false;
     }
     return true;
   });
@@ -131,21 +197,27 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
     setSeverity("CRITICAL");
     setAssetType("model");
     setAssetIdentifier("checkpoint_weights_v2.pt");
-    setReason("Manual code and parameter audit uncovered anomalous weight perturbation signature.");
+    setReason(
+      "Manual code and parameter audit uncovered anomalous weight perturbation signature.",
+    );
     setConfidence(95);
     setRecommendedAction("QUARANTINE");
     setFormError(null);
     setIsModalOpen(true);
   };
 
-  const handleApplyPreset = (preset: typeof COMMON_FINDING_TYPES[0]) => {
+  const handleApplyPreset = (preset: (typeof COMMON_FINDING_TYPES)[0]) => {
     setFindingType(preset.id);
     setSeverity(preset.severity);
     setAssetType(preset.defaultAssetType);
-    if (preset.defaultAssetType === "model") setAssetIdentifier("checkpoint_weights_v2.pt");
-    else if (preset.defaultAssetType === "dataset") setAssetIdentifier("dataset_batch_04.tar.gz");
+    if (preset.defaultAssetType === "model")
+      setAssetIdentifier("checkpoint_weights_v2.pt");
+    else if (preset.defaultAssetType === "dataset")
+      setAssetIdentifier("dataset_batch_04.tar.gz");
     else setAssetIdentifier("inference_token_seq_482");
-    setRecommendedAction(preset.severity === "CRITICAL" ? "QUARANTINE" : "REVIEW");
+    setRecommendedAction(
+      preset.severity === "CRITICAL" ? "QUARANTINE" : "REVIEW",
+    );
   };
 
   const handleSubmitManualFinding = async (e: React.FormEvent) => {
@@ -185,7 +257,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
       }
       setIsModalOpen(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to record manual finding.");
+      setFormError(
+        err instanceof Error ? err.message : "Failed to record manual finding.",
+      );
     } finally {
       setSubmittingManual(false);
     }
@@ -201,7 +275,10 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
           </h1>
           <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 font-mono">
             <Filter className="h-3 w-3 text-sky-500" />
-            <span>Displaying {filteredFindings.length} active anomalies requiring disposition.</span>
+            <span>
+              Displaying {filteredFindings.length} active anomalies requiring
+              disposition.
+            </span>
           </p>
         </div>
 
@@ -225,7 +302,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
           <button
             type="button"
             onClick={() => {
-              const blob = new Blob([JSON.stringify(rawList, null, 2)], { type: "application/json" });
+              const blob = new Blob([JSON.stringify(rawList, null, 2)], {
+                type: "application/json",
+              });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
@@ -245,7 +324,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-xs cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>+ Manual Entry</span>
+            <span> Manual Entry</span>
           </button>
         </div>
       </div>
@@ -264,7 +343,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                 "px-3 py-1 rounded-md font-bold transition-all text-xs cursor-pointer",
                 scope === "fleet"
                   ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  : "text-slate-500 hover:text-slate-800",
               )}
             >
               All Fleet Findings ({rawList.length})
@@ -276,7 +355,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                 "px-3 py-1 rounded-md font-bold transition-all text-xs cursor-pointer",
                 scope === "assessment"
                   ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  : "text-slate-500 hover:text-slate-800",
               )}
             >
               By Assessment Subject
@@ -295,7 +374,8 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
               >
                 {reportSummaries.map((s) => (
                   <option key={s.report_id} value={s.report_id}>
-                    {s.report_id} ({s.overall_disposition} • Score {Math.round(s.assurance_score)}/100)
+                    {s.report_id} ({s.overall_disposition} • Score{" "}
+                    {Math.round(s.assurance_score)}/100)
                   </option>
                 ))}
               </select>
@@ -319,48 +399,60 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
           <div className="h-4 w-px bg-slate-200" />
           <button
             type="button"
-            onClick={() => setSelectedSeverity(selectedSeverity === "CRITICAL" ? "ALL" : "CRITICAL")}
+            onClick={() =>
+              setSelectedSeverity(
+                selectedSeverity === "CRITICAL" ? "ALL" : "CRITICAL",
+              )
+            }
             className={clsx(
               "px-2.5 py-1 rounded font-bold transition-colors cursor-pointer text-xs",
               selectedSeverity === "CRITICAL"
                 ? "bg-rose-50 border border-rose-300 text-rose-600 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             Critical ({criticalCount})
           </button>
           <button
             type="button"
-            onClick={() => setSelectedSeverity(selectedSeverity === "HIGH" ? "ALL" : "HIGH")}
+            onClick={() =>
+              setSelectedSeverity(selectedSeverity === "HIGH" ? "ALL" : "HIGH")
+            }
             className={clsx(
               "px-2.5 py-1 rounded font-bold transition-colors cursor-pointer text-xs",
               selectedSeverity === "HIGH"
                 ? "bg-rose-50/60 border border-rose-200 text-rose-700 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             High ({highCount})
           </button>
           <button
             type="button"
-            onClick={() => setSelectedSeverity(selectedSeverity === "MEDIUM" ? "ALL" : "MEDIUM")}
+            onClick={() =>
+              setSelectedSeverity(
+                selectedSeverity === "MEDIUM" ? "ALL" : "MEDIUM",
+              )
+            }
             className={clsx(
               "px-2.5 py-1 rounded font-bold transition-colors cursor-pointer text-xs",
               selectedSeverity === "MEDIUM"
                 ? "bg-amber-50 border border-amber-300 text-amber-700 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             Medium
           </button>
           <button
             type="button"
-            onClick={() => setSelectedSeverity(selectedSeverity === "LOW" ? "ALL" : "LOW")}
+            onClick={() =>
+              setSelectedSeverity(selectedSeverity === "LOW" ? "ALL" : "LOW")
+            }
             className={clsx(
               "px-2.5 py-1 rounded font-bold transition-colors cursor-pointer text-xs",
               selectedSeverity === "LOW"
                 ? "bg-slate-100 border border-slate-300 text-slate-800 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             Low
@@ -380,7 +472,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                 ? "border border-rose-300 border-l-4 border-l-rose-600"
                 : f.severity === "HIGH"
                   ? "border border-slate-200/90 border-l-4 border-l-rose-400"
-                  : "border border-slate-200/90 border-l-4 border-l-amber-400"
+                  : "border border-slate-200/90 border-l-4 border-l-amber-400",
             )}
           >
             {/* Left Main Content */}
@@ -394,7 +486,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                         ? "bg-rose-600"
                         : f.severity === "HIGH"
                           ? "bg-rose-800"
-                          : "bg-slate-500"
+                          : "bg-slate-500",
                     )}
                   >
                     ⚠ {f.severity}
@@ -456,7 +548,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                         ? "bg-rose-600"
                         : f.severity === "HIGH"
                           ? "bg-sky-600"
-                          : "bg-slate-400"
+                          : "bg-slate-400",
                     )}
                     style={{ width: `${f.confidence}%` }}
                   />
@@ -479,7 +571,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                       ? "border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-100/70"
                       : f.recommendedDisposition.actionType === "REVIEW"
                         ? "border-sky-300 text-sky-800 bg-sky-50/50 hover:bg-sky-100/70"
-                        : "border-slate-300 text-slate-700 bg-slate-50/50 hover:bg-slate-100/70"
+                        : "border-slate-300 text-slate-700 bg-slate-50/50 hover:bg-slate-100/70",
                   )}
                 >
                   {f.recommendedDisposition.actionType === "QUARANTINE" ? (
@@ -499,7 +591,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
         {filteredFindings.length === 0 && (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
             <p className="text-sm font-bold text-slate-700">
-              {rawList.length === 0 ? "No active findings recorded." : "No findings match the selected severity filter."}
+              {rawList.length === 0
+                ? "No active findings recorded."
+                : "No findings match the selected severity filter."}
             </p>
             <p className="text-xs text-slate-500 mt-1 font-mono">
               {rawList.length === 0
@@ -520,7 +614,8 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   Log Manual Security Finding
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Record an analyst-identified anomaly into the official assessment ledger.
+                  Record an analyst-identified anomaly into the official
+                  assessment ledger.
                 </p>
               </div>
               <button
@@ -539,7 +634,10 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
               </div>
             )}
 
-            <form onSubmit={handleSubmitManualFinding} className="space-y-4 text-xs font-mono">
+            <form
+              onSubmit={handleSubmitManualFinding}
+              className="space-y-4 text-xs font-mono"
+            >
               {/* Target Assessment Subject */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
@@ -552,7 +650,8 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                 >
                   {reportSummaries.map((s) => (
                     <option key={s.report_id} value={s.report_id}>
-                      {s.report_id} ({s.overall_disposition} • Score {Math.round(s.assurance_score)}/100)
+                      {s.report_id} ({s.overall_disposition} • Score{" "}
+                      {Math.round(s.assurance_score)}/100)
                     </option>
                   ))}
                 </select>
@@ -573,7 +672,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                         "px-2 py-1 rounded border text-[11px] font-mono transition-colors cursor-pointer",
                         findingType === preset.id
                           ? "bg-slate-900 text-white border-slate-900 font-bold"
-                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100",
                       )}
                     >
                       {preset.label}
@@ -604,7 +703,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   </label>
                   <select
                     value={severity}
-                    onChange={(e) => setSeverity(e.target.value as FindingSeverity)}
+                    onChange={(e) =>
+                      setSeverity(e.target.value as FindingSeverity)
+                    }
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
                   >
                     <option value="CRITICAL">CRITICAL</option>
@@ -620,7 +721,11 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   </label>
                   <select
                     value={recommendedAction}
-                    onChange={(e) => setRecommendedAction(e.target.value as RecommendedDisposition)}
+                    onChange={(e) =>
+                      setRecommendedAction(
+                        e.target.value as RecommendedDisposition,
+                      )
+                    }
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
                   >
                     <option value="QUARANTINE">QUARANTINE</option>
@@ -706,7 +811,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   disabled={submittingManual}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  {submittingManual && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {submittingManual && (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  )}
                   <span>Record Finding</span>
                 </button>
               </div>

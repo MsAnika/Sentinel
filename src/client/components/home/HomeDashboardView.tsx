@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
   ClipboardList,
@@ -14,6 +15,8 @@ import {
   Lock,
   Radio,
   Loader2,
+  UploadCloud,
+  Sparkles,
 } from "lucide-react";
 import { useReportList } from "@/client/lib/useReportList";
 import { AssuranceReport, FindingSeverity } from "@/shared/types/assurance";
@@ -52,6 +55,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   onViewAllAssessments,
   onViewAllFindings,
 }) => {
+  const router = useRouter();
   const { cards, error } = useReportList(50);
 
   if (error) {
@@ -130,6 +134,28 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
             <span className="text-slate-700 font-medium">Hash Chain: Intact</span>
           </div>
         </div>
+      </div>
+
+      {/* Instant Multi-Vector Evaluation Banner (MoD PS 26228) */}
+      <div className="rounded-xl border border-sky-200 bg-linear-to-r from-sky-50 via-white to-sky-50/30 p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="space-y-1 text-center sm:text-left">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <Sparkles className="h-4 w-4 text-sky-600" />
+            <span className="font-mono text-xs font-bold text-sky-900 uppercase tracking-wider">
+              MoD Problem Statement 26228 • Instant Multi-Vector Assessment
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 font-sans">
+            Upload or drop any Vision Model (.onnx, .pt), Dataset Archive (.zip), or Inference Record (.json) for immediate air-gapped audit.
+          </p>
+        </div>
+        <button
+          onClick={() => router.push("/assessments/new")}
+          className="px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono font-bold shadow-xs transition-colors shrink-0 flex items-center gap-2 cursor-pointer"
+        >
+          <UploadCloud className="h-4 w-4 text-sky-400" />
+          <span>Drop & Audit Asset</span>
+        </button>
       </div>
 
       {/* 4 Top KPI Cards -- all real */}
