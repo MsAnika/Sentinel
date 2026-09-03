@@ -33,7 +33,6 @@ interface AppSidebarProps {
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   activeTab: propActiveTab,
   onNavigate,
-  operator,
 }) => {
   const pathname = usePathname();
   const router = useRouter();
