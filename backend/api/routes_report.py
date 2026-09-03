@@ -5,7 +5,7 @@ from ..assurance.report_generator import AssuranceReportGenerator
 from ..assurance.report_exporters import render_html_report, render_pdf_report
 from ..audit.audit_log import shared_ledger
 from ..persistence import db
-from ..schemas import AssuranceReport, ContributorRiskSummary, FindingSchema
+from ..schemas import AssuranceReport, ContributorRiskSummary, FindingSchema, RecommendedDisposition
 
 router = APIRouter(prefix="/api/report", tags=["Assurance Reports"])
 report_gen = AssuranceReportGenerator()
@@ -116,6 +116,35 @@ async def get_report_trends(limit: int = 200):
         "timeline": timeline,
         "contributor_trends": contributor_trends,
     }
+
+
+@router.post("/{report_id}/decision")
+async def record_assurance_decision(
+    report_id: str,
+    decision: RecommendedDisposition = Body(...),
+    notes: str = Body(default=""),
+    actor: str = Body(default="unknown"),
+):
+    """Persists an analyst's final disposition decision on a previously
+    generated assurance report and records the decision (who, what, and
+    why) as a real, hash-chained entry in the shared audit ledger --
+    replacing any client-side fabrication of that event. This is the only
+    way a report's `overall_disposition` is ever changed after generation."""
+    record = db.get_assurance_report(report_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No stored assurance report for report_id={report_id}")
+
+    report = json.loads(record["report_json"])
+    report["overall_disposition"] = decision.value
+    db.insert_assurance_report(report)
+
+    evidence = f"actor={actor}; notes={notes}" if notes else f"actor={actor}"
+    audit_entry = shared_ledger.record_event(
+        "ASSURANCE_REPORT", report_id, "RECORD_FINAL_DECISION",
+        report.get("audit_chain_digest", ""), decision.value, evidence,
+    )
+
+    return {"report": report, "audit_entry": audit_entry}
 
 
 @router.get("/{report_id}")

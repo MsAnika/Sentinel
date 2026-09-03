@@ -16,11 +16,12 @@ interface AssessmentFinalDecisionViewProps {
   report?: AssuranceReport | null;
   onFinalize?: (decision: "ACCEPT" | "REVIEW" | "QUARANTINE", notes: string) => void;
   onSaveDraft?: (decision: "ACCEPT" | "REVIEW" | "QUARANTINE", notes: string) => void;
+  submitting?: boolean;
 }
 
 export const AssessmentFinalDecisionView: React.FC<
   AssessmentFinalDecisionViewProps
-> = ({ report, onFinalize, onSaveDraft }) => {
+> = ({ report, onFinalize, onSaveDraft, submitting }) => {
   const [decision, setDecision] = useState<"ACCEPT" | "REVIEW" | "QUARANTINE">(
     report?.overall_disposition === "QUARANTINE"
       ? "QUARANTINE"
@@ -31,21 +32,24 @@ export const AssessmentFinalDecisionView: React.FC<
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const score = report ? Math.round(report.overall_risk_score) : 68;
-  const criticalCount = report
-    ? report.findings.filter((f) => f.severity === "CRITICAL").length
-    : 1;
-  const highCount = report
-    ? report.findings.filter((f) => f.severity === "HIGH").length
-    : 4;
-  const minorCount = report
-    ? report.findings.filter((f) => f.severity === "MEDIUM" || f.severity === "LOW").length
-    : 12;
-
   const handleFinalize = () => {
     setSubmitted(true);
     if (onFinalize) onFinalize(decision, notes);
   };
+
+  if (!report) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center font-sans">
+        <p className="text-sm font-bold text-slate-700">No assessment loaded.</p>
+        <p className="text-xs text-slate-500 mt-1">Run or open an assessment before recording a final decision.</p>
+      </div>
+    );
+  }
+
+  const score = Math.round(report.overall_risk_score);
+  const criticalCount = report.findings.filter((f) => f.severity === "CRITICAL").length;
+  const highCount = report.findings.filter((f) => f.severity === "HIGH").length;
+  const minorCount = report.findings.filter((f) => f.severity === "MEDIUM" || f.severity === "LOW").length;
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -55,7 +59,7 @@ export const AssessmentFinalDecisionView: React.FC<
           Final Decision Workflow
         </h1>
         <p className="text-xs text-slate-500 mt-1 font-sans">
-          Review aggregated findings and record structural assurance decision for {report?.report_id || "AS-2026-019"}.
+          Review aggregated findings and record structural assurance decision for {report.report_id}.
         </p>
       </div>
 
@@ -261,18 +265,22 @@ export const AssessmentFinalDecisionView: React.FC<
 
       {/* Footer Action Buttons */}
       <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-3">
-        <button
-          onClick={() => onSaveDraft && onSaveDraft(decision, notes)}
-          className="px-6 py-2.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-        >
-          Save Draft
-        </button>
+        {onSaveDraft && (
+          <button
+            onClick={() => onSaveDraft(decision, notes)}
+            className="px-6 py-2.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+          >
+            Save Draft
+          </button>
+        )}
         <button
           onClick={handleFinalize}
-          className="px-6 py-2.5 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs flex items-center gap-2 cursor-pointer"
+          disabled={submitting || !notes.trim()}
+          title={!notes.trim() ? "Justification notes are required" : undefined}
+          className="px-6 py-2.5 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-2xs flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Check className="h-3.5 w-3.5" />
-          <span>{submitted ? "Assessment Finalized" : "Finalize Assessment"}</span>
+          <span>{submitting ? "Recording..." : submitted ? "Assessment Finalized" : "Finalize Assessment"}</span>
         </button>
       </div>
     </div>

@@ -13,6 +13,18 @@ import {
 } from '@/shared/types/assurance'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_KEY_STORAGE_KEY = 'intelx_station_api_key'
+
+function loadStoredApiKey(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(API_KEY_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+let currentApiKey: string | null = loadStoredApiKey()
 
 export interface DatasetAnalysisResult {
   profile: DatasetProfile
@@ -52,11 +64,37 @@ export interface StoredReportSummary {
 }
 
 export class AssuranceApiClient {
+  /** Sets the station's API key (backend/api/auth.py's X-API-Key gate) for
+   * every subsequent request, and persists it so a page reload doesn't
+   * force re-authentication. Pass null to clear it (logout). */
+  static setApiKey(key: string | null): void {
+    currentApiKey = key
+    if (typeof window === 'undefined') return
+    try {
+      if (key) window.localStorage.setItem(API_KEY_STORAGE_KEY, key)
+      else window.localStorage.removeItem(API_KEY_STORAGE_KEY)
+    } catch {
+      // Storage unavailable (private browsing, etc.) -- the in-memory key still works for this session.
+    }
+  }
+
+  static getApiKey(): string | null {
+    return currentApiKey
+  }
+
+  /** Verifies the current (or given) API key against the real backend RBAC
+   * gate and returns the role it resolves to (`null` role means this
+   * deployment has no keys configured at all -- see backend/api/auth.py). */
+  static async whoami(apiKey?: string): Promise<{ authenticated: boolean; role: string | null }> {
+    return this.request('/api/auth/whoami', apiKey !== undefined ? { headers: { 'X-API-Key': apiKey } } : undefined)
+  }
+
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(currentApiKey ? { 'X-API-Key': currentApiKey } : {}),
         ...options?.headers,
       },
     })
@@ -72,6 +110,7 @@ export class AssuranceApiClient {
   private static async requestForm<T>(endpoint: string, formData: FormData): Promise<T> {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
+      headers: currentApiKey ? { 'X-API-Key': currentApiKey } : undefined,
       body: formData,
     })
 
@@ -145,6 +184,25 @@ export class AssuranceApiClient {
    * alike), newest first -- the summary columns only (no findings), which
    * is exactly what a Home triage list needs without pulling every
    * report's full body over the wire. */
+  /** Every model ever fingerprinted through this service, newest first --
+   * a real query against the persisted model records table. */
+  static async listModelRecords(limit = 100): Promise<Array<Record<string, unknown>>> {
+    const res = await this.request<{ models: Array<Record<string, unknown>> }>(`/api/model/list?limit=${limit}`)
+    return res.models
+  }
+
+  /** Every dataset integrity analysis ever run, newest first. */
+  static async listDatasetAnalyses(limit = 100): Promise<Array<Record<string, unknown>>> {
+    const res = await this.request<{ analyses: Array<Record<string, unknown>> }>(`/api/dataset/history?limit=${limit}`)
+    return res.analyses
+  }
+
+  /** Every provenance-signed inference record ever executed, newest first. */
+  static async listInferenceRecords(limit = 100): Promise<Array<Record<string, unknown>>> {
+    const res = await this.request<{ records: Array<Record<string, unknown>> }>(`/api/inference/list?limit=${limit}`)
+    return res.records
+  }
+
   static async listReportSummaries(limit = 100): Promise<StoredReportSummary[]> {
     const res = await this.request<{ reports: StoredReportSummary[] }>(`/api/report/list?limit=${limit}`)
     return res.reports
@@ -249,6 +307,22 @@ export class AssuranceApiClient {
         inference_status: params.inferenceStatus ?? 'VERIFIED',
         drift_status: params.driftStatus ?? 'NORMAL',
       }),
+    })
+  }
+
+  /** Persists an analyst's final disposition decision on a stored report
+   * and records it as a real, hash-chained audit ledger entry -- there is
+   * no client-side fabrication of this event; the returned `audit_entry`
+   * is the actual entry the backend just appended to the shared ledger. */
+  static async recordReportDecision(
+    reportId: string,
+    decision: RecommendedDisposition,
+    notes: string,
+    actor: string
+  ): Promise<{ report: AssuranceReport; audit_entry: AuditLogEntry }> {
+    return this.request(`/api/report/${encodeURIComponent(reportId)}/decision`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, notes, actor }),
     })
   }
 

@@ -1,19 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   UploadCloud,
   CheckCircle2,
   Shield,
   FileText,
   Clock,
-  ExternalLink,
+  Ban,
 } from "lucide-react";
+import { AssuranceApiClient } from "@/client/lib/api-client";
 
 interface AssessmentAssetsViewProps {
   onUploadNew?: () => void;
-  onViewDatasetDetails?: () => void;
-  onViewModelDetails?: () => void;
+  onViewDatasetDetails?: (analysisId: string) => void;
+  onViewModelDetails?: (modelId: string) => void;
+}
+
+function truncateHash(hash: unknown): string {
+  const s = typeof hash === "string" ? hash : "";
+  return s ? `${s.slice(0, 12)}...` : "--";
 }
 
 export const AssessmentAssetsView: React.FC<AssessmentAssetsViewProps> = ({
@@ -21,6 +27,34 @@ export const AssessmentAssetsView: React.FC<AssessmentAssetsViewProps> = ({
   onViewDatasetDetails,
   onViewModelDetails,
 }) => {
+  const [models, setModels] = useState<Array<Record<string, unknown>> | null>(null);
+  const [datasets, setDatasets] = useState<Array<Record<string, unknown>> | null>(null);
+  const [inferenceRecords, setInferenceRecords] = useState<Array<Record<string, unknown>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      AssuranceApiClient.listModelRecords(25),
+      AssuranceApiClient.listDatasetAnalyses(25),
+      AssuranceApiClient.listInferenceRecords(10),
+    ])
+      .then(([m, d, i]) => {
+        if (!isMounted) return;
+        setModels(m);
+        setDatasets(d);
+        setInferenceRecords(i);
+      })
+      .catch((e) => {
+        if (isMounted) setError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const loading = models === null || datasets === null || inferenceRecords === null;
+
   return (
     <div className="space-y-6 pb-12 font-sans">
       {/* Header Row */}
@@ -30,7 +64,7 @@ export const AssessmentAssetsView: React.FC<AssessmentAssetsViewProps> = ({
             Asset Inventory
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-sans">
-            Materials uploaded and verified for Assessment AS-2026-019.
+            Every model, dataset, and inference record persisted by this station.
           </p>
         </div>
 
@@ -43,181 +77,218 @@ export const AssessmentAssetsView: React.FC<AssessmentAssetsViewProps> = ({
         </button>
       </div>
 
-      {/* Grid of 2 Top Asset Cards (Dataset & Model Weights) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Card: DATASET */}
-        <div className="lg:col-span-8 bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-700 uppercase tracking-wide">
-                <span className="h-3.5 w-3.5 rounded bg-slate-900 text-white flex items-center justify-center text-[9px]">▦</span>
-                <span>DATASET</span>
-              </div>
-              <span className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono text-xs font-bold px-2 py-0.5 rounded">
-                <CheckCircle2 className="h-3 w-3" />
-                <span>Verified</span>
-              </span>
-            </div>
-
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Urban-Set-B
-            </h2>
-
-            <p className="text-xs text-slate-600 leading-relaxed font-sans">
-              Primary training dataset containing high-resolution urban street scenes.
-              Annotated for vehicle and pedestrian tracking under varying lighting
-              conditions.
-            </p>
-
-            {/* 3 Metric Boxes */}
-            <div className="grid grid-cols-3 gap-3 pt-2">
-              <div className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-3 font-mono">
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  SIZE
-                </div>
-                <div className="text-sm font-bold text-slate-900 mt-1">
-                  45k Images
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-3 font-mono">
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  FORMAT
-                </div>
-                <div className="text-sm font-bold text-slate-900 mt-1">
-                  COCO
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-slate-200/80 bg-slate-50/50 p-3 font-mono">
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  FILE SIZE
-                </div>
-                <div className="text-sm font-bold text-slate-900 mt-1">
-                  12.4 GB
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-4 mt-2 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-mono text-xs text-slate-500">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              <span>Uploaded: 2026-10-14 08:22:10 UTC</span>
-            </div>
-            <button
-              onClick={onViewDatasetDetails}
-              className="px-4 py-2 rounded-md bg-black hover:bg-slate-800 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs cursor-pointer"
-            >
-              VIEW DETAILS
-            </button>
-          </div>
+      {error && (
+        <div className="rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs text-rose-700 font-mono">
+          Could not load asset inventory: {error}
         </div>
+      )}
 
-        {/* Right Card: MODEL WEIGHTS */}
-        <div className="lg:col-span-4 bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-700 uppercase tracking-wide">
+      {loading && !error && (
+        <div className="rounded-xl border border-slate-200/90 bg-white p-10 text-center shadow-xs">
+          <p className="text-sm text-slate-500">Loading asset inventory…</p>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          {/* Datasets */}
+          <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-800 uppercase tracking-wide">
+                <span className="h-3.5 w-3.5 rounded bg-slate-900 text-white flex items-center justify-center text-[9px]">▦</span>
+                <span>DATASETS</span>
+              </div>
+              <span className="font-mono text-xs text-slate-400">{datasets!.length} analyzed</span>
+            </div>
+            {datasets!.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                No datasets analyzed yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead>
+                    <tr className="border-b border-slate-100 font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                      <th className="py-3 px-5">DATASET ID</th>
+                      <th className="py-3 px-5">FORMAT</th>
+                      <th className="py-3 px-5">IMAGES</th>
+                      <th className="py-3 px-5">FINDINGS</th>
+                      <th className="py-3 px-5">LABEL VERIFICATION</th>
+                      <th className="py-3 px-5">ANALYZED</th>
+                      <th className="py-3 px-5 text-right">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono">
+                    {datasets!.map((d) => (
+                      <tr key={String(d.analysis_id)} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-5 font-bold text-slate-900">{String(d.dataset_id)}</td>
+                        <td className="py-3.5 px-5 text-slate-700">{String(d.format)}</td>
+                        <td className="py-3.5 px-5 text-slate-700">{String(d.total_images)}</td>
+                        <td className="py-3.5 px-5">
+                          <span
+                            className={
+                              Number(d.finding_count) > 0
+                                ? "text-rose-600 font-bold"
+                                : "text-emerald-600 font-bold"
+                            }
+                          >
+                            {String(d.finding_count)}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-5 text-slate-500">{String(d.label_verification_method || "--")}</td>
+                        <td className="py-3.5 px-5 text-slate-500 whitespace-nowrap">
+                          {String(d.created_at).replace("T", " ").replace("Z", "")}
+                        </td>
+                        <td className="py-3.5 px-5 text-right">
+                          <button
+                            onClick={() => onViewDatasetDetails && onViewDatasetDetails(String(d.analysis_id))}
+                            className="text-slate-700 hover:text-slate-900 hover:underline text-xs font-bold cursor-pointer"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Models */}
+          <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-800 uppercase tracking-wide">
                 <span className="text-sky-600">⚙</span>
                 <span>MODEL WEIGHTS</span>
               </div>
-              <span className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono text-xs font-bold px-2 py-0.5 rounded">
-                <Shield className="h-3 w-3" />
-                <span>Secure</span>
-              </span>
+              <span className="font-mono text-xs text-slate-400">{models!.length} fingerprinted</span>
             </div>
-
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              YOLOv8-Core
-            </h2>
-
-            <p className="text-xs text-slate-600 leading-relaxed font-sans">
-              Compiled ONNX model optimized for edge deployment. Weights frozen.
-            </p>
-
-            <div className="border-t border-slate-100 pt-2 space-y-2 font-mono text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Format</span>
-                <span className="text-slate-900 font-bold">ONNX</span>
+            {models!.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                No models fingerprinted yet.
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">Size</span>
-                <span className="text-slate-900 font-bold">145 MB</span>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead>
+                    <tr className="border-b border-slate-100 font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                      <th className="py-3 px-5">NAME</th>
+                      <th className="py-3 px-5">FORMAT</th>
+                      <th className="py-3 px-5">ACCESS LEVEL</th>
+                      <th className="py-3 px-5">SHA-256</th>
+                      <th className="py-3 px-5">STATUS</th>
+                      <th className="py-3 px-5">FINGERPRINTED</th>
+                      <th className="py-3 px-5 text-right">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono">
+                    {models!.map((m) => {
+                      const verified = String(m.verification_status).toUpperCase() === "VERIFIED";
+                      return (
+                        <tr key={String(m.model_id)} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-5 font-bold text-slate-900">{String(m.model_name)}</td>
+                          <td className="py-3.5 px-5 text-slate-700">{String(m.model_format)}</td>
+                          <td className="py-3.5 px-5 text-slate-700">{String(m.access_level)}</td>
+                          <td className="py-3.5 px-5 text-sky-700">{truncateHash(m.sha256_digest)}</td>
+                          <td className="py-3.5 px-5">
+                            <span
+                              className={
+                                "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase " +
+                                (verified
+                                  ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                                  : "bg-slate-100 border border-slate-200 text-slate-600")
+                              }
+                            >
+                              {verified ? <CheckCircle2 className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                              {String(m.verification_status)}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-500 whitespace-nowrap">
+                            {String(m.created_at).replace("T", " ").replace("Z", "")}
+                          </td>
+                          <td className="py-3.5 px-5 text-right">
+                            <button
+                              onClick={() => onViewModelDetails && onViewModelDetails(String(m.model_id))}
+                              className="text-slate-700 hover:text-slate-900 hover:underline text-xs font-bold cursor-pointer"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-400">SHA-256</span>
-                <span className="text-sky-600 font-semibold cursor-pointer hover:underline">
-                  e3b0c442...
-                </span>
-              </div>
-            </div>
+            )}
           </div>
 
-          <div className="border-t border-slate-100 pt-4 mt-2 space-y-3">
-            <div className="flex items-center gap-1.5 font-mono text-xs text-slate-500">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              <span>2026-10-14 09:05:33 UTC</span>
+          {/* Inference Records */}
+          <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-800 uppercase tracking-wide">
+                <span className="text-sky-600 font-mono">{`{ }`}</span>
+                <span>INFERENCE RECORDS</span>
+              </div>
+              <span className="font-mono text-xs text-slate-400">{inferenceRecords!.length} signed (latest 10)</span>
             </div>
-            <button
-              onClick={onViewModelDetails}
-              className="w-full py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-900 font-mono text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs flex items-center justify-center cursor-pointer"
-            >
-              VIEW DETAILS
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Bottom Card: INFERENCE RECORDS */}
-      <div className="rounded-xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-800 uppercase tracking-wide">
-            <span className="text-sky-600 font-mono">{`{ }`}</span>
-            <span>INFERENCE RECORDS</span>
+            {inferenceRecords!.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                No provenance-signed inference records yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-sans">
+                  <thead>
+                    <tr className="border-b border-slate-100 font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                      <th className="py-3 px-5">RECORD ID</th>
+                      <th className="py-3 px-5">MODEL</th>
+                      <th className="py-3 px-5">IMAGE HASH</th>
+                      <th className="py-3 px-5">INTEGRITY</th>
+                      <th className="py-3 px-5">TIMESTAMP</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono">
+                    {inferenceRecords!.map((r) => {
+                      const tampered = Boolean(r.tampering_detected);
+                      const valid = Boolean(r.is_valid);
+                      return (
+                        <tr key={String(r.record_id)} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-5 font-bold text-slate-900 whitespace-nowrap flex items-center gap-2">
+                            <FileText className="h-3.5 w-3.5 text-slate-400" />
+                            <span>{String(r.record_id)}</span>
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-700">{String(r.model_id)}</td>
+                          <td className="py-3.5 px-5 text-slate-600">{truncateHash(r.image_hash)}</td>
+                          <td className="py-3.5 px-5">
+                            <span
+                              className={
+                                "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase " +
+                                (tampered || !valid
+                                  ? "bg-rose-50 border border-rose-200 text-rose-600"
+                                  : "bg-emerald-50 border border-emerald-200 text-emerald-700")
+                              }
+                            >
+                              {tampered || !valid ? <Ban className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                              {tampered ? "TAMPERED" : valid ? "VALID" : "INVALID"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-500 whitespace-nowrap flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-slate-400" />
+                            {String(r.created_at).replace("T", " ").replace("Z", "")}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-          <span className="bg-slate-100 border border-slate-200 text-slate-700 font-mono text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1">
-            <span>⚡ Pending Review</span>
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-sans">
-            <thead>
-              <tr className="border-b border-slate-100 font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
-                <th className="py-3 px-5">FILENAME / ID</th>
-                <th className="py-3 px-5">CONTENT</th>
-                <th className="py-3 px-5">FORMAT / SIZE</th>
-                <th className="py-3 px-5">TIMESTAMP</th>
-                <th className="py-3 px-5 text-right">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-mono">
-              <tr className="hover:bg-slate-50/80 transition-colors">
-                <td className="py-3.5 px-5 font-bold text-slate-900 whitespace-nowrap flex items-center gap-2">
-                  <FileText className="h-3.5 w-3.5 text-slate-400" />
-                  <span>run_04_results.json</span>
-                </td>
-                <td className="py-3.5 px-5 text-slate-700 whitespace-nowrap">
-                  142 Analyzed Frames
-                </td>
-                <td className="py-3.5 px-5 text-slate-600 whitespace-nowrap">
-                  JSON • 2.1 MB
-                </td>
-                <td className="py-3.5 px-5 text-slate-500 whitespace-nowrap">
-                  2026-10-14 11:30:00 UTC
-                </td>
-                <td className="py-3.5 px-5 text-right whitespace-nowrap">
-                  <button className="text-slate-700 hover:text-slate-900 hover:underline text-xs font-bold cursor-pointer inline-flex items-center gap-1">
-                    <span>View</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

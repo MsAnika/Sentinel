@@ -131,13 +131,18 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
       }
 
       setLaunchStage("Compiling assurance report...");
+      // Status fields reflect what this wizard actually ran -- "VERIFIED"
+      // only for a check that genuinely executed, "UNAVAILABLE" for one it
+      // never performed (inference provenance and distribution-shift
+      // checks aren't collected by this wizard, matching the disclosure
+      // already shown to the user in Step 3 below).
       const report = await AssuranceApiClient.generateReport({
         findings: combinedFindings,
         contributorSummaries,
-        modelStatus: formData.modelFile ? "VERIFIED" : "VERIFIED",
-        datasetStatus: formData.datasetFile ? "VERIFIED" : "VERIFIED",
-        inferenceStatus: "VERIFIED",
-        driftStatus: "NORMAL",
+        modelStatus: formData.modelFile ? "VERIFIED" : "UNAVAILABLE",
+        datasetStatus: formData.datasetFile ? "VERIFIED" : "UNAVAILABLE",
+        inferenceStatus: "UNAVAILABLE",
+        driftStatus: "UNAVAILABLE",
       });
 
       onComplete(report, formData.name);

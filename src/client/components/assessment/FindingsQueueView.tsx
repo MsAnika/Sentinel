@@ -7,8 +7,8 @@ import {
   Plus,
   Filter,
   Ban,
-  Sliders,
-  BarChart2,
+  Eye,
+  CheckCircle2,
   Cpu,
   Shield,
   Activity,
@@ -19,8 +19,6 @@ interface FindingItem {
   id: string;
   code: string;
   severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-  status: "OPEN" | "INVESTIGATED" | "RESOLVED";
-  timeAgo: string;
   title: string;
   description: string;
   affectedAsset: string;
@@ -28,63 +26,9 @@ interface FindingItem {
   confidence: number;
   recommendedDisposition: {
     label: string;
-    actionType: "QUARANTINE" | "RECALIBRATE" | "MONITOR";
+    actionType: "QUARANTINE" | "REVIEW" | "ACCEPT";
   };
 }
-
-const DEFAULT_FINDINGS: FindingItem[] = [
-  {
-    id: "f-001",
-    code: "F-001",
-    severity: "CRITICAL",
-    status: "OPEN",
-    timeAgo: "2 mins ago",
-    title: "Potential Adversarial Perturbation",
-    description:
-      "Structured noise pattern detected in input tensor bounding boxes, suggesting active evasion attempt.",
-    affectedAsset: "Model: YOLOv8-Core-v2.1",
-    category: "Security / Evasion",
-    confidence: 94,
-    recommendedDisposition: {
-      label: "QUARANTINE",
-      actionType: "QUARANTINE",
-    },
-  },
-  {
-    id: "f-002",
-    code: "F-002",
-    severity: "HIGH",
-    status: "INVESTIGATED",
-    timeAgo: "45 mins ago",
-    title: "Severe Covariate Shift",
-    description:
-      "Distribution of lighting conditions in input stream deviates significantly from training baseline (KL Divergence > 0.8).",
-    affectedAsset: "Stream: Cam-West-04",
-    category: "Data Drift",
-    confidence: 88,
-    recommendedDisposition: {
-      label: "RECALIBRATE",
-      actionType: "RECALIBRATE",
-    },
-  },
-  {
-    id: "f-003",
-    code: "F-003",
-    severity: "MEDIUM",
-    status: "OPEN",
-    timeAgo: "2 hrs ago",
-    title: "Elevated Inference Latency",
-    description:
-      "P99 latency spiked to 450ms (threshold 300ms) over a 5-minute window.",
-    affectedAsset: "Node: GPU-Cluster-A",
-    category: "Infrastructure",
-    confidence: 99,
-    recommendedDisposition: {
-      label: "MONITOR",
-      actionType: "MONITOR",
-    },
-  },
-];
 
 interface FindingsQueueViewProps {
   findings?: FindingSchema[];
@@ -100,30 +44,25 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
   const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
-  const rawList: FindingItem[] =
-    findings && findings.length > 0
-      ? findings.map((f, idx) => ({
-          id: f.finding_id || `f-${idx + 1}`,
-          code: f.finding_id || `F-00${idx + 1}`,
-          severity: f.severity,
-          status: (f.severity === "CRITICAL" ? "OPEN" : "INVESTIGATED") as "OPEN" | "INVESTIGATED" | "RESOLVED",
-          timeAgo: `${(idx + 1) * 15} mins ago`,
-          title: f.reason || f.finding_type,
-          description: f.reason ? `${f.finding_type}: ${f.reason}` : `Integrity finding raised on asset ${f.asset}`,
-          affectedAsset: f.asset ? `Asset: ${f.asset}` : "Model: YOLOv8-Core",
-          category:
-            f.finding_type.includes("BACKDOOR") || f.finding_type.includes("TROJAN") || f.finding_type.includes("POISON")
-              ? "Security / Evasion"
-              : f.finding_type.includes("DRIFT") || f.finding_type.includes("COVARIATE")
-                ? "Data Drift"
-                : "Infrastructure",
-          confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
-          recommendedDisposition: {
-            label: f.severity === "CRITICAL" ? "QUARANTINE" : f.severity === "HIGH" ? "RECALIBRATE" : "MONITOR",
-            actionType: f.severity === "CRITICAL" ? "QUARANTINE" : f.severity === "HIGH" ? "RECALIBRATE" : "MONITOR",
-          },
-        }))
-      : DEFAULT_FINDINGS;
+  const rawList: FindingItem[] = (findings || []).map((f, idx) => ({
+    id: f.finding_id || `f-${idx + 1}`,
+    code: f.finding_id || `F-${String(idx + 1).padStart(3, "0")}`,
+    severity: f.severity,
+    title: f.finding_type,
+    description: f.reason,
+    affectedAsset: `${f.asset_type}: ${f.asset}`,
+    category:
+      f.finding_type.includes("BACKDOOR") || f.finding_type.includes("TROJAN") || f.finding_type.includes("POISON")
+        ? "Security / Evasion"
+        : f.finding_type.includes("DRIFT") || f.finding_type.includes("COVARIATE") || f.finding_type.includes("SHIFT")
+          ? "Data Drift"
+          : "Data / Model Integrity",
+    confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
+    recommendedDisposition: {
+      label: f.recommended_action,
+      actionType: f.recommended_action,
+    },
+  }));
 
   const filteredFindings = rawList.filter((f) => {
     if (selectedSeverity !== "ALL" && f.severity !== selectedSeverity) {
@@ -297,20 +236,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   <span className="font-mono text-xs text-slate-700 font-bold">
                     {f.code}
                   </span>
-                  <span
-                    className={clsx(
-                      "font-mono text-[10px] px-2 py-0.5 rounded font-bold uppercase",
-                      f.status === "INVESTIGATED"
-                        ? "bg-sky-50 border border-sky-300 text-sky-700"
-                        : "bg-slate-100 border border-slate-200 text-slate-600"
-                    )}
-                  >
-                    {f.status}
-                  </span>
                 </div>
-                <span className="font-mono text-xs text-slate-400">
-                  {f.timeAgo}
-                </span>
               </div>
 
               <h3 className="text-base font-bold text-slate-900 tracking-tight mt-1">
@@ -379,17 +305,17 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                     "w-full py-2 px-3 rounded-md border text-xs font-mono font-bold uppercase transition-colors flex items-center justify-center gap-1.5 cursor-pointer",
                     f.recommendedDisposition.actionType === "QUARANTINE"
                       ? "border-rose-300 text-rose-600 bg-rose-50/50 hover:bg-rose-100/70"
-                      : f.recommendedDisposition.actionType === "RECALIBRATE"
+                      : f.recommendedDisposition.actionType === "REVIEW"
                         ? "border-sky-300 text-sky-700 bg-sky-50/50 hover:bg-sky-100/70"
                         : "border-slate-300 text-slate-700 bg-slate-50/50 hover:bg-slate-100/70"
                   )}
                 >
                   {f.recommendedDisposition.actionType === "QUARANTINE" ? (
                     <Ban className="h-3.5 w-3.5" />
-                  ) : f.recommendedDisposition.actionType === "RECALIBRATE" ? (
-                    <Sliders className="h-3.5 w-3.5" />
+                  ) : f.recommendedDisposition.actionType === "REVIEW" ? (
+                    <Eye className="h-3.5 w-3.5" />
                   ) : (
-                    <BarChart2 className="h-3.5 w-3.5" />
+                    <CheckCircle2 className="h-3.5 w-3.5" />
                   )}
                   <span>{f.recommendedDisposition.label}</span>
                 </button>
@@ -397,6 +323,19 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
             </div>
           </div>
         ))}
+
+        {filteredFindings.length === 0 && (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+            <p className="text-sm font-bold text-slate-700">
+              {rawList.length === 0 ? "No findings on the current assessment." : "No findings match the selected filters."}
+            </p>
+            <p className="text-xs text-slate-500 mt-1 font-mono">
+              {rawList.length === 0
+                ? "Run or load an assessment to populate the findings queue."
+                : "Clear filters to see all findings."}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

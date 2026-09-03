@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import clsx from "clsx";
 import {
-  Filter,
   ArrowUpDown,
   ArrowRight,
   AlertTriangle,
@@ -13,56 +12,33 @@ import {
 import { FindingSchema } from "@/shared/types/assurance";
 
 interface AssessmentPrioritizedFindingsViewProps {
+  reportId?: string;
   findings?: FindingSchema[];
   onInvestigateFinding?: (findingId: string) => void;
 }
 
+const SEVERITY_RANK: Record<string, number> = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
+
 export const AssessmentPrioritizedFindingsView: React.FC<
   AssessmentPrioritizedFindingsViewProps
-> = ({ findings, onInvestigateFinding }) => {
-  const displayFindings =
-    findings && findings.length > 0
-      ? findings.map((f, i) => ({
-          id: f.finding_id || `F-00${i + 1}`,
-          code: f.finding_id || `F-00${i + 1}`,
-          severity: f.severity,
-          title: f.reason || f.finding_type,
-          description: f.reason ? `${f.finding_type}: ${f.reason}` : `Integrity deviation identified in ${f.asset || f.finding_type}`,
-          confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
-          layer: f.asset || "Vision_Core",
-        }))
-      : [
-          {
-            id: "F-001",
-            code: "F-001",
-            severity: "CRITICAL" as const,
-            title: "Potential Trigger",
-            description:
-              "Anomaly detected in primary identification layer. High probability of false positive gating condition. Requires immediate manual verification of frame sequence.",
-            confidence: 94,
-            layer: "Trigger_Module_v2",
-          },
-          {
-            id: "F-002",
-            code: "F-002",
-            severity: "HIGH" as const,
-            title: "Covariate Shift",
-            description:
-              "Significant drift in input distribution detected compared to training baseline. Lighting condition variation suspected.",
-            confidence: 88,
-            layer: "Preprocessing",
-          },
-          {
-            id: "F-003",
-            code: "F-003",
-            severity: "MEDIUM" as const,
-            title: "Latency Spikes",
-            description:
-              "Processing time per frame exceeded 15ms threshold intermittently during complex object occlusion events.",
-            confidence: 72,
-            layer: "Inference_Engine",
-          },
-        ];
+> = ({ reportId, findings, onInvestigateFinding }) => {
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const displayFindings = (findings || [])
+    .map((f, i) => ({
+      id: f.finding_id || `F-${String(i + 1).padStart(3, "0")}`,
+      code: f.finding_id || `F-${String(i + 1).padStart(3, "0")}`,
+      severity: f.severity,
+      title: f.finding_type,
+      description: f.reason,
+      confidence: Math.round(f.confidence > 1 ? f.confidence : f.confidence * 100),
+      layer: `${f.asset_type}: ${f.asset}`,
+    }))
+    .sort((a, b) =>
+      sortAsc
+        ? SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]
+        : SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]
+    );
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -70,11 +46,13 @@ export const AssessmentPrioritizedFindingsView: React.FC<
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-medium">
-              AS-2026-019
-            </span>
+            {reportId && (
+              <span className="font-mono text-xs text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-medium">
+                {reportId}
+              </span>
+            )}
             <span className="font-mono text-xs text-slate-500 font-medium">
-              Filtered View ({displayFindings.length} findings)
+              {displayFindings.length} finding{displayFindings.length === 1 ? "" : "s"}
             </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
@@ -83,16 +61,21 @@ export const AssessmentPrioritizedFindingsView: React.FC<
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer">
-            <Filter className="h-3.5 w-3.5 text-slate-500" />
-            <span>Filter</span>
-          </button>
-          <button className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer">
+          <button
+            onClick={() => setSortAsc((s) => !s)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-mono text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+          >
             <ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
-            <span>Sort: Severity</span>
+            <span>Sort: Severity {sortAsc ? "(Low→High)" : "(High→Low)"}</span>
           </button>
         </div>
       </div>
+
+      {displayFindings.length === 0 && (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <p className="text-sm font-bold text-slate-700">No findings on the current assessment.</p>
+        </div>
+      )}
 
       {/* 3 Column Findings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
