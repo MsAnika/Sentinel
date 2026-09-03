@@ -54,11 +54,18 @@ class AssuranceReportGenerator:
         ),
         CoverageItem(
             attack_class="unknown_trigger_reconstruction",
-            status=AttackClassStatus.NOT_SUPPORTED,
-            description="Blind discovery of an unknown/never-seen trigger pattern via gradient-based "
-            "trigger inversion (e.g. Neural Cleanse-style optimization) is not implemented. Backdoor "
-            "detection above only recognizes trigger patterns it is told to test for.",
-            validation_method="N/A",
+            status=AttackClassStatus.PARTIAL,
+            description="Blind discovery of an unknown/never-declared trigger pattern via real "
+            "gradient-based trigger inversion (Neural Cleanse, Wang et al. 2019): per candidate class, "
+            "optimizes a trigger mask+pattern from scratch (never told what the real trigger looks like) "
+            "and flags any class whose reconstructed trigger is anomalously small (MAD-based outlier "
+            "test). Verified to correctly flag the true backdoored class and produce zero false positives "
+            "on the clean model, using this system's own fixture pair. Reported PARTIAL because it "
+            "requires WHITE_BOX access AND a model architecture this system can bridge into a "
+            "differentiable framework (currently only this system's own detector-family ONNX graph) -- "
+            "arbitrary third-party architectures report UNAVAILABLE with a reason, not a fabricated result.",
+            validation_method="Neural Cleanse-style per-class trigger reconstruction + MAD anomaly-index "
+            "test, executed via a real ONNX-to-PyTorch weight-transplanted differentiable model",
         ),
         CoverageItem(
             attack_class="model_substitution",
@@ -166,15 +173,20 @@ class AssuranceReportGenerator:
         "comparison); white-box weight/activation statistics are explicitly reported UNAVAILABLE rather "
         "than approximated.",
         "Backdoor/trigger detection matches against known trigger signatures (spatial frequency patch "
-        "correlation, or whatever trigger pattern a caller explicitly probes for). Blind reconstruction of "
-        "an unknown, never-specified trigger via gradient inversion is not implemented.",
+        "correlation, or whatever trigger pattern a caller explicitly probes for) for the primary check. "
+        "Blind, gradient-based reconstruction of a never-specified trigger (Neural Cleanse) is also "
+        "implemented, but only for models this system can bridge into a differentiable framework "
+        "(currently its own detector-family ONNX graph) and only under WHITE_BOX access.",
         "Label-flip/mislabelling detection is only as strong as the reference model supplied for visual "
         "verification. Without one, it falls back to trusting contributor-declared metadata and will not "
         "catch errors on genuinely unannotated real-world data.",
         "PyTorch/TorchScript ingestion is validated against real scripted-module and state_dict "
         "fixtures, but ONNX remains the format exercised by the largest share of this system's test "
         "suite (backdoor/parameter analysis, behavioural batteries).",
-        "Zero-day stealthy semantic triggers with <0.01% perturbation norm may require white-box gradient inversion this system does not perform.",
+        "Zero-day stealthy semantic triggers with extremely small perturbation norms, or a trigger style "
+        "other than a spatially-local patch (Neural Cleanse's own core assumption), may still evade "
+        "gradient-based reconstruction; the anomaly-index threshold was empirically calibrated against "
+        "this system's own fixtures, not validated at scale against diverse real-world backdoors.",
         "Assurance evaluation provides empirical evidence and risk grading, but does not mathematically guarantee the total absence of unknown zero-day attacks.",
     ]
 
@@ -194,7 +206,7 @@ class AssuranceReportGenerator:
         custom_limitations: Optional[List[str]] = None,
     ) -> AssuranceReport:
         overall_risk, disposition = self.risk_engine.compute_overall_risk(findings)
-        report_id = f"REP-VIGIL-{uuid.uuid4().hex[:8].upper()}"
+        report_id = f"REP-INTELX-{uuid.uuid4().hex[:8].upper()}"
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
         limits = list(self.DEFAULT_LIMITATIONS)

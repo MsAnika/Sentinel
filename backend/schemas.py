@@ -126,6 +126,9 @@ class PreprocessingConfig(BaseModel):
     normalize_mean: List[float] = [0.485, 0.456, 0.406]
     normalize_std: List[float] = [0.229, 0.224, 0.225]
     color_space: str = "RGB"
+    letterbox: bool = False
+    pad_value: int = 114
+    scale_to_unit: bool = True
 
 
 class InferenceConfig(BaseModel):

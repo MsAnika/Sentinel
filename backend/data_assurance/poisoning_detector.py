@@ -46,8 +46,15 @@ class PoisoningDetector:
                     "contributor_id": sample.contributor_id,
                     "trigger_type": trigger_type,
                     "target_class": sample.labels[0] if sample.labels else "unknown",
-                    "spatial_anomaly_score": float(round(score if score > 0 else 0.94, 3)),
+                    # The real value from inspect_corner_patch(), not a
+                    # fabricated placeholder. When the real spatial-frequency
+                    # check found nothing (score=0.0) but contributor-declared
+                    # metadata claims a trigger, that distinction is reported
+                    # via detection_method rather than papering over it with
+                    # an invented confidence number.
+                    "spatial_anomaly_score": float(round(score, 3)),
                     "patch_location": meta.get("patch_location", "bottom_right_32x32"),
+                    "detection_method": "real_spatial_frequency_analysis" if corner_detected else "contributor_declared_metadata_only",
                 })
 
         if suspicious_trigger_samples:

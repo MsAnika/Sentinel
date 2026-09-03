@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from ..audit.audit_log import shared_ledger
@@ -9,11 +10,20 @@ from ..model_assurance.backdoor_detector import BackdoorDetector
 from ..model_assurance.behaviour_analyzer import BehaviourAnalyzer
 from ..model_assurance.fingerprint import ModelFingerprinter
 from ..model_assurance.parameter_analyzer import ParameterAnalyzer
+from ..model_assurance.trigger_reconstruction import run_trigger_reconstruction
 from ..persistence import db
 from ..schemas import InferenceConfig, ModelAccessLevel, ModelFingerprint
 from ..scenarios.probe_builder import build_reference_battery
+from .path_safety import resolve_safe_path
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/model", tags=["Model Assurance"])
+# Matches exactly the extensions ModelLoader knows how to parse
+# (model_loader.py). Rejecting anything else at upload time -- rather than
+# accepting any extension and only discovering it's unsupported later at
+# parse time -- keeps arbitrary file types (scripts, executables) from
+# being staged on disk under a misleading .onnx-looking name at all.
+ALLOWED_MODEL_EXTENSIONS = {".onnx", ".pt", ".pth", ".torchscript"}
 fingerprinter = ModelFingerprinter()
 behaviour_analyzer = BehaviourAnalyzer()
 backdoor_detector = BackdoorDetector()
@@ -29,6 +39,14 @@ async def upload_model(
     """Accepts a real uploaded ONNX/PyTorch/TorchScript model file, persists
     it, and returns a fingerprint derived from the file's actual bytes and
     (when parseable) its real graph/checkpoint metadata."""
+    import os
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_MODEL_EXTENSIONS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported model file extension '{ext}'. Accepted: {sorted(ALLOWED_MODEL_EXTENSIONS)}.",
+        )
+
     try:
         saved_path, size_bytes = await save_upload(file, "models")
     except ValueError as e:
@@ -37,7 +55,11 @@ async def upload_model(
     try:
         fp = fingerprinter.generate_fingerprint(saved_path, access_level=access_level)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Failed to inspect uploaded model: {e}")
+        logger.exception("Failed to inspect uploaded model '%s'", saved_path)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Failed to inspect uploaded model: {type(e).__name__} (see server logs for details).",
+        )
 
     fp.metadata["saved_path"] = saved_path
     fp.metadata["original_filename"] = file.filename
@@ -73,6 +95,7 @@ async def generate_model_fingerprint(
     model_path: str = Body(..., embed=True, description="Server-local path to a previously uploaded or staged model file."),
     access_level: ModelAccessLevel = Body(default=ModelAccessLevel.WHITE_BOX, embed=True),
 ):
+    model_path = resolve_safe_path(model_path, "model_path")
     try:
         fp = fingerprinter.generate_fingerprint(model_path, access_level=access_level)
     except FileNotFoundError as e:
@@ -130,12 +153,14 @@ async def run_parameter_analysis(
         "parseable ONNX bytes alone do not imply the caller is authorized to inspect the weights.",
     ),
 ):
-    """Extracts the real ONNX initializer weight tensors from the supplied
-    model file and runs weight-distribution/kurtosis analysis on them.
-    Only available for ONNX models under white-box access -- there is no
-    fallback that fabricates weight tensors, and no fallback that silently
-    performs white-box analysis when the caller declared black-box access."""
+    """Extracts the real weight tensors from the supplied model file (ONNX
+    initializers, or PyTorch/TorchScript parameters/state_dict values) and
+    runs weight-distribution/kurtosis analysis on them. Only available
+    under white-box access -- there is no fallback that fabricates weight
+    tensors, and no fallback that silently performs white-box analysis
+    when the caller declared black-box access."""
     import os
+    model_path = resolve_safe_path(model_path, "model_path")
     if not os.path.exists(model_path):
         raise HTTPException(status_code=404, detail=f"Model file not found at: {model_path}")
 
@@ -149,22 +174,68 @@ async def run_parameter_analysis(
         )
         return {"stats": stats, "findings": findings}
 
-    if not model_path.lower().endswith(".onnx"):
-        raise HTTPException(status_code=422, detail="White-box parameter analysis currently supports ONNX models only.")
+    ext = os.path.splitext(model_path)[1].lower()
+    if ext == ".onnx":
+        import onnx
+        try:
+            onnx_model = onnx.load(model_path)
+            onnx.checker.check_model(onnx_model)
+        except Exception as e:
+            logger.exception("Failed to parse ONNX model '%s'", model_path)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to parse ONNX model: {type(e).__name__} (see server logs for details).",
+            )
+        weight_tensors = param_analyzer.extract_onnx_weight_tensors(onnx_model)
+        model_format = "ONNX"
+    elif ext in (".pt", ".pth", ".torchscript"):
+        import torch
+        # .torchscript is unambiguously a scripted/traced module; for .pt/.pth
+        # (used by both formats in practice) try the safe state_dict loader
+        # first and fall back to jit.load -- this ordering only avoids a
+        # spurious "looks like a TorchScript archive" warning from torch.load
+        # on an already-known-scripted file, it doesn't change which formats
+        # are ultimately accepted.
+        loaders = (
+            [lambda p: torch.jit.load(p, map_location="cpu")]
+            if ext == ".torchscript"
+            else [
+                lambda p: torch.load(p, map_location="cpu", weights_only=True),
+                lambda p: torch.jit.load(p, map_location="cpu"),
+            ]
+        )
+        try:
+            loaded = None
+            last_error = None
+            for loader in loaders:
+                try:
+                    loaded = loader(model_path)
+                    break
+                except Exception as e:
+                    last_error = e
+            if loaded is None:
+                raise last_error
+        except Exception as e:
+            logger.exception("Failed to load PyTorch/TorchScript model '%s'", model_path)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to load PyTorch/TorchScript model: {type(e).__name__} (see server logs for details).",
+            )
+        weight_tensors = param_analyzer.extract_pytorch_weight_tensors(loaded)
+        model_format = "PyTorch/TorchScript"
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported model file extension '{ext}' for white-box parameter analysis.",
+        )
 
-    import onnx
-    try:
-        onnx_model = onnx.load(model_path)
-        onnx.checker.check_model(onnx_model)
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Failed to parse ONNX model: {e}")
-
-    weight_tensors = param_analyzer.extract_onnx_weight_tensors(onnx_model)
-    stats, findings = param_analyzer.analyze_weights_and_activations(resolved_id, ModelAccessLevel.WHITE_BOX, weight_tensors)
+    stats, findings = param_analyzer.analyze_weights_and_activations(
+        resolved_id, ModelAccessLevel.WHITE_BOX, weight_tensors, model_format=model_format
+    )
 
     shared_ledger.record_event(
         "MODEL_ASSESSMENT", resolved_id, "PARAMETER_ANALYSIS", ModelLoader.calculate_file_sha256(model_path),
-        "ANOMALOUS" if findings else "NORMAL", f"White-box weight analysis completed: {len(findings)} finding(s)."
+        "ANOMALOUS" if findings else "NORMAL", f"White-box weight analysis completed ({model_format}): {len(findings)} finding(s)."
     )
     return {"stats": stats, "findings": findings}
 
@@ -182,6 +253,9 @@ async def run_behaviour_battery(
     candidate model, and their real predictions are compared. There is no
     scripted-probe fallback."""
     import os
+    reference_model_path = resolve_safe_path(reference_model_path, "reference_model_path")
+    candidate_model_path = resolve_safe_path(candidate_model_path, "candidate_model_path")
+    probe_image_paths = [resolve_safe_path(p, "probe_image_paths") for p in probe_image_paths]
     for p in (reference_model_path, candidate_model_path, *probe_image_paths):
         if not os.path.exists(p):
             raise HTTPException(status_code=404, detail=f"File not found: {p}")
@@ -204,3 +278,36 @@ async def run_behaviour_battery(
         "findings": findings,
         "battery": battery,
     }
+
+
+@router.post("/trigger-reconstruction")
+async def run_unknown_trigger_reconstruction(
+    model_path: str = Body(..., embed=True, description="Server-local path to the model under assessment."),
+    clean_image_paths: List[str] = Body(..., embed=True, description="Real clean images to reconstruct triggers against."),
+    class_names: List[str] = Body(..., embed=True),
+    model_id: Optional[str] = Body(default=None, embed=True),
+):
+    """Blind, gradient-based unknown-trigger reconstruction (Neural
+    Cleanse). Unlike /behaviour-battery, this is never told what a
+    trigger looks like -- it optimizes one from scratch per candidate
+    class and flags any class that needs a suspiciously small
+    perturbation to hijack. WHITE_BOX-only, and further scoped to models
+    whose ONNX graph this system can bridge into a differentiable
+    framework; reports UNAVAILABLE with a reason otherwise, never a
+    silent skip."""
+    import os
+    model_path = resolve_safe_path(model_path, "model_path")
+    clean_image_paths = [resolve_safe_path(p, "clean_image_paths") for p in clean_image_paths]
+    if not os.path.exists(model_path):
+        raise HTTPException(status_code=404, detail=f"Model file not found: {model_path}")
+
+    resolved_id = model_id or f"model_{ModelLoader.calculate_file_sha256(model_path)[:12]}"
+    result, findings = run_trigger_reconstruction(resolved_id, model_path, clean_image_paths, class_names)
+
+    shared_ledger.record_event(
+        "MODEL_ASSESSMENT", resolved_id, "UNKNOWN_TRIGGER_RECONSTRUCTION", ModelLoader.calculate_file_sha256(model_path),
+        result.get("status", "UNKNOWN"),
+        f"backdoor_suspected={result.get('backdoor_suspected')}, {len(findings)} finding(s)." if result.get("status") == "COMPLETED"
+        else result.get("reason", ""),
+    )
+    return {"result": result, "findings": findings}

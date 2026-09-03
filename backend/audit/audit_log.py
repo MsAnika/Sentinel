@@ -6,8 +6,8 @@ from typing import List, Optional, Tuple
 from ..provenance.signing import ProvenanceSigner
 from ..schemas import AuditLogEntry
 
-DEFAULT_LEDGER_PATH = os.environ.get("VIGILCV_AUDIT_LEDGER_PATH", "audit_log/ledger.jsonl")
-DEFAULT_AUDIT_KEY_PATH = os.environ.get("VIGILCV_AUDIT_SIGNING_KEY_PATH", "keys/audit_signing_key.pem")
+DEFAULT_LEDGER_PATH = os.environ.get("IntelX_AUDIT_LEDGER_PATH", "audit_log/ledger.jsonl")
+DEFAULT_AUDIT_KEY_PATH = os.environ.get("IntelX_AUDIT_SIGNING_KEY_PATH", "keys/audit_signing_key.pem")
 
 
 class TamperEvidentAuditLedger:
@@ -33,7 +33,7 @@ class TamperEvidentAuditLedger:
         self.entries: List[AuditLogEntry] = []
         self._last_hash = hashlib.sha256(genesis_digest.encode("utf-8")).hexdigest()
         self._persist_path = persist_path
-        self.signer = signer or ProvenanceSigner(key_path=DEFAULT_AUDIT_KEY_PATH)
+        self.signer = signer or ProvenanceSigner(key_path=DEFAULT_AUDIT_KEY_PATH, role="audit")
         if persist_path and os.path.exists(persist_path):
             self._load_from_disk(persist_path)
 
@@ -115,7 +115,9 @@ class TamperEvidentAuditLedger:
                     f"Unsigned entry at sequence #{entry.sequence_id}: no Ed25519 signature present, "
                     "integrity of this entry cannot be cryptographically confirmed independent of the hash chain."
                 )
-            elif not self.signer.verify_signature(entry.entry_hash, entry.signature):
+            elif not self.signer.verify_signature(
+                entry.entry_hash, entry.signature, record_timestamp=entry.timestamp
+            ):
                 errors.append(
                     f"Invalid signature at sequence #{entry.sequence_id}: Ed25519 signature does not "
                     "verify against the stored entry_hash (SIGNATURE FORGERY OR CORRUPTION DETECTED)."

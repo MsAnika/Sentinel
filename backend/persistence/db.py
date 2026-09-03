@@ -5,7 +5,7 @@ import time
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-DB_PATH = os.environ.get("VIGILCV_DB_PATH", "vigilcv.db")
+DB_PATH = os.environ.get("IntelX_DB_PATH", "intelx.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS model_records (
@@ -179,7 +179,7 @@ def list_inference_records(limit: int = 100, db_path: str = DB_PATH) -> List[Dic
     with get_connection(db_path) as conn:
         rows = conn.execute(
             "SELECT record_id, model_id, image_hash, provenance_hash, is_valid, tampering_detected, "
-            "created_at FROM inference_records ORDER BY created_at DESC LIMIT ?",
+            "created_at, record_json FROM inference_records ORDER BY created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
         return [dict(r) for r in rows]

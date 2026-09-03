@@ -2,6 +2,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.auth import require_api_key
 from .api.routes_audit import router as audit_router
+from .api.routes_auth import router as auth_router
 from .api.routes_dataset import router as dataset_router
 from .api.routes_drift import router as drift_router
 from .api.routes_inference import router as inference_router
@@ -11,7 +12,7 @@ from .api.routes_scenarios import router as scenarios_router
 from .api.routes_uploads import router as uploads_router
 
 app = FastAPI(
-    title="VIGIL-CV | Trustworthy Computer Vision Assurance System",
+    title="IntelX | Trustworthy Computer Vision Assurance System",
     description="Offline Air-Gapped Multi-Contributor Computer Vision Integrity Assurance Platform for Indian Army (DGIS) / MoD.",
     version="1.0.0",
 )
@@ -19,17 +20,23 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # Auth here is the X-API-Key header (see api/auth.py), never cookies --
+    # no request this app makes needs allow_credentials, and combined with
+    # a wildcard origin it would make Starlette reflect back any request's
+    # Origin instead of a literal "*", letting any origin issue credentialed
+    # requests. Leaving it False keeps the wildcard meaning what it says.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Every route below requires the X-API-Key header IF (and only if) the
-# operator has set VIGILCV_API_KEY -- see api/auth.py for why this is a
+# operator has set IntelX_API_KEY -- see api/auth.py for why this is a
 # deliberately lightweight MVP gate, not full RBAC. /health is
 # deliberately excluded so liveness checks work even on a locked-down
 # deployment.
 _auth_dep = [Depends(require_api_key)]
+app.include_router(auth_router, dependencies=_auth_dep)
 app.include_router(scenarios_router, dependencies=_auth_dep)
 app.include_router(dataset_router, dependencies=_auth_dep)
 app.include_router(model_router, dependencies=_auth_dep)
@@ -45,7 +52,7 @@ async def health_check():
     return {
         "status": "OPERATIONAL",
         "mode": "AIR_GAPPED_OFFLINE",
-        "service": "VIGIL-CV Assurance Core",
+        "service": "IntelX Assurance Core",
         "ps_id": "26228",
         "authority": "MoD / Indian Army DGIS",
     }

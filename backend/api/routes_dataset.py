@@ -15,6 +15,7 @@ from ..inference.inference_engine import InferenceEngine
 from ..persistence import db
 from ..schemas import DatasetProfile, InferenceConfig
 from ..scenarios.probe_builder import build_visual_predictions
+from .path_safety import resolve_safe_path
 
 router = APIRouter(prefix="/api/dataset", tags=["Dataset Assurance"])
 dup_detector = DuplicateDetector()
@@ -103,12 +104,16 @@ async def analyze_dataset_profile(
     if format_type.upper() == "COCO":
         if not coco_path:
             raise HTTPException(status_code=422, detail="coco_path is required when format_type='COCO'.")
+        coco_path = resolve_safe_path(coco_path, "coco_path")
+        if images_dir:
+            images_dir = resolve_safe_path(images_dir, "images_dir")
         if not os.path.exists(coco_path):
             raise HTTPException(status_code=404, detail=f"coco_path not found: {coco_path}")
         samples: List[SampleItem] = DatasetLoader.load_coco(coco_path, images_dir)
     elif format_type.upper() == "YOLO":
         if not yolo_dir:
             raise HTTPException(status_code=422, detail="yolo_dir is required when format_type='YOLO'.")
+        yolo_dir = resolve_safe_path(yolo_dir, "yolo_dir")
         if not os.path.isdir(yolo_dir):
             raise HTTPException(status_code=404, detail=f"yolo_dir not found: {yolo_dir}")
         samples = DatasetLoader.load_yolo(yolo_dir, class_names)
@@ -128,6 +133,7 @@ async def analyze_dataset_profile(
     visual_check_truncated = False
     label_kwargs: Dict[str, Any] = {}
     if reference_model_path:
+        reference_model_path = resolve_safe_path(reference_model_path, "reference_model_path")
         if not os.path.exists(reference_model_path):
             raise HTTPException(status_code=404, detail=f"reference_model_path not found: {reference_model_path}")
         check_samples = samples

@@ -12,7 +12,16 @@ class DuplicateDetector:
         self.hash_size = hash_size
         self.hamming_threshold = hamming_threshold
 
-    def compute_dhash(self, image_path: str, fallback_bytes: Optional[bytes] = None) -> int:
+    def compute_dhash(self, image_path: str, fallback_bytes: Optional[bytes] = None) -> Tuple[int, bool]:
+        """Returns (hash, computed_from_real_pixels). When the image can't
+        actually be read (missing file, corrupt/unsupported format), this
+        falls back to a hash of the path string so the pipeline doesn't
+        crash on one bad sample -- but that fallback value carries no real
+        perceptual-similarity signal at all (two genuinely different images
+        with unreadable files would only ever collide/differ by path-string
+        coincidence, not visual content). Callers must track and report
+        `computed_from_real_pixels=False` rather than silently treating it
+        as an ordinary successful hash."""
         try:
             if os.path.exists(image_path):
                 with Image.open(image_path) as img:
@@ -22,21 +31,25 @@ class DuplicateDetector:
                     hash_val = 0
                     for bit in diff.flatten():
                         hash_val = (hash_val << 1) | int(bit)
-                    return hash_val
+                    return hash_val, True
         except Exception:
             pass
 
         digest = hashlib.sha256(image_path.encode("utf-8")).digest()
         val = int.from_bytes(digest[:8], "big")
-        return val
+        return val, False
 
     def hamming_distance(self, h1: int, h2: int) -> int:
         return bin(h1 ^ h2).count("1")
 
     def analyze(self, samples: List[SampleItem], dataset_id: str = "dataset_01") -> Tuple[List[FindingSchema], Dict[str, Any]]:
         hashes: Dict[str, int] = {}
+        unreadable_samples: List[str] = []
         for sample in samples:
-            hashes[sample.sample_id] = self.compute_dhash(sample.image_path)
+            hash_val, computed_from_real_pixels = self.compute_dhash(sample.image_path)
+            hashes[sample.sample_id] = hash_val
+            if not computed_from_real_pixels:
+                unreadable_samples.append(sample.sample_id)
 
         clusters: List[List[str]] = []
         visited: Set[str] = set()
@@ -101,5 +114,12 @@ class DuplicateDetector:
             "total_duplicated_samples": total_duplicates,
             "flooding_by_contributor": flooding_by_contributor,
             "clusters": clusters,
+            # Samples whose image file could not actually be read -- their
+            # dhash is a path-string fallback with no real perceptual
+            # signal, so duplicate/near-duplicate results involving them
+            # are not backed by real pixel comparison. Surfaced explicitly
+            # rather than silently blended into the real results.
+            "unreadable_sample_count": len(unreadable_samples),
+            "unreadable_sample_ids": unreadable_samples[:20],
         }
         return findings, stats

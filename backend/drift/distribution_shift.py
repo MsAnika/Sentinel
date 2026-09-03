@@ -75,13 +75,43 @@ class DistributionShiftDetector:
             "seasonal_variance": float(round(min(1.0, non_ref_terrain_ratio * 0.8), 3)),
         }
 
+        # Reference image-quality baseline: prefer an explicitly declared
+        # numeric baseline in reference_profile; otherwise, if real
+        # reference sample images were supplied (reference_samples_metadata),
+        # compute an empirical baseline from them directly rather than
+        # falling back to a fixed zero -- a zero baseline makes every
+        # quality-shift dimension either meaningless (relative-delta
+        # against zero is undefined) or silently hardcoded to 0.0
+        # (compression's own fallback), which would report "no shift" even
+        # when the observed batch is measurably more blurred/degraded than
+        # a real reference population actually on hand.
+        ref_quality_samples: List[Dict[str, Any]] = []
+        if reference_samples_metadata:
+            for meta in reference_samples_metadata:
+                ref_image_path = meta.get("image_path")
+                if ref_image_path:
+                    ref_signals = compute_image_quality_signals(ref_image_path)
+                    if ref_signals:
+                        ref_quality_samples.append(ref_signals)
+
         image_quality_evidence: Dict[str, Any] = {}
         limitations: List[str] = []
         if quality_samples:
-            ref_blur = float(reference_profile.get("mean_blur_score", 0.0)) or None
-            ref_contrast = float(reference_profile.get("mean_contrast_score", 0.0)) or None
-            ref_resolution = float(reference_profile.get("mean_resolution_px", 0.0)) or None
-            ref_blockiness = float(reference_profile.get("mean_compression_blockiness", 0.0)) or None
+            declared_blur = reference_profile.get("mean_blur_score")
+            declared_contrast = reference_profile.get("mean_contrast_score")
+            declared_resolution = reference_profile.get("mean_resolution_px")
+            declared_blockiness = reference_profile.get("mean_compression_blockiness")
+
+            empirical_blur = float(np.mean([q["blur_score"] for q in ref_quality_samples])) if ref_quality_samples else None
+            empirical_contrast = float(np.mean([q["contrast_score"] for q in ref_quality_samples])) if ref_quality_samples else None
+            empirical_resolution = float(np.mean([q["resolution_px"] for q in ref_quality_samples])) if ref_quality_samples else None
+            empirical_blockiness = float(np.mean([q["compression_blockiness"] for q in ref_quality_samples])) if ref_quality_samples else None
+
+            ref_blur = float(declared_blur) if declared_blur else empirical_blur
+            ref_contrast = float(declared_contrast) if declared_contrast else empirical_contrast
+            ref_resolution = float(declared_resolution) if declared_resolution else empirical_resolution
+            ref_blockiness = float(declared_blockiness) if declared_blockiness else empirical_blockiness
+            baseline_is_empirical = not any([declared_blur, declared_contrast, declared_resolution]) and ref_quality_samples
 
             obs_blur = float(np.mean([q["blur_score"] for q in quality_samples]))
             obs_contrast = float(np.mean([q["contrast_score"] for q in quality_samples]))
@@ -105,6 +135,10 @@ class DistributionShiftDetector:
 
             image_quality_evidence = {
                 "samples_with_computed_signals": len(quality_samples),
+                "reference_samples_with_computed_signals": len(ref_quality_samples),
+                "reference_baseline_source": "empirical_from_reference_images" if baseline_is_empirical else (
+                    "declared_reference_profile" if ref_blur is not None else "unavailable"
+                ),
                 "observed_mean_blur_score": round(obs_blur, 3),
                 "observed_mean_contrast_score": round(obs_contrast, 3),
                 "observed_mean_resolution_px": round(obs_resolution, 1),
@@ -116,8 +150,9 @@ class DistributionShiftDetector:
             }
             if ref_blur is None or ref_contrast is None or ref_resolution is None:
                 limitations.append(
-                    "No reference image-quality baseline (blur/contrast/resolution) was declared; "
-                    "quality-shift dimensions are reported relative to a zero baseline and are informational only."
+                    "No reference image-quality baseline (blur/contrast/resolution) was declared and no "
+                    "reference sample images were supplied to derive one empirically; quality-shift "
+                    "dimensions are reported relative to a zero baseline and are informational only."
                 )
         else:
             limitations.append(

@@ -4,7 +4,7 @@ import uuid
 from typing import Tuple
 from fastapi import UploadFile
 
-UPLOAD_ROOT = os.environ.get("VIGILCV_UPLOAD_DIR", "uploads")
+UPLOAD_ROOT = os.environ.get("IntelX_UPLOAD_DIR", "uploads")
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200MB, generous for single ONNX/PyTorch weight files
 
 

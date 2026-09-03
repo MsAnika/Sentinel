@@ -1,13 +1,30 @@
 import {
+  AssuranceReport,
+  AuditLogEntry,
+  ContributorRiskSummary,
   DatasetProfile,
   FindingSchema,
   InferenceRecord,
   ModelBehaviourAssessment,
   ModelFingerprint,
+  RecommendedDisposition,
   ScenarioRunResult,
+  TrendSummary,
 } from '@/shared/types/assurance'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_KEY_STORAGE_KEY = 'intelx_station_api_key'
+
+function loadStoredApiKey(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(API_KEY_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+let currentApiKey: string | null = loadStoredApiKey()
 
 export interface DatasetAnalysisResult {
   profile: DatasetProfile
@@ -39,12 +56,45 @@ export interface BehaviourBatteryResult {
   battery: Array<Record<string, unknown>>
 }
 
+export interface StoredReportSummary {
+  report_id: string
+  overall_disposition: RecommendedDisposition
+  overall_risk_score: number
+  generated_at: string
+}
+
 export class AssuranceApiClient {
+  /** Sets the station's API key (backend/api/auth.py's X-API-Key gate) for
+   * every subsequent request, and persists it so a page reload doesn't
+   * force re-authentication. Pass null to clear it (logout). */
+  static setApiKey(key: string | null): void {
+    currentApiKey = key
+    if (typeof window === 'undefined') return
+    try {
+      if (key) window.localStorage.setItem(API_KEY_STORAGE_KEY, key)
+      else window.localStorage.removeItem(API_KEY_STORAGE_KEY)
+    } catch {
+      // Storage unavailable (private browsing, etc.) -- the in-memory key still works for this session.
+    }
+  }
+
+  static getApiKey(): string | null {
+    return currentApiKey
+  }
+
+  /** Verifies the current (or given) API key against the real backend RBAC
+   * gate and returns the role it resolves to (`null` role means this
+   * deployment has no keys configured at all -- see backend/api/auth.py). */
+  static async whoami(apiKey?: string): Promise<{ authenticated: boolean; role: string | null }> {
+    return this.request('/api/auth/whoami', apiKey !== undefined ? { headers: { 'X-API-Key': apiKey } } : undefined)
+  }
+
   private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(currentApiKey ? { 'X-API-Key': currentApiKey } : {}),
         ...options?.headers,
       },
     })
@@ -60,6 +110,7 @@ export class AssuranceApiClient {
   private static async requestForm<T>(endpoint: string, formData: FormData): Promise<T> {
     const res = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
+      headers: currentApiKey ? { 'X-API-Key': currentApiKey } : undefined,
       body: formData,
     })
 
@@ -104,10 +155,66 @@ export class AssuranceApiClient {
     })
   }
 
+  /** The real, process-wide, hash-chained audit ledger -- every real API
+   * action across every scenario and live assessment writes into this one
+   * ledger, so the Audit view should always read from here directly
+   * rather than a per-scenario-run side channel that's empty for any
+   * report not generated via Scenario Replay. */
+  static async getAuditEntries(): Promise<{
+    entries: AuditLogEntry[]
+    total_entries: number
+    chain_digest: string
+    is_chain_valid: boolean
+    verification_errors: string[]
+  }> {
+    return this.request('/api/audit/entries')
+  }
+
   static async verifyAuditLedger(): Promise<{ is_chain_valid: boolean; chain_digest: string; errors: string[] }> {
     return this.request('/api/audit/verify', {
       method: 'POST',
     })
+  }
+
+  static async getTrends(limit = 200): Promise<TrendSummary> {
+    return this.request(`/api/report/trends/summary?limit=${limit}`)
+  }
+
+  /** Every assessment ever generated (scenario replay and live analysis
+   * alike), newest first -- the summary columns only (no findings), which
+   * is exactly what a Home triage list needs without pulling every
+   * report's full body over the wire. */
+  /** Every model ever fingerprinted through this service, newest first --
+   * a real query against the persisted model records table. */
+  static async listModelRecords(limit = 100): Promise<Array<Record<string, unknown>>> {
+    const res = await this.request<{ models: Array<Record<string, unknown>> }>(`/api/model/list?limit=${limit}`)
+    return res.models
+  }
+
+  /** Every dataset integrity analysis ever run, newest first. */
+  static async listDatasetAnalyses(limit = 100): Promise<Array<Record<string, unknown>>> {
+    const res = await this.request<{ analyses: Array<Record<string, unknown>> }>(`/api/dataset/history?limit=${limit}`)
+    return res.analyses
+  }
+
+  /** Every provenance-signed inference record ever executed, newest first. */
+  static async listInferenceRecords(limit = 100): Promise<Array<Record<string, unknown>>> {
+    const res = await this.request<{ records: Array<Record<string, unknown>> }>(`/api/inference/list?limit=${limit}`)
+    return res.records
+  }
+
+  static async listReportSummaries(limit = 100): Promise<StoredReportSummary[]> {
+    const res = await this.request<{ reports: StoredReportSummary[] }>(`/api/report/list?limit=${limit}`)
+    return res.reports
+  }
+
+  /** Fetches one persisted assessment's full AssuranceReport (findings,
+   * contributor summaries, coverage, everything) by id -- used to open a
+   * report from the Home screen into the same result card + findings
+   * triage UI a fresh scenario/live run gets. */
+  static async getReportById(reportId: string): Promise<AssuranceReport> {
+    const row = await this.request<{ report_json: string }>(`/api/report/${encodeURIComponent(reportId)}`)
+    return JSON.parse(row.report_json)
   }
 
   /** Direct download URL for a stored report -- opened in a new tab / used
@@ -173,6 +280,49 @@ export class AssuranceApiClient {
     return this.request('/api/model/parameter-analysis', {
       method: 'POST',
       body: JSON.stringify({ model_path: modelPath, model_id: modelId }),
+    })
+  }
+
+  /** Compiles whatever findings/contributor evidence Live Analysis has
+   * accumulated so far into one governance-ready AssuranceReport -- the
+   * same object shape a Scenario Replay run produces, so the Live
+   * Analysis result can be shown through the exact same
+   * AssessmentResultCard/FindingsTriage UI rather than a separate,
+   * bespoke "live results" presentation. */
+  static async generateReport(params: {
+    findings: FindingSchema[]
+    contributorSummaries?: ContributorRiskSummary[]
+    datasetStatus?: string
+    modelStatus?: string
+    inferenceStatus?: string
+    driftStatus?: string
+  }): Promise<AssuranceReport> {
+    return this.request('/api/report/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        findings: params.findings,
+        contributor_summaries: params.contributorSummaries ?? [],
+        dataset_status: params.datasetStatus ?? 'VERIFIED',
+        model_status: params.modelStatus ?? 'VERIFIED',
+        inference_status: params.inferenceStatus ?? 'VERIFIED',
+        drift_status: params.driftStatus ?? 'NORMAL',
+      }),
+    })
+  }
+
+  /** Persists an analyst's final disposition decision on a stored report
+   * and records it as a real, hash-chained audit ledger entry -- there is
+   * no client-side fabrication of this event; the returned `audit_entry`
+   * is the actual entry the backend just appended to the shared ledger. */
+  static async recordReportDecision(
+    reportId: string,
+    decision: RecommendedDisposition,
+    notes: string,
+    actor: string
+  ): Promise<{ report: AssuranceReport; audit_entry: AuditLogEntry }> {
+    return this.request(`/api/report/${encodeURIComponent(reportId)}/decision`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, notes, actor }),
     })
   }
 
