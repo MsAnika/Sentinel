@@ -26,6 +26,7 @@ export const AssessmentPrioritizedFindingsView: React.FC<
 
   const displayFindings = (findings || [])
     .map((f, i) => ({
+      key: `${reportId || "rep"}_${f.finding_id || "fid"}_${i}`,
       id: f.finding_id || `F-${String(i + 1).padStart(3, "0")}`,
       code: f.finding_id || `F-${String(i + 1).padStart(3, "0")}`,
       severity: f.severity,
@@ -85,7 +86,7 @@ export const AssessmentPrioritizedFindingsView: React.FC<
 
           return (
             <div
-              key={f.id}
+              key={f.key}
               className={clsx(
                 "border rounded-xl bg-white p-5 shadow-xs flex flex-col justify-between space-y-4",
                 isCritical

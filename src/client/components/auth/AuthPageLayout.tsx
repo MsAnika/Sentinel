@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { Shield } from "lucide-react";
 
 interface AuthPageLayoutProps {
@@ -12,13 +13,20 @@ export const AuthPageLayout: React.FC<AuthPageLayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-between antialiased font-sans relative">
       {/* Top Header Clearance Bar */}
       <header className="w-full px-6 py-4 flex items-center justify-between border-b border-slate-200/80 bg-white/70 backdrop-blur-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/logo_withoutlabel.png"
+            alt="IntelX Logo"
+            width={24}
+            height={24}
+            className="h-6 w-auto object-contain"
+          />
           <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200 tracking-wider">
             AIR-GAP ENFORCED / DEFENSE ASSURANCE CLEARANCE
           </span>
         </div>
         <div className="text-xs font-mono text-slate-500 font-medium">
-          Assurance Platform
+          IntelX Assurance Platform
         </div>
       </header>
 

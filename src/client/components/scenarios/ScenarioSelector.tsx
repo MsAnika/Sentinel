@@ -69,13 +69,16 @@ export const ScenarioSelector: React.FC<ScenarioSelectorProps> = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-sky-500" />
+            <span className="h-2 w-2 rounded-full bg-indigo-500" />
             <h2 className="text-xs font-mono font-bold tracking-wider text-slate-800 uppercase">
-              Assurance Test Matrix & Controlled Attack Vectors
+              Controlled Assurance Tests — Red-Team Validation Laboratory
             </h2>
+            <span className="text-[9px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded">
+              SYNTHETIC TEST BENCH
+            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5 font-sans">
-            Select a controlled test vector to evaluate multi-contributor CV pipeline integrity.
+            Evaluate engine detection capabilities using reproducible attack vectors and baseline models (separate from operational assessments).
           </p>
         </div>
       </div>

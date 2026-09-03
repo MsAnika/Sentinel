@@ -205,7 +205,7 @@ class AssuranceReportGenerator:
         drift_status: str = "NORMAL",
         custom_limitations: Optional[List[str]] = None,
     ) -> AssuranceReport:
-        overall_risk, disposition = self.risk_engine.compute_overall_risk(findings)
+        overall_risk, assurance_score, disposition = self.risk_engine.compute_overall_risk(findings)
         report_id = f"REP-INTELX-{uuid.uuid4().hex[:8].upper()}"
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -221,6 +221,7 @@ class AssuranceReportGenerator:
             policy_version=self.risk_engine.POLICY_VERSION,
             overall_disposition=disposition,
             overall_risk_score=overall_risk,
+            assurance_score=assurance_score,
             dataset_assurance_status=dataset_status,
             model_assurance_status=model_status,
             inference_provenance_status=inference_status,

@@ -1,5 +1,6 @@
 import React from "react";
-import { Download, Shield, FileText, FileType } from "lucide-react";
+import Image from "next/image";
+import { Download, FileText, FileType } from "lucide-react";
 import { AssuranceReport } from "@/shared/types/assurance";
 import { StatusBadge } from "../ui/StatusBadge";
 import { RiskMeter } from "../ui/RiskMeter";
@@ -32,8 +33,14 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-6 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-emerald-400" />
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo_withoutlabel.png"
+                alt="IntelX Assurance"
+                width={24}
+                height={24}
+                className="h-6 w-auto object-contain"
+              />
               <h2 className="text-base font-bold tracking-wider text-zinc-100 uppercase">
                 FORMAL ASSURANCE DISPOSITION CERTIFICATE (FR-14)
               </h2>
@@ -46,25 +53,25 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({
 
           <div className="flex items-center gap-2">
             <a
+              href={AssuranceApiClient.reportExportUrl(report.report_id, "pdf")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded border border-rose-600/50 bg-rose-950/70 px-3 py-1.5 text-xs font-bold text-rose-200 hover:bg-rose-900/80 transition-colors cursor-pointer shadow-[0_0_12px_rgba(244,63,94,0.25)]"
+            >
+              <FileType className="h-3.5 w-3.5 text-rose-400" />
+              EXPORT PDF (FR-14)
+            </a>
+            <a
               href={AssuranceApiClient.reportExportUrl(
                 report.report_id,
                 "html",
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors cursor-pointer"
             >
-              <FileText className="h-3.5 w-3.5" />
+              <FileText className="h-3.5 w-3.5 text-zinc-400" />
               EXPORT HTML
-            </a>
-            <a
-              href={AssuranceApiClient.reportExportUrl(report.report_id, "pdf")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
-            >
-              <FileType className="h-3.5 w-3.5" />
-              EXPORT PDF
             </a>
             <button
               onClick={handleDownloadJSON}

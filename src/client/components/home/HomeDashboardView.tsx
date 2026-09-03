@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import clsx from "clsx";
 import {
   ClipboardList,
@@ -94,19 +95,29 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     <div className="space-y-6 pb-12 font-sans">
       {/* Executive Welcome & Air-Gap Telemetry Banner */}
       <div className="rounded-xl border border-slate-200/90 bg-white p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-500 mb-1">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>OPERATIONAL INTEGRITY CORE</span>
-            <span>•</span>
-            <span className="text-slate-700 font-semibold">100% AIR-GAPPED</span>
+        <div className="flex items-center gap-4">
+          <Image
+            src="/logo_withoutlabel.png"
+            alt="IntelX Core"
+            width={56}
+            height={56}
+            priority
+            className="h-14 w-auto object-contain shrink-0 drop-shadow-xs"
+          />
+          <div>
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-500 mb-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>INTELX OPERATIONAL INTEGRITY CORE</span>
+              <span>•</span>
+              <span className="text-slate-700 font-semibold">100% AIR-GAPPED</span>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              CV Trust & Fleet Overview
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Real assurance metrics across every assessment this deployment has generated.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            CV Trust & Fleet Overview
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Real assurance metrics across every assessment this deployment has generated.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
@@ -185,9 +196,10 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                     <div className="flex items-center gap-4 shrink-0">
                       <div className="text-right">
                         <div className="text-sm font-bold text-slate-900 font-sans">
-                          {summary.overall_risk_score.toFixed(0)}
+                          {Math.round(summary.assurance_score)}
                           <span className="text-[11px] font-normal text-slate-400">/100</span>
                         </div>
+                        <div className="text-[9px] font-mono text-slate-400">Assurance</div>
                       </div>
 
                       <span
@@ -270,7 +282,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                             : "text-rose-700 bg-rose-50 border-rose-200"
                       )}
                     >
-                      {summary.overall_risk_score.toFixed(0)}/100
+                      {Math.round(summary.assurance_score)}/100
                     </span>
                   </div>
                 ))}

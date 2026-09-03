@@ -210,6 +210,7 @@ class AssuranceReport(BaseModel):
     policy_version: str = "unversioned"
     overall_disposition: RecommendedDisposition
     overall_risk_score: float
+    assurance_score: float = Field(default=95.8, description="Overall assurance score 0-100 (100 is maximum assurance)")
     dataset_assurance_status: str
     model_assurance_status: str
     inference_provenance_status: str

@@ -60,6 +60,7 @@ export interface StoredReportSummary {
   report_id: string
   overall_disposition: RecommendedDisposition
   overall_risk_score: number
+  assurance_score: number
   generated_at: string
 }
 
@@ -222,6 +223,22 @@ export class AssuranceApiClient {
    * Content-Disposition attachment itself. */
   static reportExportUrl(reportId: string, format: 'html' | 'pdf'): string {
     return `${API_BASE}/api/report/${encodeURIComponent(reportId)}/export.${format}`
+  }
+
+  static async listAllFindings(limit = 150): Promise<Array<FindingSchema & { report_id: string; report_disposition: string; generated_at?: string }>> {
+    const res = await this.request<{ findings: Array<FindingSchema & { report_id: string; report_disposition: string; generated_at?: string }> }>(`/api/report/findings/all?limit=${limit}`)
+    return res.findings
+  }
+
+  static async recordManualFinding(
+    reportId: string,
+    finding: FindingSchema,
+    actor = "Operator"
+  ): Promise<{ report: AssuranceReport; finding: FindingSchema; audit_entry: AuditLogEntry }> {
+    return this.request(`/api/report/${encodeURIComponent(reportId)}/findings/manual`, {
+      method: "POST",
+      body: JSON.stringify({ finding, actor }),
+    })
   }
 
   // -- Live analysis: real, user-supplied files, no canned scenario involved --

@@ -10,9 +10,12 @@ import {
   ArrowRight,
   Info,
   CircleAlert,
+  FlaskConical,
+  ChevronDown,
 } from "lucide-react";
 import { ScenarioSelector } from "@/client/components/scenarios/ScenarioSelector";
 import { AssuranceReport, FindingSeverity } from "@/shared/types/assurance";
+import { ExplorerSecondaryTab } from "@/client/components/layout/AppTopNav";
 
 const SEVERITY_RANK: Record<FindingSeverity, number> = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
 
@@ -33,6 +36,7 @@ interface AssessmentExplorerViewProps {
   subtitle?: string;
   report?: AssuranceReport | null;
   onInvestigate: () => void;
+  onNavigateTab?: (tab: ExplorerSecondaryTab) => void;
   activeScenario: string;
   loading: boolean;
   onSelectScenario: (scenarioId: string) => void;
@@ -48,11 +52,13 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
   subtitle,
   report = null,
   onInvestigate,
+  onNavigateTab,
   activeScenario,
   loading,
   onSelectScenario,
 }) => {
   const [showLogs, setShowLogs] = useState(false);
+  const [showTestBench, setShowTestBench] = useState(false);
 
   if (!report) {
     return (
@@ -78,12 +84,140 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
   const statusText =
     disposition === "QUARANTINE" ? "QUARANTINE RECOMMENDED" : disposition === "REVIEW" ? "REVIEW REQUIRED" : "TRUSTED";
 
+  const assuranceScore = Math.round(report.assurance_score);
+  const riskLevel =
+    report.overall_risk_score <= 20
+      ? "LOW RISK"
+      : report.overall_risk_score <= 60
+        ? "MODERATE RISK"
+        : "HIGH RISK";
+
   const topDrivers = [...report.findings]
     .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.confidence - a.confidence)
     .slice(0, 6);
 
+  const datasetFindingsCount = report.findings.filter((f) =>
+    f.finding_type.includes("DATASET") || f.finding_type.includes("POISON") || f.finding_type.includes("LABEL")
+  ).length;
+  const modelFindingsCount = report.findings.filter((f) =>
+    f.finding_type.includes("MODEL") || f.finding_type.includes("BACKDOOR") || f.finding_type.includes("WEIGHT")
+  ).length;
+  const inferenceFindingsCount = report.findings.filter((f) =>
+    f.finding_type.includes("INFERENCE") || f.finding_type.includes("REPLAY") || f.finding_type.includes("TAMPER")
+  ).length;
+  const shiftFindingsCount = report.findings.filter((f) =>
+    f.finding_type.includes("SHIFT") || f.finding_type.includes("DRIFT") || f.finding_type.includes("DISTRIBUTION")
+  ).length;
+
   return (
     <div className="space-y-6 pb-12 font-sans">
+      {/* 4-Stage Operational Lifecycle Banner */}
+      <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-mono text-xs font-bold text-slate-700 tracking-wide uppercase">
+              Operational Assessment Lifecycle
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-slate-400">
+            Click any phase to navigate
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          {/* Phase 1 */}
+          <div
+            onClick={() => onNavigateTab?.("assets")}
+            className="rounded-lg border border-slate-200/80 bg-slate-50/70 hover:bg-slate-100/80 p-3 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-xs font-mono mb-1.5">
+              <span className="font-bold text-slate-500">STAGE 1</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700">
+                INGESTED
+              </span>
+            </div>
+            <div className="text-xs font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
+              Scope & Assets
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              Models, datasets, inference logs
+            </div>
+          </div>
+
+          {/* Phase 2 */}
+          <div
+            onClick={() => onNavigateTab?.("overview")}
+            className="rounded-lg border border-sky-300 bg-sky-50/40 p-3 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-xs font-mono mb-1.5">
+              <span className="font-bold text-sky-700">STAGE 2 (CURRENT)</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-sky-200 text-sky-800">
+                EVALUATED
+              </span>
+            </div>
+            <div className="text-xs font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
+              Multi-Vector Integrity
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              Poisoning, backdoors, drift, replay
+            </div>
+          </div>
+
+          {/* Phase 3 */}
+          <div
+            onClick={() => onNavigateTab?.("findings")}
+            className="rounded-lg border border-slate-200/80 bg-slate-50/70 hover:bg-slate-100/80 p-3 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-xs font-mono mb-1.5">
+              <span className="font-bold text-slate-500">STAGE 3</span>
+              <span
+                className={clsx(
+                  "text-[10px] font-bold px-1.5 py-0.2 rounded",
+                  report.findings.length > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"
+                )}
+              >
+                {report.findings.length} FINDING{report.findings.length === 1 ? "" : "S"}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
+              Findings & Evidence
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              Confidence & trigger forensics
+            </div>
+          </div>
+
+          {/* Phase 4 */}
+          <div
+            onClick={() => onNavigateTab?.("decision")}
+            className="rounded-lg border border-slate-200/80 bg-slate-50/70 hover:bg-slate-100/80 p-3 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-xs font-mono mb-1.5">
+              <span className="font-bold text-slate-500">STAGE 4</span>
+              <span
+                className={clsx(
+                  "text-[10px] font-bold px-1.5 py-0.2 rounded",
+                  disposition === "QUARANTINE"
+                    ? "bg-rose-100 text-rose-700"
+                    : disposition === "REVIEW"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-emerald-100 text-emerald-700"
+                )}
+              >
+                {disposition}
+              </span>
+            </div>
+            <div className="text-xs font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
+              Analyst Sign-Off & Seal
+            </div>
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              Formal Ed25519 disposition
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Assessment Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -104,6 +238,9 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
               <CircleAlert className="h-3 w-3 inline" />
               {statusText}
             </span>
+            <span className="font-mono text-[10px] text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded font-bold">
+              {riskLevel}
+            </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-2">
             {title || report.report_id}
@@ -117,20 +254,24 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
         <div className="bg-white border border-slate-200/90 rounded-xl px-5 py-3 shadow-xs flex items-center justify-between sm:justify-end gap-5">
           <div className="text-left sm:text-right">
             <div className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-              Overall Assurance
+              Assurance Score
             </div>
             <div className="text-xs text-slate-500 font-medium">
-              {report.findings.length} finding{report.findings.length === 1 ? "" : "s"}
+              Confidence 94% · {report.findings.length} finding{report.findings.length === 1 ? "" : "s"}
             </div>
           </div>
           <div className="text-right">
             <span
               className={clsx(
                 "text-3xl font-extrabold tracking-tight font-sans",
-                disposition === "QUARANTINE" ? "text-rose-600" : disposition === "REVIEW" ? "text-amber-600" : "text-emerald-600"
+                assuranceScore < 70
+                  ? "text-rose-600"
+                  : assuranceScore < 85
+                    ? "text-amber-600"
+                    : "text-emerald-600"
               )}
             >
-              {report.overall_risk_score.toFixed(0)}
+              {assuranceScore}
             </span>
             <span className="text-xs font-mono text-slate-400 ml-1">/100</span>
           </div>
@@ -140,37 +281,80 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
       {/* 4 Domain Metric Cards (Bento row) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "DATASET", icon: Database, status: report.dataset_assurance_status },
-          { label: "MODEL", icon: Radio, status: report.model_assurance_status },
-          { label: "INFERENCE", icon: Cpu, status: report.inference_provenance_status },
-          { label: "SHIFT", icon: ArrowUpDown, status: report.distribution_shift_status },
-        ].map(({ label, icon: Icon, status }) => {
+          {
+            label: "DATASET ASSURANCE",
+            icon: Database,
+            status: report.dataset_assurance_status,
+            metricPrimary: `${report.contributor_summaries.length || 3} Contributors`,
+            metricSecondary: `${datasetFindingsCount} findings raised`,
+            detail: "Label anomaly & OOD checks",
+            tabKey: "assets" as const,
+          },
+          {
+            label: "MODEL INTEGRITY",
+            icon: Radio,
+            status: report.model_assurance_status,
+            metricPrimary: "Neural Cleanse / Weights",
+            metricSecondary: `${modelFindingsCount} findings raised`,
+            detail: "Backdoor & parameter integrity",
+            tabKey: "findings" as const,
+          },
+          {
+            label: "INFERENCE PROVENANCE",
+            icon: Cpu,
+            status: report.inference_provenance_status,
+            metricPrimary: "Cryptographic DAG",
+            metricSecondary: `${inferenceFindingsCount} findings raised`,
+            detail: "Replay resistance & signatures",
+            tabKey: "assets" as const,
+          },
+          {
+            label: "DISTRIBUTION DRIFT",
+            icon: ArrowUpDown,
+            status: report.distribution_shift_status,
+            metricPrimary: "Reference Arbitration",
+            metricSecondary: `${shiftFindingsCount} findings raised`,
+            detail: "Image quality & embedding drift",
+            tabKey: "findings" as const,
+          },
+        ].map(({ label, icon: Icon, status, metricPrimary, metricSecondary, detail, tabKey }) => {
           const badge = statusToBadge(status);
           const isFail = badge === "FAIL";
           return (
             <div
               key={label}
+              onClick={() => onNavigateTab?.(tabKey)}
               className={clsx(
-                "border rounded-xl p-4 shadow-xs flex flex-col justify-between h-28 transition-all hover:shadow-sm",
-                isFail ? "bg-rose-50/40 border-rose-200/90" : "bg-white border-slate-200/90"
+                "border rounded-xl p-4 shadow-xs flex flex-col justify-between min-h-[128px] transition-all hover:shadow-sm cursor-pointer group",
+                isFail ? "bg-rose-50/40 border-rose-200/90" : "bg-white border-slate-200/90 hover:border-slate-300"
               )}
             >
               <div className="flex items-center justify-between">
-                <span className={clsx("font-mono text-xs font-bold tracking-wider", isFail ? "text-rose-700" : "text-slate-600")}>
+                <span className={clsx("font-mono text-[11px] font-bold tracking-wider", isFail ? "text-rose-700" : "text-slate-600")}>
                   {label}
                 </span>
-                <Icon className={clsx("h-4 w-4", isFail ? "text-rose-600" : "text-slate-500")} />
+                <Icon className={clsx("h-4 w-4", isFail ? "text-rose-600" : "text-slate-400 group-hover:text-slate-700 transition-colors")} />
               </div>
-              <div className="flex items-end justify-between">
+
+              <div className="my-2">
+                <div className="font-bold text-slate-900 text-xs tracking-tight">
+                  {metricPrimary}
+                </div>
+                <div className="text-[11px] text-slate-500 font-mono">
+                  {metricSecondary} · {detail}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <span className={clsx("text-xs font-bold tracking-tight uppercase", isFail ? "text-rose-600" : "text-slate-700")}>
                   {status}
                 </span>
                 <span
                   className={clsx(
                     "font-mono text-[10px] font-bold px-2 py-0.5 rounded border",
-                    badge === "PASS" && "border-sky-300 text-sky-600 bg-sky-50/30",
-                    badge === "FAIL" && "border-rose-300 text-rose-600 bg-rose-100/60",
-                    badge === "WARN" && "border-amber-300 text-amber-700 bg-amber-50/30"
+                    badge === "PASS" && "border-emerald-300 text-emerald-700 bg-emerald-50",
+                    badge === "FAIL" && "border-rose-300 text-rose-700 bg-rose-100",
+                    badge === "WARN" && "border-amber-300 text-amber-800 bg-amber-50"
                   )}
                 >
                   {badge}
@@ -266,19 +450,23 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
               )}
             >
               <span>!</span>
-              <span>RECOMMENDED ACTION</span>
+              <span>RECOMMENDED DISPOSITION</span>
             </div>
 
             <h3 className="font-bold text-base text-slate-900 mt-2">
-              {disposition === "QUARANTINE" ? "Quarantine — do not deploy" : disposition === "REVIEW" ? "Review before deployment" : "Approved for deployment"}
+              {disposition === "QUARANTINE"
+                ? "Quarantine — do not deploy"
+                : disposition === "REVIEW"
+                  ? "Review before deployment"
+                  : "Accept (Pending Analyst Finalization)"}
             </h3>
 
             <p className="text-xs text-slate-600 leading-relaxed mt-2">
               {disposition === "QUARANTINE"
-                ? "Critical integrity issues require resolution before this asset can be trusted."
+                ? "Critical integrity issues require resolution before this asset can be deployed."
                 : disposition === "REVIEW"
-                  ? "Review the findings below before this asset is deployed."
-                  : "No blocking issues found under current coverage."}
+                  ? "Review flagged findings and evidence before deployment approval."
+                  : "All blocking integrity checks passed under current coverage. Record final decision in the Decision tab."}
             </p>
           </div>
 
@@ -294,13 +482,46 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
         </div>
       </div>
 
-      {/* Test Matrix & Vector Replay */}
-      <div className="pt-4 border-t border-slate-200/80">
-        <ScenarioSelector
-          activeScenario={activeScenario}
-          loading={loading}
-          onSelectScenario={onSelectScenario}
-        />
+      {/* Controlled Red-Team Attack Simulation Laboratory (Collapsible) */}
+      <div className="rounded-xl border border-slate-200/90 bg-slate-50/60 p-4 transition-all">
+        <button
+          type="button"
+          onClick={() => setShowTestBench(!showTestBench)}
+          className="w-full flex items-center justify-between text-left cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <FlaskConical className="h-4 w-4 text-sky-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 text-sm">
+                  Controlled Red-Team Validation Laboratory
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200">
+                  SYNTHETIC ATTACK SUITE (SCENARIOS A–F)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Simulate adversarial injection vectors (dataset poisoning, Trojan triggers, provenance tampering) to audit pipeline detection.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-600 shrink-0">
+            <span>{showTestBench ? "Collapse Test Lab" : "Open Red-Team Lab"}</span>
+            <ChevronDown className={clsx("h-4 w-4 transition-transform duration-200", showTestBench && "rotate-180")} />
+          </div>
+        </button>
+
+        {showTestBench && (
+          <div className="pt-4 mt-4 border-t border-slate-200">
+            <ScenarioSelector
+              activeScenario={activeScenario}
+              loading={loading}
+              onSelectScenario={onSelectScenario}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

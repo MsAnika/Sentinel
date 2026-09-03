@@ -15,8 +15,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CV Integrity Assurance Platform",
-  description: "Computer Vision Trust, Provenance & Integrity Assurance Platform",
+  title: "IntelX — CV Integrity Assurance Platform",
+  description: "Offline Air-Gapped Computer Vision Integrity Assurance Platform for MoD / Indian Army DGIS",
+  icons: {
+    icon: "/logo_withoutlabel.png",
+    apple: "/logo_withoutlabel.png",
+  },
 };
 
 export default function RootLayout({

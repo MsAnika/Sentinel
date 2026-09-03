@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import clsx from "clsx";
 import {
-  Lock,
   Mail,
-  Check,
   CheckCircle2,
-  RotateCcw,
   Eye,
   EyeOff,
   ArrowRight,
@@ -234,17 +232,22 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
         {/* ========================================================================= */}
         {view === "signin" && (
           <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 space-y-6">
-            {/* Top Lock Icon */}
-            <div className="flex justify-center">
-              <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-700 shadow-2xs">
-                <Lock className="h-5 w-5" />
-              </div>
+            {/* Top Brand Logo */}
+            <div className="flex justify-center pb-1">
+              <Image
+                src="/logo.png"
+                alt="IntelX Logo"
+                width={220}
+                height={50}
+                priority
+                className="h-12 w-auto object-contain max-w-[220px]"
+              />
             </div>
 
             {/* Title & Subtitle */}
             <div className="text-center space-y-1">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Sign in to CV Integrity
+                Sign in to IntelX
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed font-sans">
                 Enter your credentials to access the assurance platform
@@ -361,14 +364,16 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
         {/* ========================================================================= */}
         {view === "verify-email" && (
           <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 space-y-6">
-            {/* Top Mail Check Icon */}
-            <div className="flex justify-center">
-              <div className="h-12 w-12 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-sky-700 shadow-2xs">
-                <div className="relative">
-                  <Mail className="h-5 w-5 text-slate-700" />
-                  <Check className="h-3 w-3 text-sky-600 stroke-[3] absolute -bottom-1 -right-1" />
-                </div>
-              </div>
+            {/* Top Brand Eye Icon */}
+            <div className="flex justify-center pb-1">
+              <Image
+                src="/logo_withoutlabel.png"
+                alt="IntelX Verify"
+                width={48}
+                height={48}
+                priority
+                className="h-12 w-auto object-contain"
+              />
             </div>
 
             {/* Title & Subtitle */}
@@ -460,13 +465,25 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
         {/* ========================================================================= */}
         {view === "signup" && (
           <div className="w-full max-w-[440px] bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 space-y-5">
+            {/* Top Brand Logo */}
+            <div className="flex justify-center pb-1">
+              <Image
+                src="/logo.png"
+                alt="IntelX Logo"
+                width={210}
+                height={48}
+                priority
+                className="h-11 w-auto object-contain max-w-[210px]"
+              />
+            </div>
+
             {/* Title & Subtitle */}
             <div className="text-center space-y-1">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                 Create your account
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                Join CV Integrity to inspect and evaluate vision models
+                Join IntelX to inspect and evaluate vision models
               </p>
             </div>
 
@@ -649,11 +666,15 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
         {/* ========================================================================= */}
         {view === "forgot-password" && (
           <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 space-y-6">
-            {/* Top Reload Lock Icon */}
-            <div className="flex justify-center">
-              <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-700 shadow-2xs">
-                <RotateCcw className="h-5 w-5" />
-              </div>
+            {/* Top Brand Eye Icon */}
+            <div className="flex justify-center pb-1">
+              <Image
+                src="/logo_withoutlabel.png"
+                alt="IntelX Security"
+                width={48}
+                height={48}
+                className="h-12 w-auto object-contain"
+              />
             </div>
 
             {/* Title & Subtitle */}
@@ -722,11 +743,15 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
         {/* ========================================================================= */}
         {view === "reset-password" && (
           <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 p-8 space-y-6">
-            {/* Top Reload Lock Icon */}
-            <div className="flex justify-center">
-              <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-700 shadow-2xs">
-                <RotateCcw className="h-5 w-5" />
-              </div>
+            {/* Top Brand Eye Icon */}
+            <div className="flex justify-center pb-1">
+              <Image
+                src="/logo_withoutlabel.png"
+                alt="IntelX Security"
+                width={48}
+                height={48}
+                className="h-12 w-auto object-contain"
+              />
             </div>
 
             {/* Title & Subtitle */}

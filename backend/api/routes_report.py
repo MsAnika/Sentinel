@@ -60,6 +60,36 @@ async def list_assurance_reports(limit: int = 100):
     return {"reports": db.list_assurance_reports(limit=limit)}
 
 
+@router.get("/findings/all")
+async def get_all_findings(limit: int = 150):
+    """Returns all findings aggregated across stored assurance reports."""
+    return {"findings": db.list_all_findings(limit=limit)}
+
+
+@router.post("/{report_id}/findings/manual")
+async def record_manual_finding(
+    report_id: str,
+    finding: FindingSchema = Body(...),
+    actor: str = Body(default="Operator"),
+):
+    """Appends an analyst's manually verified finding to an existing assurance report
+    and records an immutable entry in the shared audit ledger."""
+    finding_dict = finding.model_dump()
+    updated_report = db.add_manual_finding_to_report(report_id, finding_dict)
+    if not updated_report:
+        raise HTTPException(status_code=404, detail=f"No stored assurance report for report_id={report_id}")
+
+    audit_entry = shared_ledger.record_event(
+        "FINDING",
+        finding.finding_id,
+        "MANUAL_ENTRY",
+        report_id,
+        finding.severity.value,
+        f"actor={actor}; type={finding.finding_type}; asset={finding.asset}; reason={finding.reason}",
+    )
+    return {"report": updated_report, "finding": finding_dict, "audit_entry": audit_entry}
+
+
 @router.get("/trends/summary")
 async def get_report_trends(limit: int = 200):
     """Aggregates every persisted assurance report into a historical

@@ -46,7 +46,8 @@ export const AssessmentFinalDecisionView: React.FC<
     );
   }
 
-  const score = Math.round(report.overall_risk_score);
+  const assuranceScore = Math.round(report.assurance_score);
+  const riskScore = Math.round(report.overall_risk_score);
   const criticalCount = report.findings.filter((f) => f.severity === "CRITICAL").length;
   const highCount = report.findings.filter((f) => f.severity === "HIGH").length;
   const minorCount = report.findings.filter((f) => f.severity === "MEDIUM" || f.severity === "LOW").length;
@@ -78,7 +79,7 @@ export const AssessmentFinalDecisionView: React.FC<
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-baseline">
                 <span className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-                  {score}
+                  {assuranceScore}
                 </span>
                 <span className="text-sm font-mono text-slate-400 ml-1">/100</span>
               </div>
@@ -86,17 +87,17 @@ export const AssessmentFinalDecisionView: React.FC<
                 <span
                   className={clsx(
                     "text-[10px] font-bold px-2 py-0.5 rounded border",
-                    score < 70
+                    assuranceScore < 70
                       ? "bg-rose-50 border-rose-300 text-rose-700"
-                      : score < 85
+                      : assuranceScore < 85
                         ? "bg-amber-100 border-amber-300 text-amber-800"
                         : "bg-emerald-50 border-emerald-300 text-emerald-700"
                   )}
                 >
-                  {score < 70 ? "HIGH RISK" : score < 85 ? "MARGINAL" : "TRUSTED"}
+                  {assuranceScore < 70 ? "HIGH RISK" : assuranceScore < 85 ? "MARGINAL" : "TRUSTED"}
                 </span>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  Threshold: 75/100
+                  Threshold: 75/100 · Risk: {riskScore <= 20 ? "Low" : riskScore <= 60 ? "Med" : "High"}
                 </div>
               </div>
             </div>
@@ -105,10 +106,10 @@ export const AssessmentFinalDecisionView: React.FC<
           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
             <div
               className={clsx(
-                "h-2 rounded-full",
-                score < 70 ? "bg-[#e11d48]" : score < 85 ? "bg-amber-500" : "bg-emerald-500"
+                "h-2 rounded-full transition-all",
+                assuranceScore < 70 ? "bg-[#e11d48]" : assuranceScore < 85 ? "bg-amber-500" : "bg-emerald-500"
               )}
-              style={{ width: `${score}%` }}
+              style={{ width: `${assuranceScore}%` }}
             />
           </div>
         </div>
@@ -156,10 +157,63 @@ export const AssessmentFinalDecisionView: React.FC<
         </div>
       </div>
 
+      {/* Machine Recommendation vs Decision Readiness Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 font-mono text-xs space-y-2">
+          <div className="flex items-center justify-between text-slate-500 font-bold uppercase text-[10px]">
+            <span>Automated Engine Recommendation</span>
+            <span className="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">AUTOMATED</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={clsx(
+                "px-2.5 py-1 rounded font-bold text-xs",
+                report.overall_disposition === "ACCEPT"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : report.overall_disposition === "REVIEW"
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-rose-100 text-rose-800"
+              )}
+            >
+              RECOMMENDED: {report.overall_disposition}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600 font-sans leading-relaxed">
+            {report.overall_disposition === "ACCEPT"
+              ? "All baseline checks passed under declared coverage. No blocking vulnerabilities detected."
+              : report.overall_disposition === "REVIEW"
+                ? "Moderate anomalies or distribution drift detected. Requires human validation before approval."
+                : "Critical integrity failure or attack vector flagged. Automated quarantine recommendation issued."}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs font-mono space-y-2">
+          <div className="text-slate-500 font-bold uppercase text-[10px]">Decision Readiness Checklist</div>
+          <div className="grid grid-cols-2 gap-2 text-[11px] font-sans">
+            <div className="flex items-center gap-1.5 text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Critical findings evaluated</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Evidence chain verified</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Coverage & limits logged</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>Audit trail hash-chained</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Record Decision Section */}
       <div className="space-y-3 pt-2">
         <div className="font-mono text-xs font-bold text-slate-700 uppercase tracking-wide">
-          Record Decision
+          Analyst Final Disposition
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

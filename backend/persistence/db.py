@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS assurance_reports (
     report_id TEXT PRIMARY KEY,
     overall_disposition TEXT NOT NULL,
     overall_risk_score REAL NOT NULL,
+    assurance_score REAL NOT NULL DEFAULT 0.0,
     generated_at TEXT NOT NULL,
     report_json TEXT NOT NULL
 );
@@ -76,6 +77,11 @@ def get_connection(db_path: str = DB_PATH):
 def init_db(db_path: str = DB_PATH) -> None:
     with get_connection(db_path) as conn:
         conn.executescript(SCHEMA)
+        cursor = conn.execute("PRAGMA table_info(assurance_reports)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "assurance_score" not in columns:
+            conn.execute("ALTER TABLE assurance_reports ADD COLUMN assurance_score REAL NOT NULL DEFAULT 0.0")
+            conn.execute("UPDATE assurance_reports SET assurance_score = ROUND(MAX(0.0, 100.0 - overall_risk_score), 1)")
 
 
 def _now() -> str:
@@ -196,14 +202,18 @@ def get_inference_record(record_id: str, db_path: str = DB_PATH) -> Optional[Dic
 
 def insert_assurance_report(report: Dict[str, Any], db_path: str = DB_PATH) -> None:
     init_db(db_path)
+    assurance_score = report.get("assurance_score")
+    if assurance_score is None:
+        assurance_score = max(0.0, min(100.0, round(100.0 - float(report.get("overall_risk_score", 0.0)), 1)))
+        report["assurance_score"] = assurance_score
     with get_connection(db_path) as conn:
         conn.execute(
             """INSERT OR REPLACE INTO assurance_reports
-               (report_id, overall_disposition, overall_risk_score, generated_at, report_json)
-               VALUES (?, ?, ?, ?, ?)""",
+               (report_id, overall_disposition, overall_risk_score, assurance_score, generated_at, report_json)
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 report["report_id"], report["overall_disposition"], report["overall_risk_score"],
-                report["generated_at"], json.dumps(report),
+                assurance_score, report["generated_at"], json.dumps(report),
             ),
         )
 
@@ -212,7 +222,7 @@ def list_assurance_reports(limit: int = 100, db_path: str = DB_PATH) -> List[Dic
     init_db(db_path)
     with get_connection(db_path) as conn:
         rows = conn.execute(
-            "SELECT report_id, overall_disposition, overall_risk_score, generated_at "
+            "SELECT report_id, overall_disposition, overall_risk_score, assurance_score, generated_at "
             "FROM assurance_reports ORDER BY generated_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
@@ -224,6 +234,43 @@ def get_assurance_report(report_id: str, db_path: str = DB_PATH) -> Optional[Dic
     with get_connection(db_path) as conn:
         row = conn.execute("SELECT * FROM assurance_reports WHERE report_id = ?", (report_id,)).fetchone()
         return dict(row) if row else None
+
+
+def list_all_findings(limit: int = 150, db_path: str = DB_PATH) -> List[Dict[str, Any]]:
+    init_db(db_path)
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT report_id, overall_disposition, report_json FROM assurance_reports ORDER BY generated_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        all_findings = []
+        for r in rows:
+            try:
+                rep = json.loads(r["report_json"])
+                for f in rep.get("findings", []):
+                    item = dict(f)
+                    item["report_id"] = r["report_id"]
+                    item["report_disposition"] = r["overall_disposition"]
+                    item["generated_at"] = rep.get("generated_at")
+                    all_findings.append(item)
+            except Exception:
+                continue
+        return all_findings
+
+
+def add_manual_finding_to_report(report_id: str, finding: Dict[str, Any], db_path: str = DB_PATH) -> Optional[Dict[str, Any]]:
+    init_db(db_path)
+    with get_connection(db_path) as conn:
+        row = conn.execute("SELECT report_json FROM assurance_reports WHERE report_id = ?", (report_id,)).fetchone()
+        if not row:
+            return None
+        rep = json.loads(row["report_json"])
+        rep.setdefault("findings", []).append(finding)
+        conn.execute(
+            "UPDATE assurance_reports SET report_json = ? WHERE report_id = ?",
+            (json.dumps(rep), report_id)
+        )
+        return rep
 
 
 # -- Evidence-reference check (used to guard deletion of raw uploads) --------

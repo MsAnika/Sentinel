@@ -159,6 +159,7 @@ export interface AssuranceReport {
   policy_version: string
   overall_disposition: RecommendedDisposition
   overall_risk_score: number
+  assurance_score: number
   dataset_assurance_status: string
   model_assurance_status: string
   inference_provenance_status: string

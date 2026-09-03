@@ -4,13 +4,13 @@ import React from "react";
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Home,
   BarChart2,
   AlertOctagon,
   FileText,
   ShieldCheck,
-  Shield,
   Settings,
 } from "lucide-react";
 import { useAtomValue } from "jotai";
@@ -106,18 +106,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {/* Top Header & Main Navigation */}
       <div className="pt-5 pb-4">
         {/* Brand Header */}
-        <Link href="/" className="flex items-center gap-2.5 px-4 pb-6 group">
-          <div className="h-8 w-8 rounded-md bg-[#0f172a] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:bg-slate-800 transition-colors">
-            <Shield className="h-4 w-4 text-sky-400" />
-          </div>
-          <div>
-            <div className="font-bold text-slate-950 text-sm tracking-tight leading-tight">
-              CV Integrity
-            </div>
-            <div className="text-[9px] font-mono text-slate-500 font-semibold uppercase tracking-wider leading-tight mt-0.5">
-              Precision AI Assurance
-            </div>
-          </div>
+        <Link href="/" className="flex items-center px-3 pb-6 group">
+          <Image
+            src="/logo.png"
+            alt="IntelX — CV Integrity Assurance"
+            width={190}
+            height={44}
+            priority
+            className="h-9 w-auto max-w-[190px] object-contain transition-transform group-hover:scale-[1.02]"
+          />
         </Link>
 
         {/* Navigation Items List */}

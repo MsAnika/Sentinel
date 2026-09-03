@@ -22,9 +22,9 @@ class RiskEngine:
     def compute_overall_risk(
         self,
         findings: List[FindingSchema],
-    ) -> Tuple[float, RecommendedDisposition]:
+    ) -> Tuple[float, float, RecommendedDisposition]:
         if not findings:
-            return 4.2, RecommendedDisposition.ACCEPT
+            return 4.2, 95.8, RecommendedDisposition.ACCEPT
 
         has_critical = any(f.severity == FindingSeverity.CRITICAL for f in findings)
         high_count = sum(1 for f in findings if f.severity == FindingSeverity.HIGH)
@@ -33,13 +33,14 @@ class RiskEngine:
         weighted_sum = sum(
             self.SEVERITY_WEIGHTS.get(f.severity, 10.0) * f.confidence for f in findings
         )
-        normalized_score = float(min(100.0, max(0.0, round(weighted_sum, 1))))
+        normalized_risk = float(min(100.0, max(0.0, round(weighted_sum, 1))))
+        assurance_score = float(max(0.0, min(100.0, round(100.0 - normalized_risk, 1))))
 
-        if has_critical or high_count >= 2 or normalized_score >= 60.0:
+        if has_critical or high_count >= 2 or normalized_risk >= 60.0:
             disposition = RecommendedDisposition.QUARANTINE
-        elif high_count == 1 or med_count >= 2 or normalized_score >= 25.0:
+        elif high_count == 1 or med_count >= 2 or normalized_risk >= 25.0:
             disposition = RecommendedDisposition.REVIEW
         else:
             disposition = RecommendedDisposition.ACCEPT
 
-        return normalized_score, disposition
+        return normalized_risk, assurance_score, disposition
