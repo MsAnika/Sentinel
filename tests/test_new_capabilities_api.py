@@ -86,6 +86,77 @@ def test_verify_digest_no_reference_via_api(tmp_path):
     assert body["finding"]["finding_type"] == "model_identity_unverifiable"
 
 
+def test_dataset_archive_upload_detects_sibling_images_dir_for_coco(tmp_path):
+    """Regression guard for a real bug: DatasetLoader.load_coco defaults
+    images_dir to the JSON's own directory, NOT a sibling `images/`
+    folder -- but /api/dataset/upload's own docstring promises support for
+    exactly that layout ("a COCO annotations JSON with an images/ folder
+    alongside it"), and every pixel-based detector (OOD, duplicate
+    hashing, poisoning triggers, and this system's model-side backdoor
+    probing/trigger-reconstruction, which need real probe images sourced
+    from the ingested dataset) silently degrades to its no-image fallback
+    when that folder is never located. Proves the upload response now
+    reports `coco_images_dir`, and that passing it through to
+    /analyze-profile actually resolves real image files."""
+    import io
+    import zipfile
+    from PIL import Image
+
+    zip_path = tmp_path / "archive.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        coco = {
+            "images": [{"id": 1, "file_name": "sample_01.jpg", "width": 32, "height": 32}],
+            "annotations": [{"id": 1, "image_id": 1, "category_id": 0, "bbox": [0, 0, 10, 10], "area": 100, "iscrowd": 0}],
+            "categories": [{"id": 0, "name": "military_vehicle"}],
+        }
+        import json
+        zf.writestr("coco_annotations.json", json.dumps(coco))
+
+        img_buf = io.BytesIO()
+        Image.new("RGB", (32, 32), color=(120, 40, 40)).save(img_buf, format="JPEG")
+        zf.writestr("images/sample_01.jpg", img_buf.getvalue())
+
+    with open(zip_path, "rb") as f:
+        upload_res = client.post(
+            "/api/dataset/upload",
+            files={"file": ("archive.zip", f, "application/zip")},
+        )
+    assert upload_res.status_code == 200
+    upload_body = upload_res.json()
+    assert upload_body["coco_json_candidates"]
+    assert upload_body["coco_images_dir"] is not None
+    assert upload_body["coco_images_dir"].endswith("images")
+
+    # Without images_dir: the pre-fix behaviour -- image-dependent probe
+    # paths come back empty because the loader looks next to the JSON,
+    # not inside images/.
+    no_images_dir_res = client.post(
+        "/api/dataset/analyze-profile",
+        json={
+            "dataset_id": "regression_test_no_images_dir",
+            "format_type": "COCO",
+            "coco_path": upload_body["coco_json_candidates"][0],
+        },
+    )
+    assert no_images_dir_res.status_code == 200
+    assert no_images_dir_res.json()["probe_sample_image_paths"] == []
+
+    # With the detected images_dir passed through: real images resolve.
+    with_images_dir_res = client.post(
+        "/api/dataset/analyze-profile",
+        json={
+            "dataset_id": "regression_test_with_images_dir",
+            "format_type": "COCO",
+            "coco_path": upload_body["coco_json_candidates"][0],
+            "images_dir": upload_body["coco_images_dir"],
+        },
+    )
+    assert with_images_dir_res.status_code == 200
+    probe_paths = with_images_dir_res.json()["probe_sample_image_paths"]
+    assert len(probe_paths) == 1
+    assert os.path.exists(probe_paths[0])
+
+
 def test_api_key_gate_disabled_by_default():
     """Default MVP posture: no IntelX_API_KEY set means every route is
     reachable without any auth header -- matches the PRD's single
