@@ -266,6 +266,11 @@ function AssessmentsContent() {
             report={activeReport}
             onInvestigate={() => setSecondaryTab("evidence")}
             onNavigateTab={(tab) => setSecondaryTab(tab)}
+            onSelectFinding={(id) => {
+              setSelectedFindingId(id);
+              setSecondaryTab("evidence");
+            }}
+            onFinalizeDecision={handleFinalizeDecision}
             activeScenario={activeScenario}
             loading={loading}
             onSelectScenario={handleSelectScenario}
