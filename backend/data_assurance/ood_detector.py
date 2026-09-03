@@ -1,9 +1,8 @@
-import os
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
-from PIL import Image
 from ..ingestion.dataset_loader import SampleItem
 from ..schemas import AssetType, FindingSchema, FindingSeverity, RecommendedDisposition
+from .feature_utils import extract_color_moment_features
 
 
 class OODDetector:
@@ -11,26 +10,10 @@ class OODDetector:
         self.z_score_threshold = z_score_threshold
 
     def extract_color_moment_features(self, image_path: str) -> Tuple[np.ndarray, bool]:
-        """Returns (features, computed_from_real_pixels). The fallback path
-        (image missing/unreadable) produces a deterministic-but-fabricated
-        feature vector purely so one bad file doesn't crash the whole
-        dataset scan -- it carries no real color-distribution signal, and
-        callers must track and surface `computed_from_real_pixels=False`
-        rather than silently folding it into genuine OOD evidence."""
-        try:
-            if os.path.exists(image_path):
-                with Image.open(image_path) as img:
-                    img_rgb = img.convert("RGB").resize((128, 128))
-                    arr = np.asarray(img_rgb, dtype=np.float32) / 255.0
-                    mean = np.mean(arr, axis=(0, 1))
-                    std = np.std(arr, axis=(0, 1))
-                    return np.concatenate([mean, std]), True
-        except Exception:
-            pass
-
-        seed = int.from_bytes(image_path.encode()[:4].ljust(4, b"\0"), "little")
-        rng = np.random.RandomState(seed % 100000)
-        return rng.normal(0.5, 0.15, size=(6,)), False
+        """Thin wrapper kept for backward compatibility; the real
+        implementation is shared with LabelAnalyzer's unsupervised
+        consistency check via `feature_utils`."""
+        return extract_color_moment_features(image_path)
 
     def analyze(
         self,

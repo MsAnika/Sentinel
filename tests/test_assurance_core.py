@@ -117,6 +117,89 @@ def test_perceptual_hash_and_clustering():
 
 
 
+def _make_class_clustered_image(path: str, base_color: tuple, seed: int) -> None:
+    """Builds a real image whose color-moment feature vector is genuinely
+    informative of its intended class: a solid base color plus small
+    per-sample noise, so within-class samples cluster tightly and
+    between-class samples separate -- real pixels, real signal, not a
+    synthetic feature vector."""
+    from PIL import Image
+
+    rng = np.random.RandomState(seed)
+    arr = np.zeros((64, 64, 3), dtype=np.uint8)
+    noise = rng.randint(-12, 12, size=(64, 64, 3))
+    for c in range(3):
+        arr[:, :, c] = np.clip(base_color[c] + noise[:, :, c], 0, 255)
+    Image.fromarray(arr, mode="RGB").save(path, quality=95)
+
+
+def test_unsupervised_knn_catches_mislabelling_with_no_reference_model_and_no_metadata(tmp_path):
+    """Reproduces the exact PRD gap this tier closes (COVERAGE.md 2.2.1):
+    no reference model supplied, no ground-truth metadata present -- the
+    only real-world case a contributed, genuinely unannotated dataset
+    presents. Three visually distinct classes, tight within-class
+    clusters; a handful of samples are given the *wrong* declared label
+    with no metadata trace of that -- exactly what a contributor
+    mislabelling error looks like from the outside."""
+    class_colors = {
+        "military_vehicle": (200, 40, 40),
+        "radar_station": (40, 200, 40),
+        "aircraft": (40, 40, 200),
+    }
+    samples = []
+    idx = 0
+    for cls, color in class_colors.items():
+        for i in range(8):
+            img_path = str(tmp_path / f"{cls}_{i}.jpg")
+            _make_class_clustered_image(img_path, color, seed=1000 + idx)
+            samples.append(SampleItem(
+                sample_id=f"s_{idx}", image_path=img_path, labels=[cls],
+                boxes=[[0, 0, 1, 1]], contributor_id="contributor_delta",
+            ))
+            idx += 1
+
+    mislabelled_ids = {"s_0", "s_8"}
+    samples[0].labels = ["radar_station"]
+    samples[8].labels = ["aircraft"]
+
+    analyzer = LabelAnalyzer()
+    findings, stats = analyzer.analyze(samples, "ds_unannotated")
+
+    assert stats["unsupervised_tier_flagged_count"] >= 2
+    assert mislabelled_ids.issubset(set(stats["unsupervised_tier_sample_ids"]))
+    assert any(f.finding_type in ("label_flipping", "systematic_mislabelling") for f in findings)
+    flagged_finding = next(f for f in findings if f.finding_type in ("label_flipping", "systematic_mislabelling"))
+    assert any(
+        d["verification_method"] == "unsupervised_feature_space_knn_consistency"
+        for d in flagged_finding.evidence["sample_discrepancies"]
+    )
+
+
+def test_unsupervised_knn_does_not_false_positive_on_correctly_labelled_clusters(tmp_path):
+    """Same tight class clusters, but every declared label is correct --
+    the unsupervised tier must stay silent."""
+    class_colors = {
+        "military_vehicle": (200, 40, 40),
+        "radar_station": (40, 200, 40),
+        "aircraft": (40, 40, 200),
+    }
+    samples = []
+    idx = 0
+    for cls, color in class_colors.items():
+        for i in range(8):
+            img_path = str(tmp_path / f"{cls}_{i}.jpg")
+            _make_class_clustered_image(img_path, color, seed=2000 + idx)
+            samples.append(SampleItem(
+                sample_id=f"clean_{idx}", image_path=img_path, labels=[cls],
+                boxes=[[0, 0, 1, 1]], contributor_id="contributor_delta",
+            ))
+            idx += 1
+
+    analyzer = LabelAnalyzer()
+    _, stats = analyzer.analyze(samples, "ds_unannotated_clean")
+    assert stats["unsupervised_tier_flagged_count"] == 0
+
+
 def test_distribution_shift_arbitration():
     detector = DistributionShiftDetector(drift_threshold=0.3)
     ref_profile = {"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.75}

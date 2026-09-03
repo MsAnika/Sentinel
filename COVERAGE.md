@@ -18,8 +18,8 @@ Status legend: **SUPPORTED** — implemented and verified with a real, executabl
 | `near_duplicate_flooding`                | SUPPORTED   | Perceptual differential hashing (dHash) + Hamming clustering                                                                                         | Operates on real image bytes                                                                                                                                                    |
 | `ood_insertion`                          | SUPPORTED   | Color-moment feature distance / z-score vs. reference distribution                                                                                   | Operates on real image bytes                                                                                                                                                    |
 | `trigger_backdoor_poisoning` (data-side) | SUPPORTED   | Spatial frequency matched-filter correlation against known patch signatures                                                                          | Detects the*specific* trigger pattern being tested for; see `unknown_trigger_reconstruction` below                                                                              |
-| `label_flipping`                         | **PARTIAL** | Reference-model visual disagreement check when a trusted reference model is supplied; otherwise falls back to trusting contributor-declared metadata | **Without a reference model, this will not catch mislabelling in genuinely unannotated real-world data** — it only detects flips when the true label is knowable some other way |
-| `systematic_mislabelling`                | **PARTIAL** | Batch-level aggregation of the same per-sample evidence as`label_flipping`                                                                           | Same dependency as above                                                                                                                                                        |
+| `label_flipping`                         | **PARTIAL** | Three-tier evidence, decreasing strength: (1) reference-model visual disagreement when a trusted reference model is supplied, (2) contributor-declared ground-truth metadata, (3) unsupervised k-NN feature-space label-consistency check (`backend/data_assurance/label_analyzer.py: LabelAnalyzer._unsupervised_feature_consistency`) requiring neither reference model nor metadata — flags a sample when its declared label disagrees with the overwhelming majority (≥80%) declared label of its nearest neighbours in real-pixel color-moment feature space | Tier 3 is the check that still works on genuinely unannotated real-world data with no reference model; it is a weaker proxy signal (compares against neighbours' *declared* labels, not verified ground truth) so it is reported at lower confidence (0.55-0.6 vs 0.88-0.92) and capped at REVIEW disposition (never QUARANTINE) when it is the sole evidence for a contributor. Verified with real, class-separated pixel data — `test_unsupervised_knn_catches_mislabelling_with_no_reference_model_and_no_metadata` and `test_unsupervised_knn_does_not_false_positive_on_correctly_labelled_clusters` (`tests/test_assurance_core.py`) |
+| `systematic_mislabelling`                | **PARTIAL** | Batch-level aggregation of the same three-tier per-sample evidence as `label_flipping`                                                                 | Same tier-3 dependency and confidence discount as above                                                                                                                             |
 
 Contributor/batch-level risk aggregation is implemented for all of the above
 (`backend/data_assurance/contributor_risk.py`) — sample-level findings roll up into a per-source
@@ -151,11 +151,15 @@ occurs at runtime.
 
 1. Black-box model evaluation is limited to input/output behavioral probing; white-box
    weight/activation statistics are explicitly reported **unavailable**, never approximated.
-2. Backdoor/trigger detection matches against known trigger signatures. Blind reconstruction of an
-   unknown, never-specified trigger via gradient inversion is **not implemented**.
-3. Label-flip/mislabelling detection is only as strong as the reference model supplied for visual
-   verification. Without one, it trusts contributor-declared metadata and will not catch errors on
-   genuinely unannotated real-world data.
+2. Backdoor/trigger detection on the data side matches against known trigger signatures. Blind
+   reconstruction of an unknown, never-specified trigger is implemented on the model side (Neural
+   Cleanse-style gradient-based reconstruction, `unknown_trigger_reconstruction` in the model
+   integrity table above) — it requires WHITE_BOX model access and reports UNAVAILABLE otherwise.
+3. Label-flip/mislabelling detection is strongest with a reference model supplied for visual
+   verification. Without one, an unsupervised k-NN feature-space consistency check still provides
+   coverage on genuinely unannotated real-world data (see 2.2.1 above), but it is a weaker proxy
+   signal reported at lower confidence and capped at REVIEW disposition, not a substitute for
+   reference-model verification where one can be supplied.
 4. PyTorch/TorchScript now has real execution-based (behaviour battery, backdoor probing,
    gradient-based trigger reconstruction) and white-box parameter-analysis coverage, validated
    against a real backdoored TorchScript fixture. A raw (non-scripted) state_dict checkpoint still
