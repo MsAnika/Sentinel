@@ -2,6 +2,8 @@
 
 import React from "react";
 import clsx from "clsx";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   BarChart2,
@@ -9,8 +11,10 @@ import {
   FileText,
   ShieldCheck,
   Shield,
-  User,
+  Settings,
 } from "lucide-react";
+import { useAtomValue } from "jotai";
+import { operatorAtom } from "@/client/state/atoms";
 
 export type NavItemKey =
   | "home"
@@ -21,30 +25,64 @@ export type NavItemKey =
   | "settings";
 
 interface AppSidebarProps {
-  activeTab: NavItemKey;
-  onNavigate: (tab: NavItemKey) => void;
-  onNewAssessment: () => void;
+  activeTab?: NavItemKey;
+  onNavigate?: (tab: NavItemKey) => void;
+  onNewAssessment?: () => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
-  activeTab,
+  activeTab: propActiveTab,
   onNavigate,
 }) => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const operator = useAtomValue(operatorAtom);
+
+  const getActiveTab = (): NavItemKey => {
+    if (propActiveTab) return propActiveTab;
+    if (pathname.startsWith("/assessments")) return "assessments";
+    if (pathname.startsWith("/findings")) return "findings";
+    if (pathname.startsWith("/reports")) return "reports";
+    if (pathname.startsWith("/audit")) return "audit";
+    if (pathname.startsWith("/settings")) return "settings";
+    return "home";
+  };
+
+  const activeTab = getActiveTab();
+
   const navItems = [
-    { key: "home" as const, label: "Home", icon: Home },
-    { key: "assessments" as const, label: "Assessments", icon: BarChart2 },
-    { key: "findings" as const, label: "Findings", icon: AlertOctagon },
-    { key: "reports" as const, label: "Reports", icon: FileText },
-    { key: "audit" as const, label: "Audit", icon: ShieldCheck },
+    { key: "home" as const, label: "Home", href: "/", icon: Home },
+    { key: "assessments" as const, label: "Assessments", href: "/assessments", icon: BarChart2 },
+    { key: "findings" as const, label: "Findings", href: "/findings", icon: AlertOctagon },
+    { key: "reports" as const, label: "Reports", href: "/reports", icon: FileText },
+    { key: "audit" as const, label: "Audit", href: "/audit", icon: ShieldCheck },
+    { key: "settings" as const, label: "Settings", href: "/settings", icon: Settings },
   ];
+
+  const handleItemClick = (key: NavItemKey, href: string) => {
+    if (onNavigate) {
+      onNavigate(key);
+    } else {
+      router.push(href);
+    }
+  };
+
+  const initials = operator?.name
+    ? operator.name
+        .split(" ")
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "OP";
 
   return (
     <aside className="w-56 bg-white text-slate-800 border-r border-slate-200/90 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-20 font-sans">
       {/* Top Header & Main Navigation */}
       <div className="pt-5 pb-4">
         {/* Brand Header */}
-        <div className="flex items-center gap-2.5 px-4 pb-6">
-          <div className="h-8 w-8 rounded-md bg-[#0f172a] text-white flex items-center justify-center shrink-0 shadow-xs">
+        <Link href="/" className="flex items-center gap-2.5 px-4 pb-6 group">
+          <div className="h-8 w-8 rounded-md bg-[#0f172a] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:bg-slate-800 transition-colors">
             <Shield className="h-4 w-4 text-sky-400" />
           </div>
           <div>
@@ -55,7 +93,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               Precision AI Assurance
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Navigation Items List */}
         <nav className="space-y-1 px-2">
@@ -65,7 +103,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             return (
               <button
                 key={item.key}
-                onClick={() => onNavigate(item.key)}
+                onClick={() => handleItemClick(item.key, item.href)}
                 className={clsx(
                   "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all text-left cursor-pointer group relative",
                   isActive
@@ -90,32 +128,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Footer Widget (Matching Screenshot 1, 2, 3) */}
+      {/* Bottom Footer Widget */}
       <div className="p-4 border-t border-slate-100">
-        {activeTab === "audit" ? (
+        {operator ? (
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-full bg-slate-800 text-white font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
-              AT
+            <div className="h-7 w-7 rounded-full bg-slate-900 text-white font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
+              {initials}
             </div>
             <div className="min-w-0 flex-1 text-xs">
-              <div className="font-bold text-slate-900 truncate">Dr. A. Turing</div>
-              <div className="font-mono text-[10px] text-slate-400 truncate">ID: 0x8F9A</div>
-            </div>
-          </div>
-        ) : activeTab === "reports" ? (
-          <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] flex items-center justify-center font-bold shrink-0">
-              <User className="h-3.5 w-3.5" />
-            </div>
-            <div className="min-w-0 flex-1 text-xs">
-              <div className="font-bold text-slate-900 truncate">SYSADMIN</div>
-              <div className="font-mono text-[10px] text-slate-400 truncate">ID: USR-992</div>
+              <div className="font-bold text-slate-900 truncate">
+                {operator.name}
+              </div>
+              <div className="font-mono text-[10px] text-slate-400 truncate uppercase">
+                {operator.role ? `Role: ${operator.role}` : "Air-Gap Station"}
+              </div>
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span>System Status: <strong className="text-slate-800">NOMINAL</strong></span>
+            <span>
+              System: <strong className="text-slate-800">AIR-GAPPED</strong>
+            </span>
           </div>
         )}
       </div>
