@@ -90,11 +90,16 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
       let combinedFindings: FindingSchema[] = [];
       let contributorSummaries: ContributorRiskSummary[] = [];
       let savedModelPath = modelSavedPath;
+      let modelId: string | undefined;
+      let probeImagePaths: string[] = [];
+      let datasetClasses: string[] = [];
+      let deepProbesUnavailableReason: string | null = null;
 
       if (formData.modelFile) {
         setLaunchStage("Uploading and fingerprinting model...");
         const fp = await AssuranceApiClient.uploadModel(formData.modelFile);
         savedModelPath = (fp.metadata?.saved_path as string) || null;
+        modelId = fp.model_id;
         setModelSavedPath(savedModelPath);
         if (savedModelPath) {
           setLaunchStage("Running parameter analysis...");
@@ -125,10 +130,51 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
             });
         combinedFindings = [...combinedFindings, ...result.findings];
         contributorSummaries = result.profile.contributor_risks;
+        probeImagePaths = result.probe_sample_image_paths;
+        datasetClasses = result.profile.classes;
       }
 
       if (!formData.modelFile && !formData.datasetFile) {
         throw new Error("No model or dataset was provided in Step 2 -- add at least one asset before launching.");
+      }
+
+      // Model execution-based checks (backdoor probing, blind trigger
+      // reconstruction) need real images to run the model against --
+      // they only activate when both a model AND a dataset were
+      // provided, using real images pulled from that same dataset rather
+      // than a separately uploaded probe set. Best-effort: a failure here
+      // (unsupported architecture, HASH_ONLY access, etc.) is recorded as
+      // a limitation, not a fatal error for the whole assessment -- the
+      // backend already reports these as explicit UNAVAILABLE results
+      // rather than throwing, so only genuine transport/network failures
+      // reach this catch.
+      if (savedModelPath && modelId && probeImagePaths.length > 0) {
+        try {
+          setLaunchStage("Probing for known-trigger backdoor activation...");
+          const probe = await AssuranceApiClient.runBackdoorProbe({
+            modelPath: savedModelPath,
+            probeImagePaths,
+            modelId,
+          });
+          combinedFindings = [...combinedFindings, ...probe.findings];
+        } catch (e) {
+          deepProbesUnavailableReason = e instanceof Error ? e.message : String(e);
+        }
+
+        if (datasetClasses.length > 0) {
+          try {
+            setLaunchStage("Reconstructing unknown triggers (Neural Cleanse)...");
+            const reconstruction = await AssuranceApiClient.runTriggerReconstruction({
+              modelPath: savedModelPath,
+              cleanImagePaths: probeImagePaths,
+              classNames: datasetClasses,
+              modelId,
+            });
+            combinedFindings = [...combinedFindings, ...reconstruction.findings];
+          } catch (e) {
+            deepProbesUnavailableReason = e instanceof Error ? e.message : String(e);
+          }
+        }
       }
 
       setLaunchStage("Compiling assurance report...");
@@ -145,6 +191,13 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
         inferenceStatus: "UNAVAILABLE",
         driftStatus: "UNAVAILABLE",
       });
+
+      if (deepProbesUnavailableReason) {
+        report.limitations = [
+          ...report.limitations,
+          `Backdoor probe / trigger reconstruction did not complete: ${deepProbesUnavailableReason}`,
+        ];
+      }
 
       onComplete(report, formData.name);
     } catch (e) {
@@ -540,7 +593,7 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
                 >
                   <div className={clsx("flex items-center gap-2", formData.modelFile ? "text-emerald-900" : "text-slate-500")}>
                     {formData.modelFile ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Cpu className="h-4 w-4 text-slate-400" />}
-                    <span className="font-semibold">Model Integrity Checks</span>
+                    <span className="font-semibold">Model Integrity Checks (parameter analysis)</span>
                   </div>
                   <span className={clsx("font-mono text-[11px] font-bold", formData.modelFile ? "text-emerald-700" : "text-slate-400")}>
                     {formData.modelFile ? `READY (${formData.modelFile.name})` : "UNAVAILABLE — no model provided"}
@@ -559,6 +612,23 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
                   </div>
                   <span className={clsx("font-mono text-[11px] font-bold", formData.datasetFile ? "text-emerald-700" : "text-slate-400")}>
                     {formData.datasetFile ? `READY (${formData.datasetFile.name})` : "UNAVAILABLE — no dataset provided"}
+                  </span>
+                </div>
+
+                <div
+                  className={clsx(
+                    "p-3.5 rounded-lg border flex items-center justify-between",
+                    formData.modelFile && formData.datasetFile ? "bg-emerald-50/70 border-emerald-200" : "bg-slate-50 border-slate-200"
+                  )}
+                >
+                  <div className={clsx("flex items-center gap-2", formData.modelFile && formData.datasetFile ? "text-emerald-900" : "text-slate-500")}>
+                    {formData.modelFile && formData.datasetFile ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Shield className="h-4 w-4 text-slate-400" />}
+                    <span className="font-semibold">Backdoor Probe & Trigger Reconstruction</span>
+                  </div>
+                  <span className={clsx("font-mono text-[11px] font-bold", formData.modelFile && formData.datasetFile ? "text-emerald-700" : "text-slate-400")}>
+                    {formData.modelFile && formData.datasetFile
+                      ? "READY (runs against real dataset images)"
+                      : "UNAVAILABLE — needs both a model and a dataset"}
                   </span>
                 </div>
 
