@@ -60,6 +60,7 @@ export interface TriggerReconstructionResult {
 export interface DatasetUploadResult {
   extracted_to: string
   coco_json_candidates: string[]
+  coco_images_dir: string | null
   yolo_dir_candidate: string | null
   size_bytes: number
 }

@@ -66,6 +66,21 @@ async def upload_dataset_archive(file: UploadFile = File(...)):
             yolo_candidate = root
             break
 
+    # DatasetLoader.load_coco defaults images_dir to the JSON's own
+    # directory, NOT a sibling "images/" folder -- but this endpoint's own
+    # contract (see docstring above) is a COCO JSON "with an images/
+    # folder alongside it", which is also the layout every image-quality,
+    # OOD, duplicate-hash, and poisoning-trigger detector needs real
+    # pixels for. Without this, that entire documented archive layout
+    # silently degrades every pixel-based check to its no-image fallback.
+    # Detect the sibling folder here so the caller can pass it straight
+    # through to /analyze-profile's images_dir instead of guessing.
+    coco_images_dir = None
+    if coco_candidates:
+        sibling_images = os.path.join(os.path.dirname(coco_candidates[0]), "images")
+        if os.path.isdir(sibling_images):
+            coco_images_dir = sibling_images
+
     import hashlib
     with open(saved_path, "rb") as f:
         archive_digest = hashlib.sha256(f.read()).hexdigest()
@@ -76,6 +91,7 @@ async def upload_dataset_archive(file: UploadFile = File(...)):
     return {
         "extracted_to": extract_dir,
         "coco_json_candidates": coco_candidates,
+        "coco_images_dir": coco_images_dir,
         "yolo_dir_candidate": yolo_candidate,
         "size_bytes": size_bytes,
     }

@@ -122,6 +122,11 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
               datasetId: formData.name.replace(/\s+/g, "_").toLowerCase() || "assessment_dataset",
               formatType: "COCO",
               cocoPath: upload.coco_json_candidates[0],
+              // Without this, image-dependent checks (OOD, duplicate
+              // hashing, poisoning triggers, backdoor/trigger probing
+              // below) silently degrade to their no-pixel fallback for
+              // the documented "coco.json + images/" archive layout.
+              imagesDir: upload.coco_images_dir ?? undefined,
             })
           : await AssuranceApiClient.analyzeDatasetProfile({
               datasetId: formData.name.replace(/\s+/g, "_").toLowerCase() || "assessment_dataset",
