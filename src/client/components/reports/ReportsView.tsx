@@ -13,6 +13,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import { useReportList } from "@/client/lib/useReportList";
+import { AssuranceApiClient } from "@/client/lib/api-client";
 import { AssuranceReport } from "@/shared/types/assurance";
 
 interface ReportsViewProps {
@@ -93,21 +94,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {filterOpen && (
         <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-xs flex items-center gap-3 font-mono text-xs">
           <span className="text-slate-400 font-bold uppercase text-[10px]">Filter by Disposition:</span>
-          {["ALL", "CLEARED", "REVIEW", "QUARANTINE"].map((d) => (
+          {[
+            { value: "ALL", label: "ALL" },
+            { value: "ACCEPT", label: "CLEARED" },
+            { value: "REVIEW", label: "REVIEW" },
+            { value: "QUARANTINE", label: "QUARANTINE" },
+          ].map((d) => (
             <button
-              key={d}
+              key={d.value}
               onClick={() => {
-                setSelectedDisposition(d);
+                setSelectedDisposition(d.value);
                 setPage(0);
               }}
               className={clsx(
                 "px-2.5 py-1 rounded transition-colors cursor-pointer",
-                selectedDisposition === d
+                selectedDisposition === d.value
                   ? "bg-slate-900 text-white font-bold"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               )}
             >
-              {d}
+              {d.label}
             </button>
           ))}
         </div>
@@ -229,8 +235,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <td className="py-3.5 px-5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2 text-slate-400">
                       <a
-                        href={`/api/report/${r.id}/export.html`}
-                        download
+                        href={AssuranceApiClient.reportExportUrl(r.id, "html")}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         className="p-1 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors cursor-pointer inline-block"
                         title="Download HTML"
@@ -240,10 +247,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigator.clipboard.writeText(`${window.location.origin}/report/${r.id}`);
+                          // The real, working export link -- there is no
+                          // in-app /report/[id] route to link to instead.
+                          navigator.clipboard.writeText(AssuranceApiClient.reportExportUrl(r.id, "html"));
                         }}
                         className="p-1 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors cursor-pointer"
-                        title="Copy Report Link"
+                        title="Copy Report Export Link"
                       >
                         <Share2 className="h-3.5 w-3.5" />
                       </button>

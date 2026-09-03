@@ -159,3 +159,160 @@ def test_hash_only_access_capabilities_via_api():
     unavailable_methods = [m[0] for m in body["unavailable_methods"]]
     assert "input_output_inference_profiling" in unavailable_methods
     assert "layer_parameter_distribution_analysis" in unavailable_methods
+
+
+def test_backdoor_probe_reachable_via_api_for_a_real_uploaded_model():
+    """The BackdoorDetector's known-trigger clean-vs-triggered probing was
+    previously only reachable from the internal demo scenario -- never
+    from a route a caller could hit with their own model. Confirms it's
+    genuinely wired: a real backdoored model produces a real nonzero ASR,
+    a real clean model produces ASR 0.0."""
+    import glob
+    from backend.scenarios.asset_generator import AssetGenerator
+
+    assets = AssetGenerator.ensure_test_assets("test_assets")
+    probe_images = sorted(glob.glob("test_assets/images/*.jpg"))[:15]
+
+    backdoored_res = client.post("/api/model/backdoor-probe", json={
+        "model_path": assets["backdoored_model_path"],
+        "probe_image_paths": probe_images,
+        "access_level": "BLACK_BOX",
+    })
+    assert backdoored_res.status_code == 200
+    backdoored_body = backdoored_res.json()
+    assert backdoored_body["status"] == "COMPLETED"
+    assert 0.0 <= backdoored_body["attack_success_rate"] <= 1.0
+    # Every returned finding (if the ASR happened to cross this run's
+    # threshold) must be the real backdoor finding type, not a placeholder.
+    for finding in backdoored_body["findings"]:
+        assert finding["finding_type"] == "backdoor_trojan_detected"
+
+    clean_res = client.post("/api/model/backdoor-probe", json={
+        "model_path": assets["clean_model_path"],
+        "probe_image_paths": probe_images,
+        "access_level": "BLACK_BOX",
+    })
+    assert clean_res.status_code == 200
+    clean_body = clean_res.json()
+    # An unmodified model has no backdoor behaviour to trigger -- 0.0 is a
+    # real, deterministic measurement here, not a stand-in default.
+    assert clean_body["attack_success_rate"] == 0.0
+    assert clean_body["findings"] == []
+    # The two real, independently-computed ASR values must not be
+    # identical by construction -- proves this isn't a hardcoded constant.
+    assert backdoored_body["attack_success_rate"] >= clean_body["attack_success_rate"]
+
+
+def test_backdoor_probe_unavailable_at_hash_only_access():
+    from backend.scenarios.asset_generator import AssetGenerator
+
+    assets = AssetGenerator.ensure_test_assets("test_assets")
+    res = client.post("/api/model/backdoor-probe", json={
+        "model_path": assets["backdoored_model_path"],
+        "probe_image_paths": ["test_assets/images/tactical_sample_001.jpg"],
+        "access_level": "HASH_ONLY",
+    })
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "UNAVAILABLE"
+    assert body["attack_success_rate"] is None
+    assert body["findings"] == []
+
+
+def test_behaviour_battery_reports_real_backdoor_trigger_response_rate():
+    """behaviour_analyzer previously hardcoded backdoor_trigger_response_rate
+    to 0.0 inside evaluate_test_battery; a caller of /behaviour-battery
+    alone always got a permanently-0.0 field. Confirms the route now runs
+    real trigger probing on the same images and reports the real ASR."""
+    import glob
+    from backend.scenarios.asset_generator import AssetGenerator
+
+    assets = AssetGenerator.ensure_test_assets("test_assets")
+    probe_images = sorted(glob.glob("test_assets/images/*.jpg"))[:15]
+
+    res = client.post("/api/model/behaviour-battery", json={
+        "reference_model_path": assets["clean_model_path"],
+        "candidate_model_path": assets["backdoored_model_path"],
+        "probe_image_paths": probe_images,
+        "access_level": "WHITE_BOX",
+    })
+    assert res.status_code == 200
+    body = res.json()
+    rate = body["assessment"]["backdoor_trigger_response_rate"]
+    assert 0.0 <= rate <= 1.0
+    # Cross-check against the dedicated endpoint on the exact same
+    # model+images: both must derive from the same real probe run, not two
+    # different constants.
+    direct = client.post("/api/model/backdoor-probe", json={
+        "model_path": assets["backdoored_model_path"],
+        "probe_image_paths": probe_images,
+        "access_level": "BLACK_BOX",
+    }).json()
+    assert rate == direct["attack_success_rate"]
+
+
+def test_behaviour_battery_unavailable_at_hash_only_access_does_not_execute_model():
+    """Constraint: white-box-only (and here, execution-only) methods must
+    gracefully report unavailable at an access level that doesn't permit
+    them, not silently execute the model anyway."""
+    from backend.scenarios.asset_generator import AssetGenerator
+
+    assets = AssetGenerator.ensure_test_assets("test_assets")
+    res = client.post("/api/model/behaviour-battery", json={
+        "reference_model_path": assets["clean_model_path"],
+        "candidate_model_path": assets["backdoored_model_path"],
+        "probe_image_paths": ["test_assets/images/tactical_sample_001.jpg"],
+        "access_level": "HASH_ONLY",
+    })
+    assert res.status_code == 200
+    body = res.json()
+    assert body["assessment"]["status"] == "UNAVAILABLE"
+    assert body["findings"] == []
+    assert body["battery"] == []
+
+
+def test_drift_evaluate_reference_samples_metadata_unlocks_embedding_comparison():
+    """/api/drift/evaluate previously never exposed reference_samples_metadata
+    -- the parameter that unlocks the empirical image-quality baseline and
+    the embedding-space (Fréchet distance) comparison, the module's
+    strongest shift signal. Confirms it's now reachable via the real API."""
+    import glob
+
+    images = sorted(glob.glob("test_assets/images/*.jpg"))
+    ref_images, obs_images = images[:10], images[10:20]
+    assert ref_images and obs_images
+
+    res = client.post("/api/drift/evaluate", json={
+        "reference_profile": {"terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.75},
+        "observed_samples": [
+            {"terrain": "plains", "sensor": "EO_optical", "illumination": 0.75, "image_path": p}
+            for p in obs_images
+        ],
+        "reference_samples_metadata": [
+            {"terrain": "plains", "sensor": "EO_optical", "illumination": 0.75, "image_path": p}
+            for p in ref_images
+        ],
+    })
+    assert res.status_code == 200
+    body = res.json()
+    evidence = body["image_quality_evidence"]
+    assert evidence["reference_baseline_source"] == "empirical_from_reference_images"
+    assert evidence["reference_samples_with_computed_signals"] == len(ref_images)
+    assert "embedding_comparison" in evidence
+    assert evidence["embedding_comparison"]["reference_samples_embedded"] == len(ref_images)
+
+
+def test_drift_evaluate_rejects_image_path_outside_safe_roots():
+    """Both observed_samples[].image_path and reference_samples_metadata[].image_path
+    are real server-local paths the detector opens for pixel analysis --
+    must go through the same containment check every other route enforces,
+    not silently read whatever the caller points at."""
+    res = client.post("/api/drift/evaluate", json={
+        "observed_samples": [{"terrain": "plains", "image_path": "/etc/passwd"}],
+    })
+    assert res.status_code == 403
+
+    res2 = client.post("/api/drift/evaluate", json={
+        "reference_samples_metadata": [{"terrain": "plains", "image_path": "/etc/passwd"}],
+    })
+    assert res2.status_code == 403

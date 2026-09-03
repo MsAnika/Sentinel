@@ -3,11 +3,11 @@
 import React from "react";
 import {
   Search,
-  History,
   Download,
-  MoreVertical,
 } from "lucide-react";
 import clsx from "clsx";
+import { OperatorProfile } from "@/client/components/auth/AuthStationLogin";
+import { AssuranceApiClient } from "@/client/lib/api-client";
 
 export type ExplorerSecondaryTab =
   | "overview"
@@ -18,6 +18,8 @@ export type ExplorerSecondaryTab =
 
 interface AppTopNavProps {
   title?: string;
+  assessmentId?: string;
+  operator?: OperatorProfile | null;
   activeSecondaryTab?: ExplorerSecondaryTab;
   onSecondaryTabChange?: (tab: ExplorerSecondaryTab) => void;
   showSecondaryTabs?: boolean;
@@ -25,7 +27,16 @@ interface AppTopNavProps {
   shortcutKey?: string;
 }
 
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export const AppTopNav: React.FC<AppTopNavProps> = ({
+  assessmentId,
+  operator,
   activeSecondaryTab = "overview",
   onSecondaryTabChange,
   showSecondaryTabs = false,
@@ -49,9 +60,11 @@ export const AppTopNav: React.FC<AppTopNavProps> = ({
               <h1 className="text-base font-bold text-slate-900 tracking-tight leading-tight">
                 Assessment Explorer
               </h1>
-              <div className="font-mono text-[10px] text-slate-400 font-medium tracking-wide">
-                AS-2026-019
-              </div>
+              {assessmentId && (
+                <div className="font-mono text-[10px] text-slate-400 font-medium tracking-wide">
+                  {assessmentId}
+                </div>
+              )}
             </div>
 
             <nav className="flex items-center gap-6 text-xs font-mono font-bold">
@@ -107,31 +120,27 @@ export const AppTopNav: React.FC<AppTopNavProps> = ({
           </div>
         )}
 
-        <button
-          className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          title="History"
-        >
-          <History className="h-4 w-4" />
-        </button>
+        {assessmentId && (
+          <a
+            href={AssuranceApiClient.reportExportUrl(assessmentId, "html")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Download this assessment's report (HTML)"
+          >
+            <Download className="h-4 w-4" />
+          </a>
+        )}
 
-        <button
-          className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          title="Download Export"
-        >
-          <Download className="h-4 w-4" />
-        </button>
-
-        <button
-          className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-          title="Options"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </button>
-
-        {/* User profile avatar */}
-        <div className="h-7 w-7 rounded-full bg-slate-900 text-white font-mono font-bold text-[10px] flex items-center justify-center ml-1 ring-1 ring-slate-200 shadow-xs">
-          AD
-        </div>
+        {/* User profile avatar -- real operator initials, when signed in */}
+        {operator && (
+          <div
+            className="h-7 w-7 rounded-full bg-slate-900 text-white font-mono font-bold text-[10px] flex items-center justify-center ml-1 ring-1 ring-slate-200 shadow-xs"
+            title={operator.name}
+          >
+            {initialsOf(operator.name)}
+          </div>
+        )}
       </div>
     </header>
   );

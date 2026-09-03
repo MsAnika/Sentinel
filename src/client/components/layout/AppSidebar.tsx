@@ -33,6 +33,7 @@ interface AppSidebarProps {
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   activeTab: propActiveTab,
   onNavigate,
+  operator,
 }) => {
   const pathname = usePathname();
   const router = useRouter();
@@ -52,11 +53,36 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const navItems = [
     { key: "home" as const, label: "Home", href: "/", icon: Home },
-    { key: "assessments" as const, label: "Assessments", href: "/assessments", icon: BarChart2 },
-    { key: "findings" as const, label: "Findings", href: "/findings", icon: AlertOctagon },
-    { key: "reports" as const, label: "Reports", href: "/reports", icon: FileText },
-    { key: "audit" as const, label: "Audit", href: "/audit", icon: ShieldCheck },
-    { key: "settings" as const, label: "Settings", href: "/settings", icon: Settings },
+    {
+      key: "assessments" as const,
+      label: "Assessments",
+      href: "/assessments",
+      icon: BarChart2,
+    },
+    {
+      key: "findings" as const,
+      label: "Findings",
+      href: "/findings",
+      icon: AlertOctagon,
+    },
+    {
+      key: "reports" as const,
+      label: "Reports",
+      href: "/reports",
+      icon: FileText,
+    },
+    {
+      key: "audit" as const,
+      label: "Audit",
+      href: "/audit",
+      icon: ShieldCheck,
+    },
+    {
+      key: "settings" as const,
+      label: "Settings",
+      href: "/settings",
+      icon: Settings,
+    },
   ];
 
   const handleItemClick = (key: NavItemKey, href: string) => {
@@ -108,7 +134,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all text-left cursor-pointer group relative",
                   isActive
                     ? "bg-slate-100 text-slate-950 font-bold border-r-2 border-sky-500 rounded-r-none"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50"
+                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-50",
                 )}
               >
                 <div className="flex items-center gap-2.5">
@@ -117,7 +143,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       "h-4 w-4 shrink-0 transition-colors",
                       isActive
                         ? "text-slate-950 stroke-[2.2]"
-                        : "text-slate-500 group-hover:text-slate-800 stroke-[1.8]"
+                        : "text-slate-500 group-hover:text-slate-800 stroke-[1.8]",
                     )}
                   />
                   <span>{item.label}</span>

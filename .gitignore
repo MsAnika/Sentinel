@@ -47,3 +47,6 @@ keys/
 audit_log/
 *.db
 *.db-journal
+
+# Claude Code agent scratch worktrees (ephemeral, not project content)
+/.claude/worktrees/

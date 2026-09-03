@@ -19,7 +19,17 @@ class BehaviourAnalyzer:
         reference_model_id: str,
         test_battery_results: List[Dict[str, Any]],
         access_level: ModelAccessLevel = ModelAccessLevel.WHITE_BOX,
+        backdoor_trigger_response_rate: float = 0.0,
     ) -> Tuple[ModelBehaviourAssessment, List[FindingSchema]]:
+        """`backdoor_trigger_response_rate` is the real attack-success-rate
+        from `BackdoorDetector.evaluate_trigger_probes` run against this same
+        candidate model, when the caller has also run that probe (see
+        `api/routes_model.py: run_behaviour_battery`). This function has no
+        way to compute it itself -- `test_battery_results` only carries
+        reference-vs-candidate predictions on unmodified images, not
+        clean-vs-triggered pairs -- so a caller that skips trigger probing
+        gets an honest 0.0 (no probing performed), not a value that looks
+        like a real "no backdoor detected" measurement."""
         total_tests = len(test_battery_results)
         matching_count = 0
         deviant_records = []
@@ -91,7 +101,7 @@ class BehaviourAnalyzer:
             matching_predictions=matching_count,
             deviant_predictions=deviant_count,
             mean_confidence_drift=float(round(mean_conf_drift, 4)),
-            backdoor_trigger_response_rate=0.0,
+            backdoor_trigger_response_rate=float(round(backdoor_trigger_response_rate, 4)),
             assessment_status=status,
             limitations=[
                 "Assessment calibrated against fixed 50-probe tactical test suite.",

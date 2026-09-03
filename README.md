@@ -158,7 +158,7 @@ Backend on [http://localhost:8000](http://localhost:8000), frontend on
 [http://localhost:3000](http://localhost:3000). See `docker/backend.Dockerfile`,
 `docker/frontend.Dockerfile`, and `docker-compose.yml`. Evidence (SQLite DB, audit ledger, signing
 keys) persists in the `intelx-evidence` named volume across `docker compose down`/`up`. Set
-`VIGILCV_API_KEY` in `docker-compose.yml` before exposing the backend beyond localhost — see
+`IntelX_API_KEY` in `docker-compose.yml` before exposing the backend beyond localhost — see
 `docs/threat_model.md` § "API access control."
 
 ### Option B — Native (Air-Gapped Local Setup)

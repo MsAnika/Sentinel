@@ -54,23 +54,25 @@ class ScenarioModelInferenceRunner:
         )
         all_findings.extend(param_findings)
 
-        # Real behavioural comparison: candidate (backdoored) vs trusted reference (clean),
-        # both actually executed on the same clean probe images.
-        battery = build_reference_battery(inf_eng, assets["clean_model_path"], assets["backdoored_model_path"], samples[:25], PROBE_CONFIG)
-        beh_assess, beh_finds = beh_an.evaluate_test_battery(compromised_fp.model_id, clean_fp.model_id, battery)
-        all_findings.extend(beh_finds)
-        beh_assess.whitebox_activation_anomaly_score = param_stats.get("activation_anomaly_score")
-
-        audit.record_event("MODEL_ASSESSMENT", compromised_fp.model_id, "BEHAVIOURAL_BATTERY", compromised_fp.sha256_digest[:16], "FAILED_ANOMALOUS", f"Model exhibited {len(beh_finds) + len(param_findings)} behavioral/parameter violations.")
-
         # Real backdoor probing: same images, clean vs the checkerboard trigger patch
         # stamped on, actually executed through the candidate (backdoored) model.
         clean_probes, trig_probes = build_trigger_probes(inf_eng, assets["backdoored_model_path"], samples[:15], PROBE_CONFIG)
         asr, backdoor_findings = bdr_det.evaluate_trigger_probes(compromised_fp.model_id, clean_probes, trig_probes)
         all_findings.extend(backdoor_findings)
-        beh_assess.backdoor_trigger_response_rate = asr
 
         audit.record_event("MODEL_ASSESSMENT", compromised_fp.model_id, "TRIGGER_PROBE_BATTERY", compromised_fp.sha256_digest[:16], "BACKDOOR_SUSPECTED" if backdoor_findings else "NO_TRIGGER_RESPONSE", f"Attack success rate observed: {asr*100:.1f}%.")
+
+        # Real behavioural comparison: candidate (backdoored) vs trusted reference (clean),
+        # both actually executed on the same clean probe images. The real ASR just
+        # measured above is passed straight in, not patched on afterward.
+        battery = build_reference_battery(inf_eng, assets["clean_model_path"], assets["backdoored_model_path"], samples[:25], PROBE_CONFIG)
+        beh_assess, beh_finds = beh_an.evaluate_test_battery(
+            compromised_fp.model_id, clean_fp.model_id, battery, backdoor_trigger_response_rate=asr
+        )
+        all_findings.extend(beh_finds)
+        beh_assess.whitebox_activation_anomaly_score = param_stats.get("activation_anomaly_score")
+
+        audit.record_event("MODEL_ASSESSMENT", compromised_fp.model_id, "BEHAVIOURAL_BATTERY", compromised_fp.sha256_digest[:16], "FAILED_ANOMALOUS", f"Model exhibited {len(beh_finds) + len(param_findings)} behavioral/parameter violations.")
 
         preds = inf_eng.run_inference(samples[0].image_path, assets["backdoored_model_path"], config=PROBE_CONFIG)
         inf_record = vrf.create_record(samples[0].image_path, compromised_fp.model_id, compromised_fp.sha256_digest, preds)

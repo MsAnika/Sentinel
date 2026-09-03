@@ -177,7 +177,7 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
           </div>
         )}
 
-        {(isTampered || testResult) && !testError && (
+        {isTampered && !testError && (
           <div className="rounded border border-rose-500/80 bg-rose-950/40 p-4 space-y-2 animate-pulse">
             <div className="flex items-center gap-2 text-rose-300 font-bold text-xs">
               <ShieldAlert className="h-4 w-4" />
