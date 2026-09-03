@@ -141,7 +141,7 @@ function AssessmentsContent() {
     decision: "ACCEPT" | "REVIEW" | "QUARANTINE",
     notes: string
   ) => {
-    if (!activeReport) return;
+    if (!activeReport) return null;
     setSubmittingDecision(true);
     try {
       const res = await AssuranceApiClient.recordReportDecision(
@@ -153,8 +153,10 @@ function AssessmentsContent() {
       setActiveReport(res.report);
       setAuditEntries((prev) => [res.audit_entry, ...prev]);
       await refreshSummaries();
+      return res;
     } catch (err) {
       console.error("Failed to record decision:", err);
+      throw err;
     } finally {
       setSubmittingDecision(false);
     }
@@ -296,6 +298,7 @@ function AssessmentsContent() {
           <AssessmentFinalDecisionView
             report={activeReport}
             onFinalize={handleFinalizeDecision}
+            onNavigateTab={(tab) => setSecondaryTab(tab)}
             submitting={submittingDecision}
           />
         )}

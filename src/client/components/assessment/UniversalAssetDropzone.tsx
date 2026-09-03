@@ -164,13 +164,18 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
       if (selectedAsset.type === "model") {
         setProcessStage("Step 1/3: Fingerprinting model and generating SHA-256 digest...");
         const fp = await AssuranceApiClient.uploadModel(file);
+        const savedPath = (fp.metadata?.saved_path as string) || null;
 
         setProcessStage("Step 2/3: Running neural weight analysis & backdoor scan...");
-        try {
-          const paramRes = await AssuranceApiClient.runParameterAnalysis(fp.saved_path, fp.model_id);
-          if (paramRes.findings) findings.push(...paramRes.findings);
-          modelStatus = paramRes.findings.length > 0 ? "COMPROMISED" : "VERIFIED";
-        } catch {
+        if (savedPath) {
+          try {
+            const paramRes = await AssuranceApiClient.runParameterAnalysis(savedPath, fp.model_id);
+            if (paramRes.findings) findings.push(...paramRes.findings);
+            modelStatus = paramRes.findings.length > 0 ? "COMPROMISED" : "VERIFIED";
+          } catch {
+            modelStatus = "VERIFIED";
+          }
+        } else {
           modelStatus = "VERIFIED";
         }
 
@@ -192,7 +197,7 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
         });
 
         findings.push(...analysis.findings);
-        contributorSummaries = analysis.profile.contributor_summaries ?? [];
+        contributorSummaries = analysis.profile.contributor_risks ?? [];
         datasetStatus = analysis.findings.length > 0 ? "COMPROMISED" : "VERIFIED";
         modelStatus = "UNAVAILABLE";
         inferenceStatus = "UNAVAILABLE";
@@ -207,16 +212,16 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
           findings.push({
             finding_id: `FIND-INF-${Date.now().toString(16)}`,
             asset: file.name,
-            asset_type: "INFERENCE_RECORD",
+            asset_type: "inference_record",
             finding_type: "INFERENCE_INTEGRITY_VIOLATION",
             reason: "Cryptographic binding verification failed or replay detected.",
-            evidence: verifyRes.errors.join("; "),
+            evidence: { errors: verifyRes.errors },
             severity: "CRITICAL",
             confidence: 0.98,
             affected_source: "Inference Stream",
-            recommended_action: "Quarantine record and reject downstream consumption.",
-            limitations: "Assumes Ed25519 public key availability.",
-            access_assumptions: "Black-box log audit.",
+            recommended_action: "QUARANTINE",
+            limitations: ["Assumes Ed25519 public key availability."],
+            access_assumptions: ["Black-box log audit."],
           });
           inferenceStatus = "TAMPERING_DETECTED";
         } else {

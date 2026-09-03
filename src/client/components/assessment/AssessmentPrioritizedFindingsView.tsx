@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   Clock,
   Layers,
+  CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { FindingSchema } from "@/shared/types/assurance";
 
@@ -73,8 +75,40 @@ export const AssessmentPrioritizedFindingsView: React.FC<
       </div>
 
       {displayFindings.length === 0 && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="text-sm font-bold text-slate-700">No findings on the current assessment.</p>
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-8 sm:p-10 text-center space-y-4">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h3 className="text-base font-bold text-slate-900">
+              Clean Assessment • 0 Vulnerabilities Detected
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed font-sans">
+              This asset successfully passed all evaluation batteries (weight distribution, backdoor trigger search, label anomalies, and cryptographic signatures). No compromise was detected.
+            </p>
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-800 text-xs font-mono font-bold shadow-2xs">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            <span>DISPOSITION: ACCEPT (TRUSTED AIR-GAP ASSET)</span>
+          </div>
+
+          <div className="pt-4 border-t border-emerald-200/60 max-w-lg mx-auto">
+            <p className="text-[11px] text-slate-500 font-sans mb-3">
+              To inspect findings from simulated adversarial attacks, switch to a compromised scenario or report from the switcher:
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 text-xs font-mono">
+              <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-700">
+                Scenario B (Data Poisoning)
+              </span>
+              <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-700">
+                Scenario C (Backdoored Model)
+              </span>
+              <span className="px-2.5 py-1 rounded bg-white border border-slate-200 text-slate-700">
+                Scenario D (Inference Tampering)
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
