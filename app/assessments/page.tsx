@@ -153,6 +153,7 @@ function AssessmentsContent() {
       setActiveReport(res.report);
       setAuditEntries((prev) => [res.audit_entry, ...prev]);
       await refreshSummaries();
+      setSecondaryTab("overview");
       return res;
     } catch (err) {
       console.error("Failed to record decision:", err);
