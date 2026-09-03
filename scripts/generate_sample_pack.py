@@ -134,8 +134,8 @@ def main():
     sample_img_path = os.path.join(assets["images_dir"], clean_images[0]["file_name"])
     
     sample_preds = [
-        BoundingBox(class_name="military_vehicle", confidence=0.96, x_min=0.2, y_min=0.25, x_max=0.65, y_max=0.75),
-        BoundingBox(class_name="personnel", confidence=0.89, x_min=0.7, y_min=0.4, x_max=0.82, y_max=0.88),
+        BoundingBox(class_name="military_vehicle", confidence=0.96, box=[0.2, 0.25, 0.65, 0.75]),
+        BoundingBox(class_name="personnel", confidence=0.89, box=[0.7, 0.4, 0.82, 0.88]),
     ]
     
     # 1. Clean inference record
