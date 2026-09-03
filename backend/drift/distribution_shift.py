@@ -162,26 +162,57 @@ class DistributionShiftDetector:
             )
 
         # -- Embedding-space distribution comparison (real learned CNN features) --
+        # Two ways to get a reference embedding baseline, tried in order:
+        #   (a) live reference images (reference_samples_metadata) -- the
+        #       strongest signal, embeddings extracted fresh this call
+        #   (b) a declared baseline precomputed once, offline, via
+        #       EmbeddingExtractor.compute_reference_statistics and stored
+        #       under reference_profile["embedding_centroid"]/["embedding_variance"]
+        #       -- lets the embedding signal survive even when raw reference
+        #       images aren't resupplied on every single evaluation call,
+        #       which is how an operator establishes a standing baseline
+        #       rather than re-uploading a reference set every time.
         embedding_computed = False
+        embedding_source = "unavailable"
         reference_image_paths = [
             m.get("image_path") for m in (reference_samples_metadata or []) if m.get("image_path")
         ]
-        if (
-            len(reference_image_paths) >= self.MIN_SAMPLES_FOR_EMBEDDING
-            and len(observed_image_paths) >= self.MIN_SAMPLES_FOR_EMBEDDING
-        ):
+        declared_centroid = reference_profile.get("embedding_centroid")
+        declared_variance = reference_profile.get("embedding_variance")
+
+        if len(observed_image_paths) >= self.MIN_SAMPLES_FOR_EMBEDDING:
             try:
                 extractor = self.embedding_extractor or EmbeddingExtractor()
-                ref_embeddings = extractor.extract_batch(reference_image_paths)
                 obs_embeddings = extractor.extract_batch(observed_image_paths)
-                if len(ref_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING and len(obs_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING:
-                    frechet = EmbeddingExtractor.diagonal_frechet_distance(ref_embeddings, obs_embeddings)
+                frechet = None
+
+                if len(reference_image_paths) >= self.MIN_SAMPLES_FOR_EMBEDDING and len(obs_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING:
+                    ref_embeddings = extractor.extract_batch(reference_image_paths)
+                    if len(ref_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING:
+                        frechet = EmbeddingExtractor.diagonal_frechet_distance(ref_embeddings, obs_embeddings)
+                        embedding_source = "live_reference_images"
+                        embedding_ref_count = int(len(ref_embeddings))
+                elif declared_centroid and declared_variance and len(obs_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING:
+                    mu_r = np.asarray(declared_centroid, dtype=np.float64)
+                    var_r = np.asarray(declared_variance, dtype=np.float64)
+                    if mu_r.shape == var_r.shape and mu_r.shape[0] == obs_embeddings.shape[1]:
+                        frechet = EmbeddingExtractor.diagonal_frechet_distance_from_stats(mu_r, var_r, obs_embeddings)
+                        embedding_source = "declared_reference_baseline"
+                        embedding_ref_count = int(reference_profile.get("reference_sample_count", 0))
+                    else:
+                        limitations.append(
+                            "Declared embedding_centroid/embedding_variance dimensionality does not match "
+                            "the extractor's embedding dimension; declared embedding baseline was ignored."
+                        )
+
+                if frechet is not None:
                     embedding_shift = min(1.0, frechet["embedding_frechet_distance"] / self.EMBEDDING_DISTANCE_NORMALIZATION)
                     dim_scores["embedding_shift"] = round(embedding_shift, 3)
                     image_quality_evidence["embedding_comparison"] = {
-                        "reference_samples_embedded": int(len(ref_embeddings)),
+                        "reference_baseline_source": embedding_source,
+                        "reference_samples_embedded": embedding_ref_count,
                         "observed_samples_embedded": int(len(obs_embeddings)),
-                        "embedding_dim": int(ref_embeddings.shape[1]),
+                        "embedding_dim": int(obs_embeddings.shape[1]),
                         **frechet,
                     }
                     embedding_computed = True
@@ -191,9 +222,11 @@ class DistributionShiftDetector:
         if not embedding_computed:
             limitations.append(
                 f"Embedding-space distribution comparison requires at least {self.MIN_SAMPLES_FOR_EMBEDDING} "
-                "resolvable reference images AND observed images (via reference_samples_metadata / "
-                "observed_samples_metadata image_path); when unavailable, this evaluation relies on "
-                "declared metadata and pixel-quality signals only, not a learned feature comparison."
+                "resolvable observed images, plus either live reference images (reference_samples_metadata) "
+                "or a declared reference baseline (reference_profile['embedding_centroid']/['embedding_variance'], "
+                "precomputed once via EmbeddingExtractor.compute_reference_statistics); when neither is "
+                "available, this evaluation relies on declared metadata and pixel-quality signals only, not "
+                "a learned feature comparison."
             )
 
         weighted_terms = [

@@ -139,7 +139,21 @@ class EmbeddingExtractor:
         per embedding dimension."""
         mu_r, mu_o = reference.mean(axis=0), observed.mean(axis=0)
         var_r = reference.var(axis=0) + 1e-6
+        return EmbeddingExtractor.diagonal_frechet_distance_from_stats(mu_r, var_r, observed)
+
+    @staticmethod
+    def diagonal_frechet_distance_from_stats(mu_r: np.ndarray, var_r: np.ndarray, observed: np.ndarray) -> dict:
+        """Same diagonal-Frechet computation as `diagonal_frechet_distance`,
+        but taking a precomputed reference mean/variance instead of raw
+        reference embeddings. This is what makes the embedding-shift signal
+        usable against a *declared* reference baseline (computed once,
+        offline, via `compute_reference_statistics`, and stored by the
+        operator) instead of requiring the raw reference image set to be
+        resupplied on every single evaluation call."""
+        mu_o = observed.mean(axis=0)
         var_o = observed.var(axis=0) + 1e-6
+        var_r = np.asarray(var_r, dtype=np.float64) + 1e-6
+        mu_r = np.asarray(mu_r, dtype=np.float64)
 
         mean_term = float(np.sum((mu_r - mu_o) ** 2))
         var_term = float(np.sum(var_r + var_o - 2.0 * np.sqrt(var_r * var_o)))
@@ -148,4 +162,26 @@ class EmbeddingExtractor:
             "embedding_frechet_distance": round(mean_term + var_term, 4),
             "mean_shift_component": round(mean_term, 4),
             "variance_shift_component": round(var_term, 4),
+        }
+
+    @classmethod
+    def compute_reference_statistics(cls, image_paths: List[str], model_path: Optional[str] = None) -> Optional[dict]:
+        """Precomputes a declared reference embedding baseline (mean +
+        variance per dimension, JSON-serializable) from a set of reference
+        images, once and offline. The operator stores the result in their
+        declared `reference_profile` (as `embedding_centroid` /
+        `embedding_variance`) so subsequent `evaluate_shift` calls get the
+        embedding-space signal without needing to resupply raw reference
+        images every time -- turning a per-call dependency into a one-time
+        setup step, which is how a "declared reference distribution" is
+        meant to be used operationally."""
+        extractor = cls(model_path)
+        embeddings = extractor.extract_batch(image_paths)
+        if embeddings.shape[0] < 2:
+            return None
+        return {
+            "embedding_centroid": embeddings.mean(axis=0).tolist(),
+            "embedding_variance": embeddings.var(axis=0).tolist(),
+            "embedding_dim": int(embeddings.shape[1]),
+            "reference_sample_count": int(embeddings.shape[0]),
         }

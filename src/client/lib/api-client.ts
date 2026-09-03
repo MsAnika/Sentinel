@@ -36,6 +36,25 @@ export interface DatasetAnalysisResult {
   structure_warnings: string[]
   label_verification_method: string
   visual_check_truncated_to: number | null
+  probe_sample_image_paths: string[]
+}
+
+export interface AccessCapabilities {
+  access_level: string
+  supported_methods: string[]
+  unavailable_methods: string[]
+}
+
+export interface BackdoorProbeResult {
+  attack_success_rate: number | null
+  findings: FindingSchema[]
+  status: 'COMPLETED' | 'UNAVAILABLE'
+  reason?: string
+}
+
+export interface TriggerReconstructionResult {
+  result: Record<string, unknown>
+  findings: FindingSchema[]
 }
 
 export interface DatasetUploadResult {
@@ -356,6 +375,75 @@ export class AssuranceApiClient {
         candidate_model_path: params.candidateModelPath,
         probe_image_paths: params.probeImagePaths,
         confidence_threshold: params.confidenceThreshold ?? 0.25,
+      }),
+    })
+  }
+
+  /** What this declared access level actually lets the model-assurance
+   * pipeline check, and what it explicitly cannot (FR-07 access-tier
+   * disclosure) -- surfaced to the operator before/alongside running any
+   * deeper probe, so a BLACK_BOX/HASH_ONLY model's coverage gaps are
+   * visible rather than only implied by a check silently not running. */
+  static async getAccessCapabilities(accessLevel: string): Promise<AccessCapabilities> {
+    return this.request(`/api/model/access-capabilities?access_level=${encodeURIComponent(accessLevel)}`, {
+      method: 'POST',
+    })
+  }
+
+  static async verifyModelDigest(
+    supplied: ModelFingerprint,
+    expectedReferenceDigest?: string | null
+  ): Promise<{ is_match: boolean; status: string; finding: FindingSchema | null }> {
+    return this.request('/api/model/verify-digest', {
+      method: 'POST',
+      body: JSON.stringify({
+        supplied_fingerprint: supplied,
+        expected_reference_digest: expectedReferenceDigest ?? null,
+      }),
+    })
+  }
+
+  /** Known-trigger clean-vs-triggered probing (`BackdoorDetector`): runs
+   * the candidate model once clean and once with a checkerboard trigger
+   * patch stamped on each supplied real image, and reports the real
+   * attack-success-rate of predictions flipping to the backdoor's target
+   * class. Needs only real execution access (BLACK_BOX or WHITE_BOX). */
+  static async runBackdoorProbe(params: {
+    modelPath: string
+    probeImagePaths: string[]
+    modelId?: string
+    accessLevel?: string
+    confidenceThreshold?: number
+  }): Promise<BackdoorProbeResult> {
+    return this.request('/api/model/backdoor-probe', {
+      method: 'POST',
+      body: JSON.stringify({
+        model_path: params.modelPath,
+        probe_image_paths: params.probeImagePaths,
+        model_id: params.modelId,
+        access_level: params.accessLevel ?? 'BLACK_BOX',
+        confidence_threshold: params.confidenceThreshold ?? 0.25,
+      }),
+    })
+  }
+
+  /** Blind, gradient-based unknown-trigger reconstruction (Neural
+   * Cleanse) -- never told what a trigger looks like, optimizes one from
+   * scratch per candidate class. WHITE_BOX-only; reports UNAVAILABLE with
+   * a reason for unsupported architectures rather than a silent skip. */
+  static async runTriggerReconstruction(params: {
+    modelPath: string
+    cleanImagePaths: string[]
+    classNames: string[]
+    modelId?: string
+  }): Promise<TriggerReconstructionResult> {
+    return this.request('/api/model/trigger-reconstruction', {
+      method: 'POST',
+      body: JSON.stringify({
+        model_path: params.modelPath,
+        clean_image_paths: params.cleanImagePaths,
+        class_names: params.classNames,
+        model_id: params.modelId,
       }),
     })
   }

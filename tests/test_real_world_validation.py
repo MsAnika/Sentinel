@@ -184,6 +184,74 @@ def test_embedding_extractor_uses_the_trained_checkpoint_and_is_discriminative()
     assert cos_sim(e1, e2) < 0.999
 
 
+def test_distribution_shift_embedding_signal_works_from_a_declared_baseline_without_live_reference_images():
+    """Closes the gap where the embedding-space shift signal was only ever
+    available when raw reference images were resupplied on every single
+    evaluation call. `EmbeddingExtractor.compute_reference_statistics`
+    precomputes a declared centroid/variance ONCE from a real reference
+    batch; a later `evaluate_shift` call that carries only that declared
+    baseline (no reference_samples_metadata at all) must still produce the
+    same embedding_shift signal a live-reference-image comparison would,
+    and must still catch real degradation."""
+    from backend.drift.embedding_extractor import EmbeddingExtractor
+
+    paths = _real_image_paths()
+    reference_paths, observed_paths = paths[:20], paths[20:]
+
+    baseline = EmbeddingExtractor.compute_reference_statistics(reference_paths)
+    assert baseline is not None
+    assert baseline["reference_sample_count"] == 20
+
+    detector = DistributionShiftDetector(drift_threshold=0.30)
+    reference_profile = {
+        "terrain": "plains", "sensor": "EO_optical", "mean_illumination": 0.6,
+        "embedding_centroid": baseline["embedding_centroid"],
+        "embedding_variance": baseline["embedding_variance"],
+        "reference_sample_count": baseline["reference_sample_count"],
+    }
+    observed_metadata = [
+        {"terrain": "plains", "sensor": "EO_optical", "illumination": 0.6, "image_path": p}
+        for p in observed_paths
+    ]
+
+    # No reference_samples_metadata supplied at all -- only the declared baseline.
+    report = detector.evaluate_shift(
+        reference_profile, observed_metadata,
+        declared_reference_id="real_coco_declared_embedding_baseline",
+        observed_dataset_id="real_coco_observed_batch",
+    )
+    assert "embedding_shift" in report.affected_dimensions
+    assert report.image_quality_evidence["embedding_comparison"]["reference_baseline_source"] == "declared_reference_baseline"
+    assert report.is_manipulation_suspected is False
+
+    degraded_dir = "real_validation/_declared_baseline_degraded_tmp"
+    os.makedirs(degraded_dir, exist_ok=True)
+    degraded_paths = []
+    try:
+        for p in observed_paths:
+            with Image.open(p) as img:
+                img = img.convert("RGB")
+                img = img.filter(ImageFilter.GaussianBlur(radius=8))
+                img = ImageEnhance.Color(img).enhance(0.1)
+                out_path = os.path.join(degraded_dir, os.path.basename(p))
+                img.save(out_path, format="JPEG", quality=10)
+                degraded_paths.append(out_path)
+
+        degraded_metadata = [
+            {"terrain": "plains", "sensor": "EO_optical", "illumination": 0.6, "image_path": p}
+            for p in degraded_paths
+        ]
+        degraded_report = detector.evaluate_shift(
+            reference_profile, degraded_metadata,
+            declared_reference_id="real_coco_declared_embedding_baseline",
+            observed_dataset_id="real_coco_observed_batch_degraded",
+        )
+        assert degraded_report.affected_dimensions["embedding_shift"] > report.affected_dimensions["embedding_shift"]
+    finally:
+        import shutil
+        shutil.rmtree(degraded_dir, ignore_errors=True)
+
+
 def test_distribution_shift_detects_real_degradation_of_real_photos():
     """Applies genuine, real image-processing degradation (heavy Gaussian
     blur + desaturation + aggressive JPEG recompression) to real copies of

@@ -197,6 +197,13 @@ async def analyze_dataset_profile(
         label_verification_method=label_verification_method,
     )
 
+    # A small sample of real, resolvable image paths from this ingested
+    # dataset -- exists purely so a caller that also uploaded a model can
+    # immediately run model-side execution checks (behaviour battery,
+    # backdoor probing, trigger reconstruction) against real images without
+    # a second round-trip to re-discover where the dataset landed on disk.
+    probe_sample_image_paths = [s.image_path for s in samples[:8] if os.path.exists(s.image_path)]
+
     return {
         "analysis_id": analysis_id,
         "profile": profile,
@@ -208,6 +215,7 @@ async def analyze_dataset_profile(
         "structure_warnings": structure_errors,
         "label_verification_method": label_verification_method,
         "visual_check_truncated_to": MAX_VISUAL_CHECK_SAMPLES if visual_check_truncated else None,
+        "probe_sample_image_paths": probe_sample_image_paths,
     }
 
 
