@@ -14,6 +14,9 @@ import {
   Shield,
   ArrowRight,
   Cpu,
+  Download,
+  Database,
+  Radio,
 } from "lucide-react";
 import { AssuranceApiClient } from "@/client/lib/api-client";
 import { AssuranceReport, ContributorRiskSummary, FindingSchema } from "@/shared/types/assurance";
@@ -407,6 +410,125 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
           <span>{errorMessage}</span>
         </div>
       )}
+
+      {/* Downloadable Evaluation Assets Pack (Clean & Defective) */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200/80">
+          <div className="flex items-center gap-2">
+            <Download className="h-4 w-4 text-sky-600" />
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-800">
+              Downloadable Sample Assets Pack (Clean & Defective)
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-slate-500">
+            Click to download sample files, then drop them into the scanner above
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Datasets */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <Database className="h-3.5 w-3.5 text-amber-600" />
+              <span>DATASETS (COCO / YOLO)</span>
+            </div>
+            <div className="space-y-1.5 pt-1">
+              <a
+                href="/sample_assets/clean_dataset_coco.zip"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 text-[11px] font-mono border border-slate-200 hover:border-emerald-300 transition-colors text-slate-700 hover:text-emerald-800"
+              >
+                <span>clean_dataset_coco.zip</span>
+                <span className="text-[10px] font-bold text-emerald-600">CLEAN</span>
+              </a>
+              <a
+                href="/sample_assets/poisoned_dataset_coco.zip"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-rose-50 text-[11px] font-mono border border-slate-200 hover:border-rose-300 transition-colors text-slate-700 hover:text-rose-800"
+              >
+                <span>poisoned_dataset_coco.zip</span>
+                <span className="text-[10px] font-bold text-rose-600">POISONED</span>
+              </a>
+              <a
+                href="/sample_assets/clean_dataset_yolo.zip"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-[11px] font-mono border border-slate-200 transition-colors text-slate-700"
+              >
+                <span>clean_dataset_yolo.zip</span>
+                <span className="text-[10px] font-bold text-slate-500">YOLO</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Models */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <Radio className="h-3.5 w-3.5 text-sky-600" />
+              <span>MODELS (ONNX / PyTorch)</span>
+            </div>
+            <div className="space-y-1.5 pt-1">
+              <a
+                href="/sample_assets/clean_vision_model.onnx"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 text-[11px] font-mono border border-slate-200 hover:border-emerald-300 transition-colors text-slate-700 hover:text-emerald-800"
+              >
+                <span>clean_vision_model.onnx</span>
+                <span className="text-[10px] font-bold text-emerald-600">CLEAN</span>
+              </a>
+              <a
+                href="/sample_assets/backdoored_vision_model.onnx"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-rose-50 text-[11px] font-mono border border-slate-200 hover:border-rose-300 transition-colors text-slate-700 hover:text-rose-800"
+              >
+                <span>backdoored_vision_model.onnx</span>
+                <span className="text-[10px] font-bold text-rose-600">BACKDOOR</span>
+              </a>
+              <a
+                href="/sample_assets/tactical_model.pt"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-[11px] font-mono border border-slate-200 transition-colors text-slate-700"
+              >
+                <span>tactical_model.pt</span>
+                <span className="text-[10px] font-bold text-slate-500">PYTORCH</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Inference Records */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <Cpu className="h-3.5 w-3.5 text-emerald-600" />
+              <span>INFERENCE PROVENANCE</span>
+            </div>
+            <div className="space-y-1.5 pt-1">
+              <a
+                href="/sample_assets/clean_inference_record.json"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-emerald-50 text-[11px] font-mono border border-slate-200 hover:border-emerald-300 transition-colors text-slate-700 hover:text-emerald-800"
+              >
+                <span>clean_inference_record.json</span>
+                <span className="text-[10px] font-bold text-emerald-600">VALID DAG</span>
+              </a>
+              <a
+                href="/sample_assets/tampered_inference_record.json"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-rose-50 text-[11px] font-mono border border-slate-200 hover:border-rose-300 transition-colors text-slate-700 hover:text-rose-800"
+              >
+                <span>tampered_inference_record.json</span>
+                <span className="text-[10px] font-bold text-rose-600">TAMPERED</span>
+              </a>
+              <a
+                href="/sample_assets/replay_inference_record.json"
+                download
+                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-rose-50 text-[11px] font-mono border border-slate-200 hover:border-rose-300 transition-colors text-slate-700 hover:text-rose-800"
+              >
+                <span>replay_inference_record.json</span>
+                <span className="text-[10px] font-bold text-rose-600">REPLAY</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* 1-Click Reproducible Defense Scenarios for Evaluators / Jury */}
       <div className="pt-2 border-t border-slate-200/70">
