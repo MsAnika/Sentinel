@@ -52,8 +52,11 @@ export const AppTopNav: React.FC<AppTopNavProps> = ({
   ];
 
   return (
-    <header className="h-16 px-8 flex items-center justify-between border-b border-slate-200/80 bg-white sticky top-0 z-10 shrink-0 font-sans">
-      <div className="flex items-center gap-8">
+    <header
+      className="h-16 px-8 flex items-center justify-between border-b border-slate-200/80 bg-white sticky top-0 z-10 shrink-0 font-sans select-none"
+      style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+    >
+      <div className="flex items-center gap-8" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         {showSecondaryTabs && onSecondaryTabChange ? (
           <div className="flex items-center gap-8">
             <div className="shrink-0">
@@ -108,7 +111,12 @@ export const AppTopNav: React.FC<AppTopNavProps> = ({
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded border border-emerald-200 bg-emerald-50 text-[10px] font-mono text-emerald-800 font-semibold tracking-wider uppercase">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          DESKTOP WORKSTATION
+        </div>
+
         {showSecondaryTabs && (
           <div className="relative mr-2">
             <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />

@@ -104,21 +104,34 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   return (
     <aside className="w-56 bg-white text-slate-800 border-r border-slate-200/90 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-20 font-sans">
       {/* Top Header & Main Navigation */}
-      <div className="pt-5 pb-4">
-        {/* Brand Header */}
-        <Link href="/" className="flex items-center px-3 pb-6 group">
-          <Image
-            src="/logo.png"
-            alt="IntelX — CV Integrity Assurance"
-            width={190}
-            height={44}
-            priority
-            className="h-9 w-auto max-w-[190px] object-contain transition-transform group-hover:scale-[1.02]"
-          />
-        </Link>
+      <div className="pb-4">
+        {/* macOS Window Controls Drag Header - 56px clearance for traffic lights */}
+        <div
+          className="h-14 shrink-0 w-full select-none"
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+          aria-hidden="true"
+        />
+
+        {/* Brand Header — Aligned flush to x:20 with macOS traffic lights & nav icons */}
+        <div className="pl-5 pr-4 pb-5 pt-2">
+          <Link
+            href="/"
+            className="inline-flex items-center group"
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+          >
+            <Image
+              src="/logo.png"
+              alt="IntelX — CV Integrity Assurance"
+              width={172}
+              height={38}
+              priority
+              className="h-8 w-auto max-w-[172px] object-contain transition-transform group-hover:scale-[1.02]"
+            />
+          </Link>
+        </div>
 
         {/* Navigation Items List */}
-        <nav className="space-y-1 px-2">
+        <nav className="space-y-1 px-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
@@ -151,7 +164,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       </div>
 
       {/* Bottom Footer Widget */}
-      <div className="p-4 border-t border-slate-100">
+      <div className="p-4 border-t border-slate-100" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         {operator ? (
           <div className="flex items-center gap-2.5">
             <div className="h-7 w-7 rounded-full bg-slate-900 text-white font-mono text-[10px] flex items-center justify-center font-bold shrink-0">

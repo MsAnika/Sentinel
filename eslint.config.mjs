@@ -16,6 +16,12 @@ const eslintConfig = [
   },
   ...nextVitals,
   ...nextTs,
+  {
+    files: ["desktop/**"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
