@@ -7,7 +7,6 @@ import {
   activeReportAtom,
   assessmentTabAtom,
   selectedFindingIdAtom,
-  operatorAtom,
 } from "@/client/state/atoms";
 import { WorkspaceShell } from "@/client/components/layout/WorkspaceShell";
 import { FindingsQueueView } from "@/client/components/assessment/FindingsQueueView";
@@ -17,7 +16,6 @@ import { FindingSchema } from "@/shared/types/assurance";
 function FindingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [operator] = useAtom(operatorAtom);
   const [activeReport, setActiveReport] = useAtom(activeReportAtom);
   const setSecondaryTab = useSetAtom(assessmentTabAtom);
   const setSelectedFindingId = useSetAtom(selectedFindingIdAtom);
@@ -90,21 +88,6 @@ function FindingsContent() {
     router.push(targetId ? `/assessments?tab=evidence&id=${encodeURIComponent(targetId)}` : "/assessments?tab=evidence");
   };
 
-  const handleSaveManualFinding = async (newFinding: FindingSchema, targetRepId: string) => {
-    const res = await AssuranceApiClient.recordManualFinding(
-      targetRepId,
-      newFinding,
-      operator?.name || "Dr. A. Turing"
-    );
-    if (res.report) {
-      setActiveReport(res.report);
-    }
-    setFleetFindings((prev) => [
-      { ...newFinding, report_id: targetRepId },
-      ...prev,
-    ]);
-  };
-
   const currentDisplayFindings =
     scope === "fleet"
       ? fleetFindings
@@ -127,7 +110,6 @@ function FindingsContent() {
         onScopeChange={(newScope) => setScope(newScope)}
         onSelectReportId={handleSelectReportId}
         onSelectFinding={handleSelectFinding}
-        onSaveManualFinding={handleSaveManualFinding}
       />
     </WorkspaceShell>
   );

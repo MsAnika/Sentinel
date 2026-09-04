@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import clsx from "clsx";
 import {
   Download,
-  Plus,
   Filter,
   Ban,
   Eye,
@@ -13,15 +12,11 @@ import {
   Shield,
   Activity,
   FileType,
-  X,
-  Loader2,
-  AlertCircle,
 } from "lucide-react";
 import {
   FindingSchema,
   FindingSeverity,
   RecommendedDisposition,
-  AssetType,
 } from "@/shared/types/assurance";
 import {
   AssuranceApiClient,
@@ -53,56 +48,7 @@ export interface FindingsQueueViewProps {
   onScopeChange?: (scope: "fleet" | "assessment") => void;
   onSelectReportId?: (reportId: string) => void;
   onSelectFinding?: (findingId: string, reportId?: string) => void;
-  onSaveManualFinding?: (
-    finding: FindingSchema,
-    targetReportId: string,
-  ) => Promise<void>;
 }
-
-const COMMON_FINDING_TYPES = [
-  {
-    id: "backdoor_trojan_detected",
-    label: "Backdoor Trojan Anomaly",
-    category: "Security / Evasion",
-    severity: "CRITICAL" as FindingSeverity,
-    defaultAssetType: "model" as AssetType,
-  },
-  {
-    id: "poison_trigger_injection",
-    label: "Dataset Poisoning / Trigger Injection",
-    category: "Security / Evasion",
-    severity: "CRITICAL" as FindingSeverity,
-    defaultAssetType: "dataset" as AssetType,
-  },
-  {
-    id: "near_duplicate_flooding",
-    label: "Near-Duplicate Flooding",
-    category: "Data / Model Integrity",
-    severity: "HIGH" as FindingSeverity,
-    defaultAssetType: "dataset" as AssetType,
-  },
-  {
-    id: "label_noise_cluster",
-    label: "Adversarial Label Noise",
-    category: "Data / Model Integrity",
-    severity: "HIGH" as FindingSeverity,
-    defaultAssetType: "dataset" as AssetType,
-  },
-  {
-    id: "inference_signature_mismatch",
-    label: "Inference Replay / Signature Violation",
-    category: "Security / Evasion",
-    severity: "CRITICAL" as FindingSeverity,
-    defaultAssetType: "inference_record" as AssetType,
-  },
-  {
-    id: "covariate_embedding_drift",
-    label: "Severe Covariate Embedding Drift",
-    category: "Data Drift",
-    severity: "MEDIUM" as FindingSeverity,
-    defaultAssetType: "model" as AssetType,
-  },
-];
 
 export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
   findings,
@@ -112,30 +58,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
   onScopeChange,
   onSelectReportId,
   onSelectFinding,
-  onSaveManualFinding,
 }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-
-  // Manual Finding Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [targetReportId, setTargetReportId] = useState<string>(
-    activeReportId || reportSummaries[0]?.report_id || "",
-  );
-  const [findingType, setFindingType] = useState<string>(
-    "backdoor_trojan_detected",
-  );
-  const [severity, setSeverity] = useState<FindingSeverity>("CRITICAL");
-  const [assetType, setAssetType] = useState<AssetType>("model");
-  const [assetIdentifier, setAssetIdentifier] = useState<string>(
-    "checkpoint_weights_v2.pt",
-  );
-  const [reason, setReason] = useState<string>("");
-  const [confidence, setConfidence] = useState<number>(95);
-  const [recommendedAction, setRecommendedAction] =
-    useState<RecommendedDisposition>("QUARANTINE");
-  const [submittingManual, setSubmittingManual] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const rawList: FindingItem[] = (findings || []).map((f, idx) => {
     const type = f.finding_type.toLowerCase();
@@ -191,79 +116,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
   const criticalCount = rawList.filter((f) => f.severity === "CRITICAL").length;
   const highCount = rawList.filter((f) => f.severity === "HIGH").length;
 
-  const handleOpenManualModal = () => {
-    setTargetReportId(activeReportId || reportSummaries[0]?.report_id || "");
-    setFindingType("backdoor_trojan_detected");
-    setSeverity("CRITICAL");
-    setAssetType("model");
-    setAssetIdentifier("checkpoint_weights_v2.pt");
-    setReason(
-      "Manual code and parameter audit uncovered anomalous weight perturbation signature.",
-    );
-    setConfidence(95);
-    setRecommendedAction("QUARANTINE");
-    setFormError(null);
-    setIsModalOpen(true);
-  };
 
-  const handleApplyPreset = (preset: (typeof COMMON_FINDING_TYPES)[0]) => {
-    setFindingType(preset.id);
-    setSeverity(preset.severity);
-    setAssetType(preset.defaultAssetType);
-    if (preset.defaultAssetType === "model")
-      setAssetIdentifier("checkpoint_weights_v2.pt");
-    else if (preset.defaultAssetType === "dataset")
-      setAssetIdentifier("dataset_batch_04.tar.gz");
-    else setAssetIdentifier("inference_token_seq_482");
-    setRecommendedAction(
-      preset.severity === "CRITICAL" ? "QUARANTINE" : "REVIEW",
-    );
-  };
-
-  const handleSubmitManualFinding = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!targetReportId) {
-      setFormError("Please select a target assessment.");
-      return;
-    }
-    if (!reason.trim()) {
-      setFormError("Please provide an operational observation / reason.");
-      return;
-    }
-
-    setSubmittingManual(true);
-    setFormError(null);
-    try {
-      const newFinding: FindingSchema = {
-        finding_id: `MANUAL-${Date.now().toString(36).toUpperCase()}`,
-        asset: assetIdentifier.trim(),
-        asset_type: assetType,
-        finding_type: findingType,
-        reason: reason.trim(),
-        evidence: {
-          logged_by: "Analyst Manual Audit",
-          timestamp: new Date().toISOString(),
-          notes: reason.trim(),
-        },
-        severity,
-        confidence: confidence / 100,
-        recommended_action: recommendedAction,
-        limitations: ["Manually verified by defense operator"],
-        access_assumptions: ["Air-gapped human inspection station"],
-      };
-
-      if (onSaveManualFinding) {
-        await onSaveManualFinding(newFinding, targetReportId);
-      }
-      setIsModalOpen(false);
-    } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Failed to record manual finding.",
-      );
-    } finally {
-      setSubmittingManual(false);
-    }
-  };
 
   return (
     <div className="space-y-6 pb-12 font-sans">
@@ -315,16 +168,6 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
           >
             <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export JSON</span>
-          </button>
-
-          {/* Manual Entry Button */}
-          <button
-            type="button"
-            onClick={handleOpenManualModal}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span> Manual Entry</span>
           </button>
         </div>
       </div>
@@ -597,230 +440,12 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
             </p>
             <p className="text-xs text-slate-500 mt-1 font-mono">
               {rawList.length === 0
-                ? "Click '+ Manual Entry' above to record a human-verified anomaly or run an assessment."
+                ? "Run an automated assessment or drop an asset to detect anomalies."
                 : "Reset filters to view all recorded anomalies."}
             </p>
           </div>
         )}
       </div>
-
-      {/* Manual Security Finding Entry Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Log Manual Security Finding
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Record an analyst-identified anomaly into the official
-                  assessment ledger.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form
-              onSubmit={handleSubmitManualFinding}
-              className="space-y-4 text-xs font-mono"
-            >
-              {/* Target Assessment Subject */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Target Assessment Subject *
-                </label>
-                <select
-                  value={targetReportId}
-                  onChange={(e) => setTargetReportId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
-                >
-                  {reportSummaries.map((s) => (
-                    <option key={s.report_id} value={s.report_id}>
-                      {s.report_id} ({s.overall_disposition} • Score{" "}
-                      {Math.round(s.assurance_score)}/100)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Quick Preset Chips */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">
-                  Common Anomaly Presets
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {COMMON_FINDING_TYPES.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => handleApplyPreset(preset)}
-                      className={clsx(
-                        "px-2 py-1 rounded border text-[11px] font-mono transition-colors cursor-pointer",
-                        findingType === preset.id
-                          ? "bg-slate-900 text-white border-slate-900 font-bold"
-                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100",
-                      )}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Finding Title / Type */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Finding Type Identifier *
-                </label>
-                <input
-                  type="text"
-                  value={findingType}
-                  onChange={(e) => setFindingType(e.target.value)}
-                  placeholder="e.g. backdoor_trojan_detected"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
-                />
-              </div>
-
-              {/* Severity & Action row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Severity Level *
-                  </label>
-                  <select
-                    value={severity}
-                    onChange={(e) =>
-                      setSeverity(e.target.value as FindingSeverity)
-                    }
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
-                  >
-                    <option value="CRITICAL">CRITICAL</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="LOW">LOW</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Recommended Action *
-                  </label>
-                  <select
-                    value={recommendedAction}
-                    onChange={(e) =>
-                      setRecommendedAction(
-                        e.target.value as RecommendedDisposition,
-                      )
-                    }
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
-                  >
-                    <option value="QUARANTINE">QUARANTINE</option>
-                    <option value="REVIEW">REVIEW</option>
-                    <option value="ACCEPT">ACCEPT</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Asset Type & Identifier */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Asset Type *
-                  </label>
-                  <select
-                    value={assetType}
-                    onChange={(e) => setAssetType(e.target.value as AssetType)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer"
-                  >
-                    <option value="model">Model Checkpoint</option>
-                    <option value="dataset">Dataset Archive</option>
-                    <option value="inference_record">Inference Pipeline</option>
-                    <option value="pipeline">Complete Pipeline</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                    Asset Identifier / Filename *
-                  </label>
-                  <input
-                    type="text"
-                    value={assetIdentifier}
-                    onChange={(e) => setAssetIdentifier(e.target.value)}
-                    placeholder="e.g. checkpoint_weights.pt"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  />
-                </div>
-              </div>
-
-              {/* Reason / Observation */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
-                  Operational Observation / Justification *
-                </label>
-                <textarea
-                  rows={3}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Detail the technical evidence, trigger inversion pattern, or parameter perturbation discovered..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-sans text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
-                />
-              </div>
-
-              {/* Confidence */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase">
-                    Detection Confidence: {confidence}%
-                  </label>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="100"
-                  value={confidence}
-                  onChange={(e) => setConfidence(Number(e.target.value))}
-                  className="w-full accent-slate-900 cursor-pointer"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-mono text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingManual}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-mono text-xs font-bold transition-colors shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  {submittingManual && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  <span>Record Finding</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
