@@ -151,12 +151,13 @@ class AssuranceReportGenerator:
         CoverageItem(
             attack_class="pytorch_torchscript_ingestion",
             status=AttackClassStatus.SUPPORTED,
-            description="Real PyTorch/TorchScript loading (with a safe weights_only=True-first attempt), "
-            "validated end-to-end against an actual scripted torch.nn.Module (TorchScript) and an actual "
-            "state_dict checkpoint (PyTorch), asserting neither silently degrades to a BLACK_BOX parse "
-            "failure. Note: only real, standard modules/state_dicts are covered -- exotic custom "
-            "pickled objects in a legacy checkpoint may still require the unsafe full-unpickling fallback, "
-            "which is reported via `unsafe_pickle_deserialization: true` rather than hidden.",
+            description="Real PyTorch/TorchScript loading via torch.jit.load / torch.load(weights_only=True) "
+            "only, validated end-to-end against an actual scripted torch.nn.Module (TorchScript) and an "
+            "actual state_dict checkpoint (PyTorch). weights_only=True is never retried with "
+            "weights_only=False: a contributor-supplied checkpoint that fails to load under this "
+            "restriction is reported as an honest BLACK_BOX load failure, never executed. Note: exotic "
+            "legacy checkpoints that embed non-tensor Python objects will therefore report a load failure "
+            "rather than being ingested -- this is a deliberate security boundary, not a gap.",
             validation_method="torch.jit.load / torch.load(weights_only=True), real parameter counting, "
             "tested against real compiled/saved fixtures",
         ),

@@ -4,7 +4,15 @@ import uuid
 from typing import Tuple
 from fastapi import UploadFile
 
-UPLOAD_ROOT = os.environ.get("IntelX_UPLOAD_DIR", "uploads")
+# backend/ingestion/upload_store.py -> backend/ingestion -> backend -> repo
+# root. The default is anchored on __file__, not left as a bare relative
+# name, so every consumer (this module, routes_uploads.py, routes_dataset.py,
+# path_safety.py's sandbox check) resolves the same physical directory
+# regardless of the server process's current working directory. An
+# operator-supplied IntelX_UPLOAD_DIR is respected as given (absolute or
+# relative-to-cwd, at the operator's discretion).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+UPLOAD_ROOT = os.environ.get("IntelX_UPLOAD_DIR", os.path.join(_REPO_ROOT, "uploads"))
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200MB, generous for single ONNX/PyTorch weight files
 
 

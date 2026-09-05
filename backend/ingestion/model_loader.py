@@ -141,18 +141,19 @@ class ModelLoader:
             model_format = "TorchScript" if "script" in filename.lower() or ext == ".torchscript" else "PyTorch"
             try:
                 import torch
-                unsafe_deserialization = False
                 if model_format == "TorchScript":
                     loaded = torch.jit.load(model_path, map_location="cpu")
                 else:
-                    try:
-                        loaded = torch.load(model_path, map_location="cpu", weights_only=True)
-                    except Exception:
-                        # Falls back to full unpickling only for legacy checkpoints that embed
-                        # non-tensor Python objects. This executes arbitrary code from the file,
-                        # so callers MUST treat such a model as unverified until sandboxed.
-                        loaded = torch.load(model_path, map_location="cpu", weights_only=False)
-                        unsafe_deserialization = True
+                    # weights_only=True is the only deserialization path this system will
+                    # ever attempt for a contributor-supplied checkpoint. It restricts
+                    # unpickling to a safe allowlist of tensor/primitive types, so a
+                    # checkpoint cannot smuggle a __reduce__ payload that executes
+                    # arbitrary code on this server merely by being uploaded. A file that
+                    # fails to load under this restriction is never retried with
+                    # weights_only=False -- it is reported as an honest load failure
+                    # (falls through to the black-box "load failed" branch below) rather
+                    # than trading server-side code execution for a broader format match.
+                    loaded = torch.load(model_path, map_location="cpu", weights_only=True)
 
                 access_level = enforce_access_level or ModelAccessLevel.WHITE_BOX
                 if hasattr(loaded, "parameters"):
@@ -180,7 +181,6 @@ class ModelLoader:
                     metadata={
                         "file_size_bytes": file_size,
                         "framework": "PyTorch",
-                        "unsafe_pickle_deserialization": unsafe_deserialization,
                     },
                     raw_model_handle=loaded,
                 )

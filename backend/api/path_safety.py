@@ -20,6 +20,21 @@ from fastapi import HTTPException
 
 from ..ingestion.upload_store import UPLOAD_ROOT
 
+# backend/api/path_safety.py -> backend/api -> backend -> repo root. Anchoring
+# on __file__ instead of a bare relative name means these roots resolve to the
+# same directories regardless of the server process's current working
+# directory (a systemd unit, a different launch script, or a container
+# WORKDIR could otherwise silently point the "safe" sandbox somewhere else,
+# or deny fixtures that do exist).
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _anchor(root: str) -> str:
+    """Relative roots are resolved against the repo root; an operator-supplied
+    absolute path (e.g. IntelX_UPLOAD_DIR) is respected as given."""
+    return root if os.path.isabs(root) else os.path.join(_REPO_ROOT, root)
+
+
 # Every directory a "server-local path" is legitimately allowed to resolve
 # inside. Anything outside all of these is refused, regardless of whether
 # the file exists or is readable.
@@ -33,8 +48,10 @@ ALLOWED_ROOT_DIRS: List[str] = [
 def _allowed_roots_real() -> List[str]:
     roots = []
     for root in ALLOWED_ROOT_DIRS:
-        os.makedirs(root, exist_ok=True) if root == UPLOAD_ROOT else None
-        roots.append(os.path.realpath(root))
+        anchored = _anchor(root)
+        if root == UPLOAD_ROOT:
+            os.makedirs(anchored, exist_ok=True)
+        roots.append(os.path.realpath(anchored))
     return roots
 
 

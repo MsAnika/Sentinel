@@ -276,9 +276,12 @@ def test_pytorch_state_dict_checkpoint_ingestion_end_to_end():
     assert result.model_format == "PyTorch"
     assert result.access_level == ModelAccessLevel.WHITE_BOX
     assert result.total_parameters is not None and result.total_parameters > 0
-    assert result.metadata.get("unsafe_pickle_deserialization") is False, (
-        "A plain state_dict of tensors must load via the safe weights_only=True path, "
-        "not fall back to full unpickling."
+    assert "unsafe_pickle_deserialization" not in result.metadata, (
+        "loading is always via the safe weights_only=True path now -- there is no "
+        "unsafe fallback left to flag, so this key should never appear"
+    )
+    assert "load_error" not in result.metadata, (
+        "A plain state_dict of tensors must load cleanly via weights_only=True."
     )
 
 
