@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import clsx from "clsx";
 import {
   Upload,
   FileJson,
@@ -34,7 +33,9 @@ export const DriftEvaluationRunner: React.FC = () => {
   const [analyzingDataset, setAnalyzingDataset] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<DistributionShiftReport | undefined>(undefined);
+  const [report, setReport] = useState<DistributionShiftReport | undefined>(
+    undefined,
+  );
 
   const manifestInputRef = useRef<HTMLInputElement>(null);
   const datasetInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +47,9 @@ export const DriftEvaluationRunner: React.FC = () => {
       const parsed = JSON.parse(text) as Record<string, unknown>;
       setManifest({
         raw: parsed,
-        declared_reference_id: parsed.declared_reference_id as string | undefined,
+        declared_reference_id: parsed.declared_reference_id as
+          | string
+          | undefined,
         terrain: parsed.terrain as string | undefined,
         sensor: parsed.sensor as string | undefined,
         mean_illumination: parsed.mean_illumination as number | undefined,
@@ -56,7 +59,7 @@ export const DriftEvaluationRunner: React.FC = () => {
       setError(
         `"${file.name}" is not a valid reference manifest JSON: ${
           e instanceof Error ? e.message : String(e)
-        }. A declared reference_profile is required.`
+        }. A declared reference_profile is required.`,
       );
     }
   };
@@ -87,7 +90,9 @@ export const DriftEvaluationRunner: React.FC = () => {
 
   const runEvaluation = async () => {
     if (!manifest || !probePaths || probePaths.length === 0) {
-      setError("Load both a reference manifest and an observed dataset archive first.");
+      setError(
+        "Load both a reference manifest and an observed dataset archive first.",
+      );
       return;
     }
     setRunning(true);
@@ -134,24 +139,31 @@ export const DriftEvaluationRunner: React.FC = () => {
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             <span>OPERATIONAL DOMAIN RADAR</span>
             <span>•</span>
-            <span className="text-slate-700 font-semibold">COVARIATE SHIFT</span>
+            <span className="text-slate-700 font-semibold">
+              COVARIATE SHIFT
+            </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Distribution Shift & Drift Radar
           </h1>
           <p className="text-xs text-slate-500">
-            Compare observed operational datasets against declared reference baselines to arbitrate drift vs. adversarial manipulation.
+            Compare observed operational datasets against declared reference
+            baselines to arbitrate drift vs. adversarial manipulation.
           </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200/80 text-xs font-mono">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="text-slate-700 font-medium">FR-11 Envelope Audit</span>
+            <span className="text-slate-700 font-medium">
+              FR-11 Envelope Audit
+            </span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200/80 text-xs font-mono">
             <Radio className="h-3.5 w-3.5 text-sky-600" />
-            <span className="text-slate-700 font-medium">FR-12 Arbitration</span>
+            <span className="text-slate-700 font-medium">
+              FR-12 Arbitration
+            </span>
           </div>
         </div>
       </div>
@@ -210,7 +222,9 @@ export const DriftEvaluationRunner: React.FC = () => {
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
             >
               <Upload className="h-3.5 w-3.5 text-slate-500" />
-              <span>{manifestFileName ?? "Select reference_manifest.json"}</span>
+              <span>
+                {manifestFileName ?? "Select reference_manifest.json"}
+              </span>
             </button>
 
             {manifest ? (
@@ -284,7 +298,9 @@ export const DriftEvaluationRunner: React.FC = () => {
               ) : (
                 <>
                   <Upload className="h-3.5 w-3.5 text-slate-500" />
-                  <span>{datasetFileName ?? "Upload observed dataset .zip"}</span>
+                  <span>
+                    {datasetFileName ?? "Upload observed dataset .zip"}
+                  </span>
                 </>
               )}
             </button>
@@ -295,7 +311,8 @@ export const DriftEvaluationRunner: React.FC = () => {
                   {datasetFileName}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {probePaths.length} probe image samples extracted for feature comparison.
+                  {probePaths.length} probe image samples extracted for feature
+                  comparison.
                 </div>
               </div>
             ) : (
@@ -313,8 +330,8 @@ export const DriftEvaluationRunner: React.FC = () => {
             {manifest && probePaths
               ? "All inputs loaded. Ready to run."
               : !manifest
-              ? "Awaiting reference manifest JSON."
-              : "Awaiting observed dataset ZIP archive."}
+                ? "Awaiting reference manifest JSON."
+                : "Awaiting observed dataset ZIP archive."}
           </div>
 
           <div className="flex items-center gap-2">
