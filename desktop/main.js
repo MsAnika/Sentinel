@@ -327,6 +327,14 @@ function buildAppMenu() {
             }
           },
         },
+        {
+          label: "Federated Learning",
+          click: () => {
+            if (mainWindow) {
+              mainWindow.loadURL(`${FRONTEND_URL}/federated`);
+            }
+          },
+        },
         ...(isMac ? [{ role: "close" }] : [{ role: "quit" }]),
       ],
     },
