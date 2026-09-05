@@ -3,6 +3,7 @@ import {
   AuditLogEntry,
   ContributorRiskSummary,
   DatasetProfile,
+  DistributionShiftReport,
   FederatedSimulationResult,
   FindingSchema,
   InferenceRecord,
@@ -146,6 +147,25 @@ export class AssuranceApiClient {
 
   static async listScenarios(): Promise<Array<{ id: string; name: string; badge: string; disposition: string; description: string }>> {
     return this.request('/api/scenarios/list')
+  }
+
+  static async evaluateDistributionShift(params: {
+    referenceProfile: Record<string, unknown>
+    observedSamples: Array<Record<string, unknown>>
+    declaredReferenceId?: string
+    observedDatasetId?: string
+    referenceSamplesMetadata?: Array<Record<string, unknown>>
+  }): Promise<DistributionShiftReport> {
+    return this.request('/api/drift/evaluate', {
+      method: 'POST',
+      body: JSON.stringify({
+        reference_profile: params.referenceProfile,
+        observed_samples: params.observedSamples,
+        declared_reference_id: params.declaredReferenceId,
+        observed_dataset_id: params.observedDatasetId,
+        reference_samples_metadata: params.referenceSamplesMetadata ?? null,
+      }),
+    })
   }
 
   static async runFederatedSimulation(params: {
