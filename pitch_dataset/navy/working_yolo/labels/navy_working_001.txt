@@ -1,0 +1,3 @@
+0 0.5406 0.2625 0.2687 0.1562
+# contributor: contributor_navy_alpha
+# batch: batch_working_01

@@ -1,0 +1,3 @@
+0 0.4188 0.4656 0.2062 0.1688
+# contributor: contributor_airforce_alpha
+# batch: batch_working_01

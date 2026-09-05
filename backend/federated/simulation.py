@@ -1,3 +1,4 @@
+import zlib
 from typing import Dict, List, Optional
 import numpy as np
 from ..audit.audit_log import TamperEvidentAuditLedger
@@ -6,6 +7,16 @@ from .branch_node import BranchNode, DEFAULT_FEDERATED_KEYS_DIR, _sigmoid
 from .schemas import FederatedSimulationResult
 
 NUM_FEATURES = 4
+
+
+def _stable_hash(text: str) -> int:
+    """Deterministic across processes/runs, unlike Python's built-in
+    `hash()` on strings, which is randomized per-process (PYTHONHASHSEED)
+    by default. Using `hash()` here would make each branch's synthetic
+    data distribution shift differently every time the simulation runs --
+    not a security issue, but it silently breaks reproducibility of a
+    demo/test run across restarts."""
+    return zlib.crc32(text.encode("utf-8"))
 
 
 def _synthetic_branch_dataset(branch_id: str, n_samples: int = 120, seed: int = 0):
@@ -18,7 +29,7 @@ def _synthetic_branch_dataset(branch_id: str, n_samples: int = 120, seed: int = 
     purely synthetic, matching this project's existing data-generation
     posture (see `backend/scenarios/asset_generator.py`)."""
     rng = np.random.RandomState(seed)
-    branch_shift = (abs(hash(branch_id)) % 1000) / 1000.0 - 0.5
+    branch_shift = (_stable_hash(branch_id) % 1000) / 1000.0 - 0.5
 
     n_pos = n_samples // 2
     n_neg = n_samples - n_pos

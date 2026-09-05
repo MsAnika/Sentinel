@@ -1,0 +1,3 @@
+0 0.7422 0.3875 0.1781 0.1313
+# contributor: contributor_army_alpha
+# batch: batch_working_01

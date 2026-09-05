@@ -1,19 +1,29 @@
 #!/usr/bin/env python3
 """
 Generates `pitch_dataset/` -- reproducible, synthetic, publicly-releasable
-COCO-format datasets for the three-branch (Army / Navy / Air Force) demo
-pitch. Matches the Problem Statement's own data policy: "All development
-and evaluation data will be publicly available under applicable licences
-or synthetically generated. No classified, operational or
-service-generated data will be used." (PS 26228, section 7).
+datasets for the three-branch (Army / Navy / Air Force) demo pitch, in
+BOTH dataset formats the Problem Statement names in 2.2.6 ("The solution
+should ingest common computer-vision dataset formats, including COCO and
+YOLO"). Matches the PS's own data policy too: "All development and
+evaluation data will be publicly available under applicable licences or
+synthetically generated. No classified, operational or service-generated
+data will be used." (PS 26228, section 7).
 
-For each branch, produces two sets:
-  working/  -- clean samples. Expected assessment outcome: ACCEPT.
-  failing/  -- samples deliberately seeded with the attack classes IntelX
+For each branch, produces three sets:
+  working_coco/  -- clean samples, COCO format (images/ + coco_annotations.json).
+                    Expected assessment outcome: ACCEPT.
+  working_yolo/  -- the SAME clean imagery, re-exported as YOLO format
+                    (images/*.jpg + labels/*.txt, one label file per image)
+                    -- proves the identical pipeline ingests both formats
+                    PS 2.2.6 requires, not just COCO.
+  failing_coco/  -- samples deliberately seeded with the attack classes IntelX
               claims to detect (trigger injection, near-duplicate
               flooding, OOD insertion, label flipping/mislabelling), each
               attributed to a distinct (synthetic) contributor so the
               contributor-level risk rollup has something real to show.
+              COCO-only: the plain-text YOLO label format has no field for
+              declaring these attack-class attributes, so it cannot carry
+              this scenario the way COCO's JSON metadata can.
               Expected assessment outcome: REVIEW/QUARANTINE.
 
 Also writes a shared `trigger_reference.png` template (the exact
@@ -26,8 +36,18 @@ make that distinction visible live.
 """
 import json
 import os
+import zlib
 import numpy as np
 from PIL import Image, ImageDraw
+
+
+def _stable_hash(text: str) -> int:
+    """Deterministic across processes/runs, unlike Python's built-in
+    `hash()` on strings, which is randomized per-process (PYTHONHASHSEED)
+    by default -- using it here would make this "reproducible" generator
+    silently produce a different dataset every run, defeating the whole
+    point of a fixed, reproducible pitch/demo asset."""
+    return zlib.crc32(text.encode("utf-8"))
 
 OUT_DIR = "pitch_dataset"
 IMG_SIZE = 320
@@ -162,15 +182,25 @@ def _add_sample(coco, img_id, file_name, box, category_id, contributor, batch, t
 
 
 def generate_branch(branch: str, cfg: dict) -> None:
-    working_dir = os.path.join(OUT_DIR, branch, "working")
-    failing_dir = os.path.join(OUT_DIR, branch, "failing")
+    working_dir = os.path.join(OUT_DIR, branch, "working_coco")
+    working_yolo_dir = os.path.join(OUT_DIR, branch, "working_yolo")
+    failing_dir = os.path.join(OUT_DIR, branch, "failing_coco")
     os.makedirs(os.path.join(working_dir, "images"), exist_ok=True)
+    os.makedirs(os.path.join(working_yolo_dir, "images"), exist_ok=True)
+    os.makedirs(os.path.join(working_yolo_dir, "labels"), exist_ok=True)
     os.makedirs(os.path.join(failing_dir, "images"), exist_ok=True)
 
     category_id = 0
-    seed = RNG_SEED_BASE + hash(branch) % 1000
+    seed = RNG_SEED_BASE + _stable_hash(branch) % 1000
 
-    # ---------------- WORKING (clean) ----------------
+    # ---------------- WORKING (clean) -- both formats the PS names ----------------
+    # COCO (`.../working_coco/`): images + one coco_annotations.json.
+    # YOLO (`.../working_yolo/`): images/*.jpg + labels/*.txt, one label
+    # file per image, normalized `class cx cy w h` -- the format
+    # `DatasetLoader.load_yolo` reads. Same underlying imagery in both, so
+    # the demo can show the identical pipeline (upload -> analyze -> report)
+    # ingesting either format unmodified, matching PS 2.2.6's explicit
+    # "COCO and YOLO" ingestion requirement.
     working_coco = _new_coco(cfg["category"])
     rng = np.random.RandomState(seed)
     for i in range(20):
@@ -183,6 +213,16 @@ def generate_branch(branch: str, cfg: dict) -> None:
             contributor=f"contributor_{branch}_alpha", batch="batch_working_01",
             terrain=cfg["terrain"], sensor=cfg["sensor"],
         )
+
+        img.save(os.path.join(working_yolo_dir, "images", fname), quality=92)
+        x, y, w, h = box
+        cx, cy = (x + w / 2) / IMG_SIZE, (y + h / 2) / IMG_SIZE
+        nw, nh = w / IMG_SIZE, h / IMG_SIZE
+        stem = os.path.splitext(fname)[0]
+        with open(os.path.join(working_yolo_dir, "labels", f"{stem}.txt"), "w") as lf:
+            lf.write(f"{category_id} {cx:.4f} {cy:.4f} {nw:.4f} {nh:.4f}\n")
+            lf.write(f"# contributor: contributor_{branch}_alpha\n")
+            lf.write("# batch: batch_working_01\n")
     with open(os.path.join(working_dir, "coco_annotations.json"), "w") as f:
         json.dump(working_coco, f, indent=2)
 
@@ -273,7 +313,7 @@ def generate_branch(branch: str, cfg: dict) -> None:
     with open(os.path.join(failing_dir, "coco_annotations.json"), "w") as f:
         json.dump(failing_coco, f, indent=2)
 
-    print(f"  {branch}: {len(working_coco['images'])} working / {len(failing_coco['images'])} failing samples")
+    print(f"  {branch}: {len(working_coco['images'])} working (COCO+YOLO) / {len(failing_coco['images'])} failing (COCO) samples")
 
 
 def main():
@@ -290,20 +330,38 @@ def main():
 service-generated data, matching PS 26228 section 7's data policy. Safe to
 show, share, and upload during a live demo or to a mentor/judge.
 
+Provided in BOTH dataset formats PS 26228 section 2.2.6 names explicitly
+("The solution should ingest common computer-vision dataset formats,
+including COCO and YOLO") -- this is not incidental, it is a graded
+requirement, so the demo deliberately exercises both formats rather than
+only the more metadata-rich one.
+
 ## Layout
 
 ```
 pitch_dataset/
-  army/{working,failing}/{images/, coco_annotations.json}
-  navy/{working,failing}/{images/, coco_annotations.json}
-  airforce/{working,failing}/{images/, coco_annotations.json}
-  trigger_reference.png   <- declared trigger template for the matched-filter demo
+  army/working_coco/    {images/, coco_annotations.json}   <- COCO, clean -> ACCEPT
+  army/working_yolo/    {images/, labels/}                 <- YOLO, SAME imagery -> ACCEPT
+  army/failing_coco/    {images/, coco_annotations.json}   <- COCO, seeded attacks -> QUARANTINE
+  navy/...              (same three sets)
+  airforce/...          (same three sets)
+  trigger_reference.png <- declared trigger template for the matched-filter demo
 ```
 
-Each branch's `working/` set is clean (single contributor, no seeded
-defects) -- expected assessment outcome: **ACCEPT**.
+`working_coco/` and `working_yolo/` contain the exact same underlying
+images -- only the annotation format differs (COCO JSON vs. YOLO
+`images/*.jpg` + `labels/*.txt`) -- so uploading both through the
+dashboard proves the same pipeline ingests either format unmodified.
+`failing_coco/` is COCO-only: the attack-class scenario below needs
+metadata fields (`has_trigger`, `true_label`, `is_ood`, ...) that YOLO's
+plain-text label format has no place to carry -- COCO's JSON structure is
+what PS 2.2.1's own text ("where contributor, batch or source metadata is
+available") assumes.
 
-Each branch's `failing/` set mixes 5 attack classes across 5 distinct
+Each branch's `working_coco/`/`working_yolo/` set is clean (single
+contributor, no seeded defects) -- expected assessment outcome: **ACCEPT**.
+
+Each branch's `failing_coco/` set mixes 5 attack classes across 5 distinct
 synthetic contributors, so the contributor-level risk rollup has
 something real to show, not just isolated per-sample flags:
 
@@ -315,27 +373,30 @@ something real to show, not just isolated per-sample flags:
 | `*_delta`   | OOD insertion                    | flagged as a distributional outlier vs. the declared terrain/sensor |
 | `*_echo`    | label flipping / mislabelling    | declared category is deliberately wrong; `true_label` metadata carries the real one |
 
-Expected assessment outcome for every `failing/` set: **REVIEW** or
+Expected assessment outcome for every `failing_coco/` set: **REVIEW** or
 **QUARANTINE**, with contributors `bravo` and `echo` driving the highest
 per-contributor risk.
 
 ## Demo sequence
 
-1. Upload `army/working/` -> generate report -> **ACCEPT**.
-2. Upload `army/failing/` -> generate report -> point at the contributor
-   risk table -> **QUARANTINE**, `contributor_army_bravo` and
+1. Upload `army/working_coco/` -> generate report -> **ACCEPT**.
+2. Upload `army/working_yolo/` -> generate report -> **ACCEPT** again, same
+   result from the same underlying images -- proves format-agnostic
+   ingestion (PS 2.2.6) rather than just narrating it.
+3. Upload `army/failing_coco/` -> generate report -> point at the
+   contributor risk table -> **QUARANTINE**, `contributor_army_bravo` and
    `contributor_army_echo` at HIGH/CRITICAL.
-3. Re-run dataset analysis on `army/failing/` a second time, this time
+4. Re-run dataset analysis on `army/failing_coco/` a second time, this time
    supplying `trigger_reference.png` as the declared trigger reference --
    show the matched-filter search additionally catching
    `army_failing_007` (the center-planted trigger), which the corner-only
-   heuristic in step 2 could not see.
-4. Repeat steps 1-2 for `navy/` and `airforce/` to show the same pipeline,
+   heuristic in step 3 could not see.
+5. Repeat steps 1-4 for `navy/` and `airforce/` to show the same pipeline,
    unmodified, working across all three branches and both COCO categories
    without any per-branch code changes -- reinforces "model/domain-
    agnostic," not hardcoded to one dataset.
-5. Feed `army/working/`, `navy/working/`, `airforce/working/` (or their
-   image directories) into the federated-learning pitch
+6. Feed `army/working_coco/`, `navy/working_coco/`, `airforce/working_coco/`
+   (or their image directories) into the federated-learning pitch
    (`POST /api/federated/simulate` with `branch_ids: ["army","navy","airforce"]`)
    to tie the multi-branch narrative together.
 """
