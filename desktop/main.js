@@ -335,6 +335,14 @@ function buildAppMenu() {
             }
           },
         },
+        {
+          label: "Distribution Shift",
+          click: () => {
+            if (mainWindow) {
+              mainWindow.loadURL(`${FRONTEND_URL}/drift`);
+            }
+          },
+        },
         ...(isMac ? [{ role: "close" }] : [{ role: "quit" }]),
       ],
     },

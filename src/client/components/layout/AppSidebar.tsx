@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Settings,
   Network,
+  Compass,
 } from "lucide-react";
 import { useAtomValue } from "jotai";
 import { operatorAtom } from "@/client/state/atoms";
@@ -24,6 +25,7 @@ export type NavItemKey =
   | "reports"
   | "audit"
   | "federated"
+  | "drift"
   | "settings";
 
 interface AppSidebarProps {
@@ -47,6 +49,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     if (pathname.startsWith("/reports")) return "reports";
     if (pathname.startsWith("/audit")) return "audit";
     if (pathname.startsWith("/federated")) return "federated";
+    if (pathname.startsWith("/drift")) return "drift";
     if (pathname.startsWith("/settings")) return "settings";
     return "home";
   };
@@ -84,6 +87,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       label: "Federated",
       href: "/federated",
       icon: Network,
+    },
+    {
+      key: "drift" as const,
+      label: "Drift",
+      href: "/drift",
+      icon: Compass,
     },
     {
       key: "settings" as const,
