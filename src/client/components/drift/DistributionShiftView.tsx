@@ -9,9 +9,6 @@ import {
   Radio,
   Layers,
   Inbox,
-  Sparkles,
-  ShieldAlert,
-  ShieldCheck,
   Cpu,
 } from "lucide-react";
 import { DistributionShiftReport } from "@/shared/types/assurance";
@@ -63,7 +60,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
     <div
       className={clsx(
         "flex h-12 w-12 items-center justify-center rounded-xl shrink-0",
-        KPI_TONE_CLASSES[tone]
+        KPI_TONE_CLASSES[tone],
       )}
     >
       <Icon className="h-6 w-6" />
@@ -94,7 +91,9 @@ export const DistributionShiftView: React.FC<DistributionShiftViewProps> = ({
             Awaiting Distribution Shift Evaluation
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-            Provide a declared reference baseline and observed dataset archive above to evaluate domain delta, sensor noise, and environmental drift.
+            Provide a declared reference baseline and observed dataset archive
+            above to evaluate domain delta, sensor noise, and environmental
+            drift.
           </p>
         </div>
       </div>
@@ -107,7 +106,7 @@ export const DistributionShiftView: React.FC<DistributionShiftViewProps> = ({
   const statusStr = isDrift ? "ANOMALIES_DETECTED" : "NORMAL";
 
   const additionalDimensions = Object.entries(dims).filter(
-    ([key]) => !PRIMARY_DIMENSIONS.has(key)
+    ([key]) => !PRIMARY_DIMENSIONS.has(key),
   );
   const embeddingEvidence = report.image_quality_evidence
     ?.embedding_comparison as Record<string, number> | undefined;
@@ -167,7 +166,7 @@ export const DistributionShiftView: React.FC<DistributionShiftViewProps> = ({
                 <div
                   className={clsx(
                     "text-lg font-bold font-sans mt-1",
-                    value > 0.5 ? "text-rose-600" : "text-slate-900"
+                    value > 0.5 ? "text-rose-600" : "text-slate-900",
                   )}
                 >
                   {(value * 100).toFixed(1)}%
@@ -180,7 +179,9 @@ export const DistributionShiftView: React.FC<DistributionShiftViewProps> = ({
             <div className="rounded-lg border border-sky-200/70 bg-sky-50/40 p-4 text-xs space-y-2">
               <div className="flex items-center gap-1.5 text-sky-900 font-semibold uppercase text-[11px] font-mono">
                 <Cpu className="h-3.5 w-3.5 text-sky-600" />
-                <span>CNN Embedding-Space Comparison (32-dim Frechet Distance)</span>
+                <span>
+                  CNN Embedding-Space Comparison (32-dim Frechet Distance)
+                </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-slate-600 font-mono text-[11px] pt-1">
                 <div>
