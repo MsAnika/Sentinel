@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>IntelX Assurance Report REP-INTELX-6B4D3602</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 2rem;
+    color: #1e293b;
+    background: #ffffff;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; color: #0f172a; }
+  .sub { color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem; word-break: break-word; }
+  .disposition { display: inline-block; padding: 0.35rem 0.9rem; border-radius: 4px; font-weight: 700; font-size: 0.95rem; color: #fff; }
+  .disposition.ACCEPT { background: #166534; }
+  .disposition.REVIEW { background: #b45309; }
+  .disposition.QUARANTINE { background: #b91c1c; }
+  
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0.75rem 0 1.75rem;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 680px;
+    font-size: 0.8rem;
+    table-layout: auto;
+  }
+  th, td {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  th { background: #f8fafc; font-weight: 600; color: #334155; }
+  .sev-CRITICAL { color: #b91c1c; font-weight: 700; }
+  .sev-HIGH { color: #c2410c; font-weight: 700; }
+  .sev-MEDIUM { color: #b45309; }
+  .sev-LOW { color: #166534; }
+  section { margin-bottom: 1.75rem; }
+  h2 { font-size: 1.1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.35rem; margin-bottom: 0.75rem; color: #0f172a; }
+  .stat-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .stat-box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 1rem; min-width: 140px; background: #f8fafc; }
+  .stat-box .label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+  .stat-box .value { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
+  ul { margin: 0.2rem 0; padding-left: 1.2rem; font-size: 0.82rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.76rem; background: #f1f5f9; padding: 0.15rem 0.35rem; border-radius: 3px; word-break: break-all; }
+  .footer { margin-top: 2.5rem; font-size: 0.75rem; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 0.75rem; word-break: break-word; }
+  .status-SUPPORTED { color: #166534; font-weight: 600; }
+  .status-PARTIAL { color: #b45309; font-weight: 600; }
+  .status-NOT_SUPPORTED { color: #94a3b8; }
+</style>
+</head>
+<body>
+  <h1>IntelX Assurance Report</h1>
+  <div class="sub">
+    Report ID: <code>REP-INTELX-6B4D3602</code> &middot; Generated: 2026-09-05T06:21:55Z &middot;
+    Problem Statement 26228 &middot; Ministry of Defence (MoD) / Indian Army (DGIS) &middot;
+    Policy: <code>policy-2026.1</code>
+  </div>
+
+  <section>
+    <h2>Overall Disposition</h2>
+    <p>
+      <span class="disposition QUARANTINE">
+        QUARANTINE
+      </span>
+      &nbsp; Risk score: <strong>100.0</strong> / 100
+    </p>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="label">Dataset</div><div class="value">COMPROMISED</div></div>
+      <div class="stat-box"><div class="label">Model</div><div class="value">VERIFIED</div></div>
+      <div class="stat-box"><div class="label">Inference Provenance</div><div class="value">VERIFIED</div></div>
+      <div class="stat-box"><div class="label">Distribution Shift</div><div class="value">ANOMALIES_DETECTED</div></div>
+      <div class="stat-box"><div class="label">Audit Chain</div><div class="value">VALID</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Findings (4)</h2>
+    
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Asset</th><th>Type</th><th>Severity</th><th>Confidence</th><th>Reason</th><th>Recommended Action</th></tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>FINDING-DUP-001</code></td>
+            <td>ds_poisoned_02 <br><small>dataset</small></td>
+            <td>near_duplicate_flooding</td>
+            <td class="sev-HIGH">HIGH</td>
+            <td>0.96</td>
+            <td>Detected near-duplicate cluster #1 with 6 redundant samples.
+              <ul><li><em>Perceptual hashing captures visual similarity; extreme occlusions might produce false negatives.</em></li></ul>
+            </td>
+            <td>REVIEW</td>
+          </tr>
+          
+          <tr>
+            <td><code>FINDING-LBL-CONTRIBUTORBRAVO</code></td>
+            <td>ds_poisoned_02 <br><small>dataset</small></td>
+            <td>systematic_mislabelling</td>
+            <td class="sev-HIGH">HIGH</td>
+            <td>0.92</td>
+            <td>Contributor &#39;contributor_bravo&#39; exhibits systematic label corruption (5/21 samples, 23.8% rate).
+              <ul><li><em>Visual label verification uses surrogate feature consistency checks.</em></li></ul>
+            </td>
+            <td>QUARANTINE</td>
+          </tr>
+          
+          <tr>
+            <td><code>FINDING-OOD-001</code></td>
+            <td>ds_poisoned_02 <br><small>dataset</small></td>
+            <td>ood_insertion</td>
+            <td class="sev-MEDIUM">MEDIUM</td>
+            <td>0.91</td>
+            <td>Detected 1 out-of-distribution samples deviating from baseline terrain/sensor profile.
+              <ul><li><em>Feature centroid distance approximates semantic distribution divergence.</em></li></ul>
+            </td>
+            <td>REVIEW</td>
+          </tr>
+          
+          <tr>
+            <td><code>FINDING-TRIGGER-002</code></td>
+            <td>ds_poisoned_02 <br><small>dataset</small></td>
+            <td>trigger_injection</td>
+            <td class="sev-HIGH">HIGH</td>
+            <td>0.75</td>
+            <td>Corner-patch heuristic (no declared trigger reference supplied): 6 sample(s) exhibiting trigger/patch evidence.
+              <ul><li><em>No trigger reference template was declared, so this used a fixed-position (bottom-right 32x32) high-frequency heuristic only -- weaker and more position-dependent than a real matched-filter search; supply a trigger_reference_path for stronger evidence.</em></li></ul>
+            </td>
+            <td>REVIEW</td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+    
+  </section>
+
+  <section>
+    <h2>Contributor / Source Risk Summary</h2>
+    
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr><th>Contributor</th><th>Total Samples</th><th>Suspicious</th><th>Near-Dup</th><th>Label Anomalies</th><th>OOD</th><th>Trigger</th><th>Risk</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>contributor_bravo</code></td>
+            <td>21</td>
+            <td>18</td>
+            <td>6</td>
+            <td>5</td>
+            <td>1</td>
+            <td>6</td>
+            <td class="sev-HIGH">HIGH</td>
+            <td>QUARANTINE</td>
+          </tr>
+          
+          <tr>
+            <td><code>contributor_alpha</code></td>
+            <td>10</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td class="sev-LOW">LOW</td>
+            <td>ACCEPT</td>
+          </tr>
+          
+          <tr>
+            <td><code>contributor_charlie</code></td>
+            <td>9</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td class="sev-LOW">LOW</td>
+            <td>ACCEPT</td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+    
+  </section>
+
+  <section>
+    <h2>Coverage Statement</h2>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr><th>Attack Class</th><th>Status</th><th>Description</th><th>Validation Method</th></tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td><code>label_flipping</code></td>
+            <td class="status-PARTIAL">PARTIAL</td>
+            <td>Detects label discrepancies by comparing declared labels against a trusted reference model&#39;s real predictions, when one is supplied. Without a reference model, this falls back to trusting contributor-declared metadata and will not catch mislabelling on genuinely unannotated real-world data.</td>
+            <td>Reference-model visual disagreement check (when reference_model_path is supplied) or declared-metadata cross-check (fallback)</td>
+          </tr>
+          
+          <tr>
+            <td><code>systematic_mislabelling</code></td>
+            <td class="status-PARTIAL">PARTIAL</td>
+            <td>Identifies concentrated annotation errors in specific contributor batches, subject to the same reference-model dependency as label_flipping above.</td>
+            <td>Batch-level error density aggregated from per-sample label disagreement evidence</td>
+          </tr>
+          
+          <tr>
+            <td><code>near_duplicate_flooding</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Detects redundant and flooded near-duplicate image clusters.</td>
+            <td>Perceptual differential hashing (dHash) &amp; Hamming clustering</td>
+          </tr>
+          
+          <tr>
+            <td><code>ood_insertion</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Identifies samples deviating from baseline terrain and sensor profiles.</td>
+            <td>Multivariate feature distance &amp; Mahalanobis distribution scoring</td>
+          </tr>
+          
+          <tr>
+            <td><code>trigger_backdoor_poisoning</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Identifies known-signature high-frequency patch watermarks in training images (spatial correlation), and detects backdoor activation by actually re-running the candidate model on clean vs. trigger-patched copies of the same image and comparing real outputs.</td>
+            <td>Spatial frequency matched-filter correlation &amp; real clean-vs-triggered inference comparison</td>
+          </tr>
+          
+          <tr>
+            <td><code>unknown_trigger_reconstruction</code></td>
+            <td class="status-PARTIAL">PARTIAL</td>
+            <td>Blind discovery of an unknown/never-declared trigger pattern via real gradient-based trigger inversion (Neural Cleanse, Wang et al. 2019): per candidate class, optimizes a trigger mask+pattern from scratch (never told what the real trigger looks like) and flags any class whose reconstructed trigger is anomalously small (MAD-based outlier test). Verified to correctly flag the true backdoored class and produce zero false positives on the clean model, using this system&#39;s own fixture pair. Reported PARTIAL because it requires WHITE_BOX access AND a model architecture this system can bridge into a differentiable framework (currently only this system&#39;s own detector-family ONNX graph) -- arbitrary third-party architectures report UNAVAILABLE with a reason, not a fabricated result.</td>
+            <td>Neural Cleanse-style per-class trigger reconstruction + MAD anomaly-index test, executed via a real ONNX-to-PyTorch weight-transplanted differentiable model</td>
+          </tr>
+          
+          <tr>
+            <td><code>model_substitution</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Detects replaced or bit-altered model files against a declared reference identity. Digest comparison yields one of three explicit dispositions -- MATCH, MISMATCH, or NO_REFERENCE (no trusted reference digest was ever declared for this model) -- rather than collapsing &#39;no reference supplied&#39; into a false MATCH.</td>
+            <td>Bitwise canonical SHA-256 digest comparison of the actual model file bytes</td>
+          </tr>
+          
+          <tr>
+            <td><code>anomalous_model_behaviour</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Runs the same probe images through a trusted reference model and the candidate model and compares their real predictions for divergence. Weight/activation statistics additionally available for ONNX models under white-box access only.</td>
+            <td>Real reference-vs-candidate inference comparison; ONNX initializer weight kurtosis/variance analysis (white-box only)</td>
+          </tr>
+          
+          <tr>
+            <td><code>black_box_model_assessment</code></td>
+            <td class="status-PARTIAL">PARTIAL</td>
+            <td>When only black-box access is declared, assessment is limited to input/output behavioral probing (reference battery comparison). Parameter/weight statistics and activation inspection are explicitly reported as unavailable, not approximated or faked.</td>
+            <td>Input/output behavioral probing only</td>
+          </tr>
+          
+          <tr>
+            <td><code>hash_only_model_assessment</code></td>
+            <td class="status-PARTIAL">PARTIAL</td>
+            <td>When only HASH_ONLY access is declared (the model file&#39;s bytes are available but it is never executed or introspected), assessment is limited to file-level SHA-256 digest identity verification. All execution-dependent checks (behavioral probing, trigger response, parameter/activation analysis) are explicitly reported UNAVAILABLE with a stated reason.</td>
+            <td>File-level SHA-256 digest comparison only</td>
+          </tr>
+          
+          <tr>
+            <td><code>inference_tampering</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Detects post-hoc alteration of predictions, bounding boxes, or metadata.</td>
+            <td>Cryptographic hash binding DAG &amp; Ed25519 digital signature validation</td>
+          </tr>
+          
+          <tr>
+            <td><code>replay_detection</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Detects replay attacks reusing historic valid inference records.</td>
+            <td>Cryptographic nonces, sequence numbers, and timestamp freshness windows</td>
+          </tr>
+          
+          <tr>
+            <td><code>reordering_detection</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Detects out-of-order/reordered inference records within a verifier&#39;s sequence stream, independent of and in addition to nonce-based replay detection.</td>
+            <td>Monotonic per-stream sequence-number tracking (rejects any record whose sequence_number does not exceed the last verified sequence)</td>
+          </tr>
+          
+          <tr>
+            <td><code>audit_log_modification</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Detects post-hoc rewriting of historical audit-ledger entries.</td>
+            <td>SHA-256 hash chaining plus a per-entry Ed25519 signature, independently recomputed and verified end to end</td>
+          </tr>
+          
+          <tr>
+            <td><code>distribution_shift</code></td>
+            <td class="status-PARTIAL">PARTIAL</td>
+            <td>Characterizes operational domain shifts across terrain, sensor, illumination, real pixel-derived signals (blur/contrast/resolution/compression blockiness), and -- when both a reference and an observed image set are supplied -- a real embedding-space comparison: actual CNN feature vectors extracted via a real onnxruntime forward pass through a self-generated (fixed-seed, no external download) feature extractor, compared with a diagonal Frechet distance. Classifies findings into probable_operational_drift / anomaly_requires_review / manipulation_indicators_present / insufficient_evidence rather than a single manipulation flag. Reported PARTIAL because each additional signal family requires additional inputs (a declared quality baseline; a reference image set) that may not always be supplied -- when unavailable, the assessment gracefully falls back to whichever signal families it does have inputs for, and states the gap in `limitations` rather than fabricating the missing signal.</td>
+            <td>Categorical divergence ratio, illumination delta, pixel-derived blur/contrast/resolution/compression-blockiness relative delta, and diagonal Frechet distance over real CNN embeddings (backend/drift/embedding_extractor.py), all vs. a declared reference</td>
+          </tr>
+          
+          <tr>
+            <td><code>pytorch_torchscript_ingestion</code></td>
+            <td class="status-SUPPORTED">SUPPORTED</td>
+            <td>Real PyTorch/TorchScript loading via torch.jit.load / torch.load(weights_only=True) only, validated end-to-end against an actual scripted torch.nn.Module (TorchScript) and an actual state_dict checkpoint (PyTorch). weights_only=True is never retried with weights_only=False: a contributor-supplied checkpoint that fails to load under this restriction is reported as an honest BLACK_BOX load failure, never executed. Note: exotic legacy checkpoints that embed non-tensor Python objects will therefore report a load failure rather than being ingested -- this is a deliberate security boundary, not a gap.</td>
+            <td>torch.jit.load / torch.load(weights_only=True), real parameter counting, tested against real compiled/saved fixtures</td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Assumptions</h2>
+    <ul><li>System operates in a strictly air-gapped, offline environment with no external network access.</li><li>Reference baseline fingerprints and declared test batteries are stored in authenticated local storage.</li><li>Ingested datasets adhere to valid COCO or YOLO annotation specifications.</li></ul>
+  </section>
+
+  <section>
+    <h2>Limitations</h2>
+    <ul><li>Black-box model evaluation is limited to input/output behavioral probing (reference battery comparison); white-box weight/activation statistics are explicitly reported UNAVAILABLE rather than approximated.</li><li>Backdoor/trigger detection matches against known trigger signatures (spatial frequency patch correlation, or whatever trigger pattern a caller explicitly probes for) for the primary check. Blind, gradient-based reconstruction of a never-specified trigger (Neural Cleanse) is also implemented, but only for models this system can bridge into a differentiable framework (currently its own detector-family ONNX graph) and only under WHITE_BOX access.</li><li>Label-flip/mislabelling detection is only as strong as the reference model supplied for visual verification. Without one, it falls back to trusting contributor-declared metadata and will not catch errors on genuinely unannotated real-world data.</li><li>PyTorch/TorchScript ingestion is validated against real scripted-module and state_dict fixtures, but ONNX remains the format exercised by the largest share of this system&#39;s test suite (backdoor/parameter analysis, behavioural batteries).</li><li>Zero-day stealthy semantic triggers with extremely small perturbation norms, or a trigger style other than a spatially-local patch (Neural Cleanse&#39;s own core assumption), may still evade gradient-based reconstruction; the anomaly-index threshold was empirically calibrated against this system&#39;s own fixtures, not validated at scale against diverse real-world backdoors.</li><li>Assurance evaluation provides empirical evidence and risk grading, but does not mathematically guarantee the total absence of unknown zero-day attacks.</li></ul>
+  </section>
+
+  <div class="footer">
+    Audit chain digest: <code>4e8e3878d60debea05800ba33b7a4f74aa2da8908e6e1cf715113eaea0e97c11</code><br>
+    This report reflects evidence-based indicators scoped to the declared detectors and attack families above.
+    It does not constitute mathematical proof of the absence of unknown or adaptive attacks.
+  </div>
+</body>
+</html>
