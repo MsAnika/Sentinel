@@ -214,3 +214,31 @@ export interface ScenarioRunResult {
   samples_count?: number
   drift_report?: DistributionShiftReport
 }
+
+export interface BranchDecision {
+  branch_id: string
+  accepted: boolean
+  reason: string
+  update_norm: number
+  robust_z_score?: number | null
+}
+
+export interface FederatedRoundResult {
+  round_id: number
+  participating_branches: string[]
+  accepted_branches: string[]
+  excluded_branches: BranchDecision[]
+  global_loss_estimate: number
+  global_eval_accuracy?: number | null
+  aggregate_digest: string
+  audit_entry_sequence_ids: number[]
+}
+
+export interface FederatedSimulationResult {
+  branch_ids: string[]
+  num_rounds: number
+  rounds: FederatedRoundResult[]
+  final_eval_accuracy?: number | null
+  branch_public_keys: Record<string, string>
+  limitations: string[]
+}

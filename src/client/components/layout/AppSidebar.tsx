@@ -12,6 +12,7 @@ import {
   FileText,
   ShieldCheck,
   Settings,
+  Network,
 } from "lucide-react";
 import { useAtomValue } from "jotai";
 import { operatorAtom } from "@/client/state/atoms";
@@ -22,6 +23,7 @@ export type NavItemKey =
   | "findings"
   | "reports"
   | "audit"
+  | "federated"
   | "settings";
 
 interface AppSidebarProps {
@@ -44,6 +46,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     if (pathname.startsWith("/findings")) return "findings";
     if (pathname.startsWith("/reports")) return "reports";
     if (pathname.startsWith("/audit")) return "audit";
+    if (pathname.startsWith("/federated")) return "federated";
     if (pathname.startsWith("/settings")) return "settings";
     return "home";
   };
@@ -75,6 +78,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       label: "Audit",
       href: "/audit",
       icon: ShieldCheck,
+    },
+    {
+      key: "federated" as const,
+      label: "Federated",
+      href: "/federated",
+      icon: Network,
     },
     {
       key: "settings" as const,

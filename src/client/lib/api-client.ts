@@ -3,6 +3,7 @@ import {
   AuditLogEntry,
   ContributorRiskSummary,
   DatasetProfile,
+  FederatedSimulationResult,
   FindingSchema,
   InferenceRecord,
   ModelBehaviourAssessment,
@@ -145,6 +146,21 @@ export class AssuranceApiClient {
 
   static async listScenarios(): Promise<Array<{ id: string; name: string; badge: string; disposition: string; description: string }>> {
     return this.request('/api/scenarios/list')
+  }
+
+  static async runFederatedSimulation(params: {
+    branchIds: string[]
+    numRounds: number
+    maliciousBranchIds?: string[]
+  }): Promise<FederatedSimulationResult> {
+    return this.request('/api/federated/simulate', {
+      method: 'POST',
+      body: JSON.stringify({
+        branch_ids: params.branchIds,
+        num_rounds: params.numRounds,
+        malicious_branch_ids: params.maliciousBranchIds && params.maliciousBranchIds.length > 0 ? params.maliciousBranchIds : null,
+      }),
+    })
   }
 
   static async runScenario(scenarioId: string): Promise<ScenarioRunResult> {
