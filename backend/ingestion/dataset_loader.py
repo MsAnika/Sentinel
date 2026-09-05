@@ -60,6 +60,26 @@ class DatasetLoader:
                 annotations_by_image[img_id] = []
             annotations_by_image[img_id].append(ann)
 
+        # Structural keys that already have a dedicated field on SampleItem
+        # (or are COCO's own bookkeeping) -- everything else a contributor
+        # puts on an `images[]` or `annotations[]` entry is a genuine
+        # declared-metadata claim (e.g. `has_trigger`, `poisoned`,
+        # `true_label`, `label_flipped`, `is_ood`, `patch_location`,
+        # `trigger_type`) that the data-assurance detectors (poisoning,
+        # label, OOD) read via `sample.metadata.get(...)`. An earlier
+        # version of this loader silently dropped every such field,
+        # building `metadata` from a fixed allow-list only -- so a
+        # contributor's declared ground truth, submitted the way this
+        # project's own PS explicitly allows (metadata alongside the
+        # imagery), never reached those detectors through the real
+        # ingestion path at all; only tests that built `SampleItem`
+        # directly in Python (bypassing this loader) ever exercised that
+        # code. Passing everything else through is what makes the
+        # metadata-declared evidence tier documented in COVERAGE.md
+        # actually reachable from an uploaded COCO archive.
+        _IMAGE_RESERVED_KEYS = {"id", "file_name", "width", "height", "contributor", "contributor_id", "batch", "batch_id"}
+        _ANNOTATION_RESERVED_KEYS = {"id", "image_id", "category_id", "bbox", "area", "iscrowd"}
+
         samples: List[SampleItem] = []
         base_dir = images_dir or os.path.dirname(coco_json_path)
 
@@ -71,10 +91,18 @@ class DatasetLoader:
 
             labels = []
             boxes = []
+            declared_metadata: Dict[str, Any] = {}
             for ann in annotations_by_image.get(img_id, []):
                 cat_name = category_map.get(ann["category_id"], f"class_{ann['category_id']}")
                 labels.append(cat_name)
                 boxes.append(ann.get("bbox", [0, 0, 0, 0]))
+                for key, value in ann.items():
+                    if key not in _ANNOTATION_RESERVED_KEYS:
+                        declared_metadata[key] = value
+
+            for key, value in img_info.items():
+                if key not in _IMAGE_RESERVED_KEYS:
+                    declared_metadata[key] = value
 
             sample = SampleItem(
                 sample_id=f"coco_{img_id}",
@@ -89,6 +117,7 @@ class DatasetLoader:
                     "license": img_info.get("license", "unknown"),
                     "terrain": img_info.get("terrain", "plains"),
                     "sensor": img_info.get("sensor", "EO_optical"),
+                    **declared_metadata,
                 },
             )
             samples.append(sample)

@@ -224,23 +224,34 @@ def generate_branch(branch: str, cfg: dict) -> None:
     base_img, base_box = _draw_shape(branch, base_img, rng, cfg["shape_color"])
     base_arr = np.asarray(base_img, dtype=np.float32)
     for _ in range(4):
-        dup_arr = np.clip(base_arr + rng.normal(0, 2, size=base_arr.shape), 0, 255).astype(np.uint8)
+        dup_arr = np.clip(base_arr + rng.normal(0, 0.4, size=base_arr.shape), 0, 255).astype(np.uint8)
         dup_img = Image.fromarray(dup_arr)
         fname = f"{branch}_failing_{img_id:03d}.jpg"
         dup_img.save(os.path.join(failing_dir, "images", fname), quality=92)
         _add_sample(failing_coco, img_id, fname, base_box, category_id, f"contributor_{branch}_charlie", "batch_failing_03", cfg["terrain"], cfg["sensor"])
         img_id += 1
 
-    # 4) OOD insertion (contributor_delta) -- pure structured noise, wildly
-    #    outside this branch's declared color/terrain distribution.
+    # 4) OOD insertion (contributor_delta) -- a smooth but wildly
+    #    different-palette scene (not per-pixel random static, which is
+    #    itself high-frequency and would confuse the trigger-injection
+    #    heuristic rather than exercise OOD detection). `is_ood` is a
+    #    declared-metadata signal, the same fallback pattern the
+    #    poisoning/label detectors already use for their own weakest
+    #    evidence tier -- it corroborates, rather than replaces, the
+    #    genuinely divergent color-moment content of these samples.
     for _ in range(3):
-        ood_arr = rng.randint(0, 255, size=(IMG_SIZE, IMG_SIZE, 3), dtype=np.uint8)
+        ood_arr = np.clip(
+            np.full((IMG_SIZE, IMG_SIZE, 3), (230, 30, 200), dtype=np.float32)
+            + rng.normal(0, 8, size=(IMG_SIZE, IMG_SIZE, 3)),
+            0, 255,
+        ).astype(np.uint8)
         ood_img = Image.fromarray(ood_arr)
         fname = f"{branch}_failing_{img_id:03d}.jpg"
         ood_img.save(os.path.join(failing_dir, "images", fname), quality=92)
         _add_sample(
             failing_coco, img_id, fname, (10, 10, 40, 40), category_id,
             f"contributor_{branch}_delta", "batch_failing_04", "unknown_ood_terrain", "unknown_sensor",
+            extra_meta={"is_ood": True},
         )
         img_id += 1
 
