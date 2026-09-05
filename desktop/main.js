@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, shell, ipcMain, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
@@ -257,6 +257,9 @@ function createMainWindow() {
   (async () => {
     const isFrontendReady = await waitForUrl(FRONTEND_URL, 30, 800);
     if (isFrontendReady && mainWindow && !mainWindow.isDestroyed()) {
+      try {
+        await mainWindow.webContents.session.clearCache();
+      } catch {}
       mainWindow.loadURL(FRONTEND_URL);
     } else if (mainWindow && !mainWindow.isDestroyed()) {
       console.error("[IntelX Desktop] Frontend dev server did not respond at " + FRONTEND_URL);
@@ -350,7 +353,18 @@ function buildAppMenu() {
       label: "View",
       submenu: [
         { role: "reload" },
-        { role: "forceReload" },
+        {
+          label: "Force Reload (Clear Cache)",
+          accelerator: "CmdOrCtrl+Shift+R",
+          click: async () => {
+            if (mainWindow) {
+              try {
+                await mainWindow.webContents.session.clearCache();
+              } catch {}
+              mainWindow.webContents.reloadIgnoringCache();
+            }
+          },
+        },
         { role: "toggleDevTools" },
         { type: "separator" },
         { role: "resetZoom" },
@@ -409,6 +423,11 @@ ipcMain.on("window-close", () => {
 });
 
 app.on("ready", async () => {
+  try {
+    if (session && session.defaultSession) {
+      await session.defaultSession.clearCache();
+    }
+  } catch {}
   buildAppMenu();
   await ensureBackendRunning();
   await ensureFrontendRunning();
