@@ -238,12 +238,12 @@
       "image_id": 1,
       "category_id": 0,
       "bbox": [
-        82,
-        62,
-        66,
-        46
+        176,
+        203,
+        81,
+        35
       ],
-      "area": 3036,
+      "area": 2835,
       "iscrowd": 0
     },
     {
@@ -251,12 +251,12 @@
       "image_id": 2,
       "category_id": 0,
       "bbox": [
-        84,
-        105,
-        86,
-        39
+        212,
+        176,
+        55,
+        44
       ],
-      "area": 3354,
+      "area": 2420,
       "iscrowd": 0
     },
     {
@@ -264,12 +264,12 @@
       "image_id": 3,
       "category_id": 0,
       "bbox": [
-        149,
-        129,
-        63,
-        41
+        86,
+        83,
+        57,
+        40
       ],
-      "area": 2583,
+      "area": 2280,
       "iscrowd": 0
     },
     {
@@ -277,12 +277,12 @@
       "image_id": 4,
       "category_id": 0,
       "bbox": [
-        207,
-        200,
-        52,
-        54
+        63,
+        156,
+        59,
+        43
       ],
-      "area": 2808,
+      "area": 2537,
       "iscrowd": 0
     },
     {
@@ -290,12 +290,12 @@
       "image_id": 5,
       "category_id": 0,
       "bbox": [
-        178,
-        55,
-        71,
-        51
+        168,
+        162,
+        83,
+        54
       ],
-      "area": 3621,
+      "area": 4482,
       "iscrowd": 0
     },
     {
@@ -303,12 +303,12 @@
       "image_id": 6,
       "category_id": 0,
       "bbox": [
-        48,
-        184,
-        75,
-        32
+        190,
+        218,
+        77,
+        33
       ],
-      "area": 2400,
+      "area": 2541,
       "iscrowd": 0
     },
     {
@@ -316,12 +316,12 @@
       "image_id": 7,
       "category_id": 0,
       "bbox": [
-        58,
-        121,
-        56,
-        47
+        90,
+        176,
+        73,
+        38
       ],
-      "area": 2632,
+      "area": 2774,
       "iscrowd": 0
     },
     {
@@ -329,12 +329,12 @@
       "image_id": 8,
       "category_id": 0,
       "bbox": [
-        98,
-        154,
-        68,
-        48
+        101,
+        99,
+        54,
+        54
       ],
-      "area": 3264,
+      "area": 2916,
       "iscrowd": 0
     },
     {
@@ -342,12 +342,12 @@
       "image_id": 9,
       "category_id": 0,
       "bbox": [
-        199,
-        112,
-        81,
-        50
+        122,
+        68,
+        88,
+        46
       ],
-      "area": 4050,
+      "area": 4048,
       "iscrowd": 0
     },
     {
@@ -355,12 +355,12 @@
       "image_id": 10,
       "category_id": 0,
       "bbox": [
-        63,
-        173,
-        50,
-        43
+        54,
+        219,
+        55,
+        36
       ],
-      "area": 2150,
+      "area": 1980,
       "iscrowd": 0
     },
     {
@@ -368,12 +368,12 @@
       "image_id": 11,
       "category_id": 0,
       "bbox": [
-        88,
-        85,
-        63,
-        33
+        203,
+        67,
+        51,
+        48
       ],
-      "area": 2079,
+      "area": 2448,
       "iscrowd": 0
     },
     {
@@ -381,12 +381,12 @@
       "image_id": 12,
       "category_id": 0,
       "bbox": [
-        80,
-        211,
-        60,
-        32
+        208,
+        151,
+        61,
+        38
       ],
-      "area": 1920,
+      "area": 2318,
       "iscrowd": 0
     },
     {
@@ -394,12 +394,12 @@
       "image_id": 13,
       "category_id": 0,
       "bbox": [
-        80,
-        211,
-        60,
-        32
+        208,
+        151,
+        61,
+        38
       ],
-      "area": 1920,
+      "area": 2318,
       "iscrowd": 0
     },
     {
@@ -407,12 +407,12 @@
       "image_id": 14,
       "category_id": 0,
       "bbox": [
-        80,
-        211,
-        60,
-        32
+        208,
+        151,
+        61,
+        38
       ],
-      "area": 1920,
+      "area": 2318,
       "iscrowd": 0
     },
     {
@@ -420,12 +420,12 @@
       "image_id": 15,
       "category_id": 0,
       "bbox": [
-        80,
-        211,
-        60,
-        32
+        208,
+        151,
+        61,
+        38
       ],
-      "area": 1920,
+      "area": 2318,
       "iscrowd": 0
     },
     {
@@ -472,12 +472,12 @@
       "image_id": 19,
       "category_id": 1,
       "bbox": [
-        78,
-        127,
-        67,
-        36
+        213,
+        209,
+        50,
+        33
       ],
-      "area": 2412,
+      "area": 1650,
       "iscrowd": 0,
       "true_label": "aircraft",
       "label_flipped": true
@@ -487,12 +487,12 @@
       "image_id": 20,
       "category_id": 1,
       "bbox": [
-        139,
-        204,
-        78,
-        39
+        87,
+        200,
+        57,
+        44
       ],
-      "area": 3042,
+      "area": 2508,
       "iscrowd": 0,
       "true_label": "aircraft",
       "label_flipped": true
@@ -502,12 +502,12 @@
       "image_id": 21,
       "category_id": 1,
       "bbox": [
-        162,
-        166,
-        77,
-        52
+        105,
+        194,
+        52,
+        30
       ],
-      "area": 4004,
+      "area": 1560,
       "iscrowd": 0,
       "true_label": "aircraft",
       "label_flipped": true
@@ -517,12 +517,12 @@
       "image_id": 22,
       "category_id": 1,
       "bbox": [
-        109,
-        80,
-        72,
-        49
+        205,
+        67,
+        55,
+        51
       ],
-      "area": 3528,
+      "area": 2805,
       "iscrowd": 0,
       "true_label": "aircraft",
       "label_flipped": true
