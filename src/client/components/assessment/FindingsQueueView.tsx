@@ -319,9 +319,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
             )}
           >
             {/* Left Main Content */}
-            <div className="lg:col-span-8 space-y-2">
+            <div className="lg:col-span-8 space-y-2 min-w-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={clsx(
                       "font-mono text-[10px] font-bold px-2 py-0.5 rounded text-white",
@@ -334,27 +334,27 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
                   >
                     ⚠ {f.severity}
                   </span>
-                  <span className="font-mono text-xs text-slate-700 font-bold">
+                  <span className="font-mono text-xs text-slate-700 font-bold break-all">
                     {f.code}
                   </span>
                   {f.reportId && (
-                    <span className="font-mono text-[11px] text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-medium">
+                    <span className="font-mono text-[11px] text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-medium break-all">
                       {f.reportId}
                     </span>
                   )}
                 </div>
               </div>
 
-              <h3 className="text-base font-bold text-slate-900 tracking-tight mt-1">
+              <h3 className="text-base font-bold text-slate-900 tracking-tight mt-1 break-words">
                 {f.title}
               </h3>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed break-words">
                 {f.description}
               </p>
 
-              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-6 text-xs font-mono text-slate-500">
-                <div>
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-slate-500">
+                <div className="min-w-0 break-all">
                   <span className="text-slate-400">AFFECTED ASSET: </span>
                   <strong className="text-slate-800">{f.affectedAsset}</strong>
                 </div>

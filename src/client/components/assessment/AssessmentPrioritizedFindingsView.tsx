@@ -158,7 +158,7 @@ export const AssessmentPrioritizedFindingsView: React.FC<
                   </span>
                 </div>
 
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight break-words">
                   {f.title}
                 </h2>
 
@@ -185,7 +185,7 @@ export const AssessmentPrioritizedFindingsView: React.FC<
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed font-sans pt-1">
+                <p className="text-xs text-slate-600 leading-relaxed font-sans pt-1 break-words">
                   {f.description}
                 </p>
               </div>
