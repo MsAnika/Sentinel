@@ -1,0 +1,479 @@
+{
+  "info": {
+    "description": "IntelX Pitch Demo Dataset -- 100% synthetic, no classified/operational data"
+  },
+  "images": [
+    {
+      "id": 1,
+      "file_name": "airforce_working_001.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 2,
+      "file_name": "airforce_working_002.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 3,
+      "file_name": "airforce_working_003.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 4,
+      "file_name": "airforce_working_004.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 5,
+      "file_name": "airforce_working_005.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 6,
+      "file_name": "airforce_working_006.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 7,
+      "file_name": "airforce_working_007.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 8,
+      "file_name": "airforce_working_008.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 9,
+      "file_name": "airforce_working_009.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 10,
+      "file_name": "airforce_working_010.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 11,
+      "file_name": "airforce_working_011.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 12,
+      "file_name": "airforce_working_012.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 13,
+      "file_name": "airforce_working_013.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 14,
+      "file_name": "airforce_working_014.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 15,
+      "file_name": "airforce_working_015.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 16,
+      "file_name": "airforce_working_016.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 17,
+      "file_name": "airforce_working_017.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 18,
+      "file_name": "airforce_working_018.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 19,
+      "file_name": "airforce_working_019.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 20,
+      "file_name": "airforce_working_020.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_airforce_alpha",
+      "batch": "batch_working_01",
+      "terrain": "high_altitude",
+      "sensor": "EO_optical"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 0,
+      "bbox": [
+        168,
+        186,
+        68,
+        32
+      ],
+      "area": 2176,
+      "iscrowd": 0
+    },
+    {
+      "id": 2,
+      "image_id": 2,
+      "category_id": 0,
+      "bbox": [
+        107,
+        153,
+        52,
+        49
+      ],
+      "area": 2548,
+      "iscrowd": 0
+    },
+    {
+      "id": 3,
+      "image_id": 3,
+      "category_id": 0,
+      "bbox": [
+        118,
+        70,
+        59,
+        39
+      ],
+      "area": 2301,
+      "iscrowd": 0
+    },
+    {
+      "id": 4,
+      "image_id": 4,
+      "category_id": 0,
+      "bbox": [
+        132,
+        87,
+        57,
+        52
+      ],
+      "area": 2964,
+      "iscrowd": 0
+    },
+    {
+      "id": 5,
+      "image_id": 5,
+      "category_id": 0,
+      "bbox": [
+        52,
+        108,
+        81,
+        48
+      ],
+      "area": 3888,
+      "iscrowd": 0
+    },
+    {
+      "id": 6,
+      "image_id": 6,
+      "category_id": 0,
+      "bbox": [
+        123,
+        72,
+        70,
+        48
+      ],
+      "area": 3360,
+      "iscrowd": 0
+    },
+    {
+      "id": 7,
+      "image_id": 7,
+      "category_id": 0,
+      "bbox": [
+        155,
+        86,
+        78,
+        53
+      ],
+      "area": 4134,
+      "iscrowd": 0
+    },
+    {
+      "id": 8,
+      "image_id": 8,
+      "category_id": 0,
+      "bbox": [
+        148,
+        221,
+        84,
+        34
+      ],
+      "area": 2856,
+      "iscrowd": 0
+    },
+    {
+      "id": 9,
+      "image_id": 9,
+      "category_id": 0,
+      "bbox": [
+        113,
+        112,
+        84,
+        49
+      ],
+      "area": 4116,
+      "iscrowd": 0
+    },
+    {
+      "id": 10,
+      "image_id": 10,
+      "category_id": 0,
+      "bbox": [
+        205,
+        103,
+        61,
+        52
+      ],
+      "area": 3172,
+      "iscrowd": 0
+    },
+    {
+      "id": 11,
+      "image_id": 11,
+      "category_id": 0,
+      "bbox": [
+        184,
+        136,
+        61,
+        34
+      ],
+      "area": 2074,
+      "iscrowd": 0
+    },
+    {
+      "id": 12,
+      "image_id": 12,
+      "category_id": 0,
+      "bbox": [
+        168,
+        93,
+        73,
+        49
+      ],
+      "area": 3577,
+      "iscrowd": 0
+    },
+    {
+      "id": 13,
+      "image_id": 13,
+      "category_id": 0,
+      "bbox": [
+        189,
+        183,
+        62,
+        43
+      ],
+      "area": 2666,
+      "iscrowd": 0
+    },
+    {
+      "id": 14,
+      "image_id": 14,
+      "category_id": 0,
+      "bbox": [
+        67,
+        139,
+        59,
+        50
+      ],
+      "area": 2950,
+      "iscrowd": 0
+    },
+    {
+      "id": 15,
+      "image_id": 15,
+      "category_id": 0,
+      "bbox": [
+        170,
+        205,
+        72,
+        30
+      ],
+      "area": 2160,
+      "iscrowd": 0
+    },
+    {
+      "id": 16,
+      "image_id": 16,
+      "category_id": 0,
+      "bbox": [
+        118,
+        214,
+        82,
+        43
+      ],
+      "area": 3526,
+      "iscrowd": 0
+    },
+    {
+      "id": 17,
+      "image_id": 17,
+      "category_id": 0,
+      "bbox": [
+        160,
+        188,
+        85,
+        54
+      ],
+      "area": 4590,
+      "iscrowd": 0
+    },
+    {
+      "id": 18,
+      "image_id": 18,
+      "category_id": 0,
+      "bbox": [
+        143,
+        213,
+        80,
+        48
+      ],
+      "area": 3840,
+      "iscrowd": 0
+    },
+    {
+      "id": 19,
+      "image_id": 19,
+      "category_id": 0,
+      "bbox": [
+        78,
+        167,
+        52,
+        31
+      ],
+      "area": 1612,
+      "iscrowd": 0
+    },
+    {
+      "id": 20,
+      "image_id": 20,
+      "category_id": 0,
+      "bbox": [
+        108,
+        188,
+        80,
+        44
+      ],
+      "area": 3520,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 0,
+      "name": "aircraft"
+    },
+    {
+      "id": 1,
+      "name": "unrelated_object"
+    }
+  ]
+}

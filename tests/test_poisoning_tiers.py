@@ -10,6 +10,14 @@ def _save(path, arr):
     Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8)).save(path)
 
 
+def _smooth_background(h, w, rng, base=0.4, noise_std=0.02):
+    """A low-frequency, photographically-plausible background: raw
+    per-pixel random noise is itself high-frequency and would falsely
+    trip the checkerboard-trigger heuristic regardless of any real
+    trigger, so every 'clean' test fixture uses this instead."""
+    return np.clip(base + rng.normal(0, noise_std, size=(h, w, 3)), 0, 1).astype(np.float32)
+
+
 def _make_trigger_template(tmp_path):
     rng = np.random.RandomState(42)
     template = rng.rand(12, 12, 3).astype(np.float32)
@@ -25,7 +33,7 @@ def test_matched_filter_finds_trigger_anywhere_in_frame_not_just_the_corner(tmp_
     template_path, template = _make_trigger_template(tmp_path)
 
     rng = np.random.RandomState(1)
-    scene = rng.rand(96, 96, 3).astype(np.float32) * 0.3
+    scene = _smooth_background(96, 96, rng)
     # Plant the trigger in the CENTER of the image, far from any corner.
     scene[40:52, 40:52, :] = template
     clean_path = str(tmp_path / "scene_with_center_trigger.png")
@@ -33,7 +41,7 @@ def test_matched_filter_finds_trigger_anywhere_in_frame_not_just_the_corner(tmp_
 
     matched, score, location = detector.matched_filter_search(clean_path, template_path)
     assert matched is True
-    assert score >= detector.matched_filter_z_threshold
+    assert score >= detector.matched_filter_score_threshold
     assert location is not None
 
     # The old corner-only heuristic must NOT see anything here -- proves
@@ -47,7 +55,7 @@ def test_matched_filter_reports_no_match_on_a_clean_image(tmp_path):
     template_path, _ = _make_trigger_template(tmp_path)
 
     rng = np.random.RandomState(2)
-    clean_scene = (rng.rand(96, 96, 3).astype(np.float32) * 0.5) + 0.25
+    clean_scene = _smooth_background(96, 96, rng)
     clean_path = str(tmp_path / "clean_scene.png")
     _save(clean_path, clean_scene)
 
@@ -63,7 +71,7 @@ def test_metadata_only_declared_trigger_is_capped_at_review_never_quarantine(tmp
     detector = PoisoningDetector()
 
     rng = np.random.RandomState(3)
-    plain_scene = (rng.rand(64, 64, 3).astype(np.float32) * 0.4) + 0.3
+    plain_scene = _smooth_background(64, 64, rng)
     image_path = str(tmp_path / "plain.png")
     _save(image_path, plain_scene)
 
@@ -95,7 +103,7 @@ def test_real_matched_filter_hit_is_quarantine_grade(tmp_path):
     template_path, template = _make_trigger_template(tmp_path)
 
     rng = np.random.RandomState(4)
-    scene = rng.rand(64, 64, 3).astype(np.float32) * 0.3
+    scene = _smooth_background(64, 64, rng)
     scene[5:17, 5:17, :] = template
     image_path = str(tmp_path / "triggered.png")
     _save(image_path, scene)

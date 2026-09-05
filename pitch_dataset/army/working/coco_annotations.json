@@ -1,0 +1,479 @@
+{
+  "info": {
+    "description": "IntelX Pitch Demo Dataset -- 100% synthetic, no classified/operational data"
+  },
+  "images": [
+    {
+      "id": 1,
+      "file_name": "army_working_001.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 2,
+      "file_name": "army_working_002.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 3,
+      "file_name": "army_working_003.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 4,
+      "file_name": "army_working_004.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 5,
+      "file_name": "army_working_005.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 6,
+      "file_name": "army_working_006.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 7,
+      "file_name": "army_working_007.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 8,
+      "file_name": "army_working_008.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 9,
+      "file_name": "army_working_009.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 10,
+      "file_name": "army_working_010.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 11,
+      "file_name": "army_working_011.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 12,
+      "file_name": "army_working_012.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 13,
+      "file_name": "army_working_013.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 14,
+      "file_name": "army_working_014.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 15,
+      "file_name": "army_working_015.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 16,
+      "file_name": "army_working_016.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 17,
+      "file_name": "army_working_017.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 18,
+      "file_name": "army_working_018.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 19,
+      "file_name": "army_working_019.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 20,
+      "file_name": "army_working_020.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_army_alpha",
+      "batch": "batch_working_01",
+      "terrain": "plains",
+      "sensor": "EO_optical"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 0,
+      "bbox": [
+        192,
+        159,
+        58,
+        48
+      ],
+      "area": 2784,
+      "iscrowd": 0
+    },
+    {
+      "id": 2,
+      "image_id": 2,
+      "category_id": 0,
+      "bbox": [
+        148,
+        66,
+        73,
+        36
+      ],
+      "area": 2628,
+      "iscrowd": 0
+    },
+    {
+      "id": 3,
+      "image_id": 3,
+      "category_id": 0,
+      "bbox": [
+        139,
+        107,
+        57,
+        41
+      ],
+      "area": 2337,
+      "iscrowd": 0
+    },
+    {
+      "id": 4,
+      "image_id": 4,
+      "category_id": 0,
+      "bbox": [
+        137,
+        61,
+        70,
+        52
+      ],
+      "area": 3640,
+      "iscrowd": 0
+    },
+    {
+      "id": 5,
+      "image_id": 5,
+      "category_id": 0,
+      "bbox": [
+        151,
+        202,
+        79,
+        44
+      ],
+      "area": 3476,
+      "iscrowd": 0
+    },
+    {
+      "id": 6,
+      "image_id": 6,
+      "category_id": 0,
+      "bbox": [
+        80,
+        162,
+        63,
+        42
+      ],
+      "area": 2646,
+      "iscrowd": 0
+    },
+    {
+      "id": 7,
+      "image_id": 7,
+      "category_id": 0,
+      "bbox": [
+        57,
+        203,
+        73,
+        53
+      ],
+      "area": 3869,
+      "iscrowd": 0
+    },
+    {
+      "id": 8,
+      "image_id": 8,
+      "category_id": 0,
+      "bbox": [
+        80,
+        194,
+        78,
+        41
+      ],
+      "area": 3198,
+      "iscrowd": 0
+    },
+    {
+      "id": 9,
+      "image_id": 9,
+      "category_id": 0,
+      "bbox": [
+        183,
+        63,
+        68,
+        50
+      ],
+      "area": 3400,
+      "iscrowd": 0
+    },
+    {
+      "id": 10,
+      "image_id": 10,
+      "category_id": 0,
+      "bbox": [
+        97,
+        132,
+        65,
+        32
+      ],
+      "area": 2080,
+      "iscrowd": 0
+    },
+    {
+      "id": 11,
+      "image_id": 11,
+      "category_id": 0,
+      "bbox": [
+        80,
+        138,
+        86,
+        43
+      ],
+      "area": 3698,
+      "iscrowd": 0
+    },
+    {
+      "id": 12,
+      "image_id": 12,
+      "category_id": 0,
+      "bbox": [
+        180,
+        112,
+        67,
+        53
+      ],
+      "area": 3551,
+      "iscrowd": 0
+    },
+    {
+      "id": 13,
+      "image_id": 13,
+      "category_id": 0,
+      "bbox": [
+        153,
+        130,
+        60,
+        43
+      ],
+      "area": 2580,
+      "iscrowd": 0
+    },
+    {
+      "id": 14,
+      "image_id": 14,
+      "category_id": 0,
+      "bbox": [
+        135,
+        99,
+        84,
+        43
+      ],
+      "area": 3612,
+      "iscrowd": 0
+    },
+    {
+      "id": 15,
+      "image_id": 15,
+      "category_id": 0,
+      "bbox": [
+        205,
+        114,
+        62,
+        35
+      ],
+      "area": 2170,
+      "iscrowd": 0
+    },
+    {
+      "id": 16,
+      "image_id": 16,
+      "category_id": 0,
+      "bbox": [
+        83,
+        71,
+        59,
+        49
+      ],
+      "area": 2891,
+      "iscrowd": 0
+    },
+    {
+      "id": 17,
+      "image_id": 17,
+      "category_id": 0,
+      "bbox": [
+        74,
+        119,
+        70,
+        32
+      ],
+      "area": 2240,
+      "iscrowd": 0
+    },
+    {
+      "id": 18,
+      "image_id": 18,
+      "category_id": 0,
+      "bbox": [
+        106,
+        70,
+        64,
+        39
+      ],
+      "area": 2496,
+      "iscrowd": 0
+    },
+    {
+      "id": 19,
+      "image_id": 19,
+      "category_id": 0,
+      "bbox": [
+        73,
+        136,
+        68,
+        51
+      ],
+      "area": 3468,
+      "iscrowd": 0
+    },
+    {
+      "id": 20,
+      "image_id": 20,
+      "category_id": 0,
+      "bbox": [
+        56,
+        154,
+        72,
+        36
+      ],
+      "area": 2592,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 0,
+      "name": "military_vehicle"
+    },
+    {
+      "id": 1,
+      "name": "unrelated_object"
+    }
+  ]
+}

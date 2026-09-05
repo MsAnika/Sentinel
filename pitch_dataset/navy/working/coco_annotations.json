@@ -1,0 +1,479 @@
+{
+  "info": {
+    "description": "IntelX Pitch Demo Dataset -- 100% synthetic, no classified/operational data"
+  },
+  "images": [
+    {
+      "id": 1,
+      "file_name": "navy_working_001.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 2,
+      "file_name": "navy_working_002.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 3,
+      "file_name": "navy_working_003.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 4,
+      "file_name": "navy_working_004.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 5,
+      "file_name": "navy_working_005.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 6,
+      "file_name": "navy_working_006.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 7,
+      "file_name": "navy_working_007.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 8,
+      "file_name": "navy_working_008.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 9,
+      "file_name": "navy_working_009.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 10,
+      "file_name": "navy_working_010.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 11,
+      "file_name": "navy_working_011.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 12,
+      "file_name": "navy_working_012.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 13,
+      "file_name": "navy_working_013.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 14,
+      "file_name": "navy_working_014.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 15,
+      "file_name": "navy_working_015.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 16,
+      "file_name": "navy_working_016.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 17,
+      "file_name": "navy_working_017.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 18,
+      "file_name": "navy_working_018.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 19,
+      "file_name": "navy_working_019.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    },
+    {
+      "id": 20,
+      "file_name": "navy_working_020.jpg",
+      "width": 320,
+      "height": 320,
+      "contributor": "contributor_navy_alpha",
+      "batch": "batch_working_01",
+      "terrain": "coastal_water",
+      "sensor": "EO_optical"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 0,
+      "bbox": [
+        196,
+        130,
+        82,
+        32
+      ],
+      "area": 2624,
+      "iscrowd": 0
+    },
+    {
+      "id": 2,
+      "image_id": 2,
+      "category_id": 0,
+      "bbox": [
+        142,
+        209,
+        64,
+        49
+      ],
+      "area": 3136,
+      "iscrowd": 0
+    },
+    {
+      "id": 3,
+      "image_id": 3,
+      "category_id": 0,
+      "bbox": [
+        59,
+        118,
+        70,
+        51
+      ],
+      "area": 3570,
+      "iscrowd": 0
+    },
+    {
+      "id": 4,
+      "image_id": 4,
+      "category_id": 0,
+      "bbox": [
+        90,
+        112,
+        52,
+        35
+      ],
+      "area": 1820,
+      "iscrowd": 0
+    },
+    {
+      "id": 5,
+      "image_id": 5,
+      "category_id": 0,
+      "bbox": [
+        101,
+        196,
+        75,
+        51
+      ],
+      "area": 3825,
+      "iscrowd": 0
+    },
+    {
+      "id": 6,
+      "image_id": 6,
+      "category_id": 0,
+      "bbox": [
+        79,
+        159,
+        51,
+        35
+      ],
+      "area": 1785,
+      "iscrowd": 0
+    },
+    {
+      "id": 7,
+      "image_id": 7,
+      "category_id": 0,
+      "bbox": [
+        93,
+        168,
+        69,
+        33
+      ],
+      "area": 2277,
+      "iscrowd": 0
+    },
+    {
+      "id": 8,
+      "image_id": 8,
+      "category_id": 0,
+      "bbox": [
+        126,
+        102,
+        59,
+        53
+      ],
+      "area": 3127,
+      "iscrowd": 0
+    },
+    {
+      "id": 9,
+      "image_id": 9,
+      "category_id": 0,
+      "bbox": [
+        144,
+        205,
+        89,
+        48
+      ],
+      "area": 4272,
+      "iscrowd": 0
+    },
+    {
+      "id": 10,
+      "image_id": 10,
+      "category_id": 0,
+      "bbox": [
+        91,
+        120,
+        64,
+        43
+      ],
+      "area": 2752,
+      "iscrowd": 0
+    },
+    {
+      "id": 11,
+      "image_id": 11,
+      "category_id": 0,
+      "bbox": [
+        147,
+        144,
+        89,
+        35
+      ],
+      "area": 3115,
+      "iscrowd": 0
+    },
+    {
+      "id": 12,
+      "image_id": 12,
+      "category_id": 0,
+      "bbox": [
+        57,
+        67,
+        81,
+        44
+      ],
+      "area": 3564,
+      "iscrowd": 0
+    },
+    {
+      "id": 13,
+      "image_id": 13,
+      "category_id": 0,
+      "bbox": [
+        121,
+        152,
+        86,
+        48
+      ],
+      "area": 4128,
+      "iscrowd": 0
+    },
+    {
+      "id": 14,
+      "image_id": 14,
+      "category_id": 0,
+      "bbox": [
+        150,
+        81,
+        64,
+        53
+      ],
+      "area": 3392,
+      "iscrowd": 0
+    },
+    {
+      "id": 15,
+      "image_id": 15,
+      "category_id": 0,
+      "bbox": [
+        201,
+        158,
+        70,
+        38
+      ],
+      "area": 2660,
+      "iscrowd": 0
+    },
+    {
+      "id": 16,
+      "image_id": 16,
+      "category_id": 0,
+      "bbox": [
+        198,
+        120,
+        50,
+        31
+      ],
+      "area": 1550,
+      "iscrowd": 0
+    },
+    {
+      "id": 17,
+      "image_id": 17,
+      "category_id": 0,
+      "bbox": [
+        122,
+        77,
+        51,
+        41
+      ],
+      "area": 2091,
+      "iscrowd": 0
+    },
+    {
+      "id": 18,
+      "image_id": 18,
+      "category_id": 0,
+      "bbox": [
+        67,
+        171,
+        61,
+        35
+      ],
+      "area": 2135,
+      "iscrowd": 0
+    },
+    {
+      "id": 19,
+      "image_id": 19,
+      "category_id": 0,
+      "bbox": [
+        54,
+        201,
+        61,
+        34
+      ],
+      "area": 2074,
+      "iscrowd": 0
+    },
+    {
+      "id": 20,
+      "image_id": 20,
+      "category_id": 0,
+      "bbox": [
+        172,
+        212,
+        69,
+        40
+      ],
+      "area": 2760,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 0,
+      "name": "naval_vessel"
+    },
+    {
+      "id": 1,
+      "name": "unrelated_object"
+    }
+  ]
+}
