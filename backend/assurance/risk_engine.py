@@ -10,13 +10,21 @@ class RiskEngine:
     policy can never be silently misread as having been evaluated under
     another."""
 
-    POLICY_VERSION = "policy-2026.1"
+    POLICY_VERSION = "policy-2026.2"
 
     SEVERITY_WEIGHTS = {
         FindingSeverity.LOW: 5.0,
         FindingSeverity.MEDIUM: 18.0,
         FindingSeverity.HIGH: 40.0,
         FindingSeverity.CRITICAL: 80.0,
+    }
+
+    # Calibrated marginal severity impact rates (bounded independent risk factors)
+    SEVERITY_IMPACT = {
+        FindingSeverity.LOW: 0.04,
+        FindingSeverity.MEDIUM: 0.12,
+        FindingSeverity.HIGH: 0.28,
+        FindingSeverity.CRITICAL: 0.50,
     }
 
     def compute_overall_risk(
@@ -30,10 +38,19 @@ class RiskEngine:
         high_count = sum(1 for f in findings if f.severity == FindingSeverity.HIGH)
         med_count = sum(1 for f in findings if f.severity == FindingSeverity.MEDIUM)
 
-        weighted_sum = sum(
-            self.SEVERITY_WEIGHTS.get(f.severity, 10.0) * f.confidence for f in findings
-        )
-        normalized_risk = float(min(100.0, max(0.0, round(weighted_sum, 1))))
+        # Baseline inherent operational residual risk
+        baseline_safety = 1.0 - 0.042
+
+        # Bounded probabilistic risk accumulation across empirical findings
+        unmitigated_safety = 1.0
+        for f in findings:
+            factor = self.SEVERITY_IMPACT.get(f.severity, 0.10)
+            confidence = max(0.1, min(1.0, float(f.confidence)))
+            p_defect = factor * confidence
+            unmitigated_safety *= (1.0 - p_defect)
+
+        accumulated_risk = 100.0 * (1.0 - (baseline_safety * unmitigated_safety))
+        normalized_risk = float(min(100.0, max(0.0, round(accumulated_risk, 1))))
         assurance_score = float(max(0.0, min(100.0, round(100.0 - normalized_risk, 1))))
 
         if has_critical or high_count >= 2 or normalized_risk >= 60.0:

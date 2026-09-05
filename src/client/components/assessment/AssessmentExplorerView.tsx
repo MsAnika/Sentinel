@@ -127,10 +127,21 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
 
   // Vector Progress percentages
   const calcScore = (findings: FindingSchema[], defaultGood: number) => {
-    if (findings.some((f) => f.severity === "CRITICAL")) return 20;
-    if (findings.some((f) => f.severity === "HIGH")) return 50;
-    if (findings.some((f) => f.severity === "MEDIUM")) return 75;
-    return defaultGood;
+    if (findings.length === 0) return defaultGood;
+    let safety = 1.0;
+    const severityImpact: Record<string, number> = {
+      CRITICAL: 0.5,
+      HIGH: 0.28,
+      MEDIUM: 0.12,
+      LOW: 0.04,
+    };
+    for (const f of findings) {
+      const impact = severityImpact[f.severity] ?? 0.1;
+      const conf = Math.max(0.1, Math.min(1.0, f.confidence || 0.8));
+      safety *= 1.0 - impact * conf;
+    }
+    const score = Math.round(defaultGood * safety);
+    return Math.max(5, Math.min(100, score));
   };
 
   const datasetScore =
