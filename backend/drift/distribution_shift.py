@@ -22,7 +22,30 @@ class DistributionShiftDetector:
 
     MIN_SAMPLES_FOR_CONFIDENCE = 5
     MIN_SAMPLES_FOR_EMBEDDING = 3
-    EMBEDDING_DISTANCE_NORMALIZATION = 0.05  # calibrated against the synthetic test fixtures
+    # Fallback only, used when the reference population's own variance is
+    # degenerate (near-zero, e.g. a single repeated reference image) and
+    # can't itself supply a normalization scale. The primary normalization
+    # below is self-calibrating per reference set (see
+    # `_embedding_distance_scale`) rather than a single constant tuned only
+    # against synthetic fixtures, which would silently mis-scale real-world
+    # embedding distributions with a different natural spread.
+    EMBEDDING_DISTANCE_NORMALIZATION_FALLBACK = 0.05
+
+    @staticmethod
+    def _embedding_distance_scale(var_r: np.ndarray) -> float:
+        """Self-calibrating normalization scale for the diagonal-Frechet
+        embedding distance: the reference population's own total per-
+        dimension variance is "one reference-typical unit of natural
+        spread" for that specific embedding baseline, so a Frechet distance
+        equal to this scale means the observed batch differs from the
+        reference by about as much as the reference differs from itself.
+        This adapts to whatever reference set is actually declared instead
+        of assuming every deployment's embeddings live on the same scale a
+        fixed synthetic-fixture constant happened to be tuned against."""
+        scale = float(np.sum(np.asarray(var_r, dtype=np.float64)))
+        if not np.isfinite(scale) or scale < 1e-6:
+            return DistributionShiftDetector.EMBEDDING_DISTANCE_NORMALIZATION_FALLBACK
+        return scale
 
     def __init__(self, drift_threshold: float = 0.30, embedding_extractor: Optional[EmbeddingExtractor] = None):
         self.drift_threshold = drift_threshold
@@ -185,6 +208,7 @@ class DistributionShiftDetector:
                 extractor = self.embedding_extractor or EmbeddingExtractor()
                 obs_embeddings = extractor.extract_batch(observed_image_paths)
                 frechet = None
+                distance_scale = self.EMBEDDING_DISTANCE_NORMALIZATION_FALLBACK
 
                 if len(reference_image_paths) >= self.MIN_SAMPLES_FOR_EMBEDDING and len(obs_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING:
                     ref_embeddings = extractor.extract_batch(reference_image_paths)
@@ -192,6 +216,7 @@ class DistributionShiftDetector:
                         frechet = EmbeddingExtractor.diagonal_frechet_distance(ref_embeddings, obs_embeddings)
                         embedding_source = "live_reference_images"
                         embedding_ref_count = int(len(ref_embeddings))
+                        distance_scale = self._embedding_distance_scale(ref_embeddings.var(axis=0))
                 elif declared_centroid and declared_variance and len(obs_embeddings) >= self.MIN_SAMPLES_FOR_EMBEDDING:
                     mu_r = np.asarray(declared_centroid, dtype=np.float64)
                     var_r = np.asarray(declared_variance, dtype=np.float64)
@@ -199,6 +224,7 @@ class DistributionShiftDetector:
                         frechet = EmbeddingExtractor.diagonal_frechet_distance_from_stats(mu_r, var_r, obs_embeddings)
                         embedding_source = "declared_reference_baseline"
                         embedding_ref_count = int(reference_profile.get("reference_sample_count", 0))
+                        distance_scale = self._embedding_distance_scale(var_r)
                     else:
                         limitations.append(
                             "Declared embedding_centroid/embedding_variance dimensionality does not match "
@@ -206,13 +232,15 @@ class DistributionShiftDetector:
                         )
 
                 if frechet is not None:
-                    embedding_shift = min(1.0, frechet["embedding_frechet_distance"] / self.EMBEDDING_DISTANCE_NORMALIZATION)
+                    embedding_shift = min(1.0, frechet["embedding_frechet_distance"] / distance_scale)
                     dim_scores["embedding_shift"] = round(embedding_shift, 3)
                     image_quality_evidence["embedding_comparison"] = {
                         "reference_baseline_source": embedding_source,
                         "reference_samples_embedded": embedding_ref_count,
                         "observed_samples_embedded": int(len(obs_embeddings)),
                         "embedding_dim": int(obs_embeddings.shape[1]),
+                        "normalization_scale": round(distance_scale, 6),
+                        "normalization_source": "reference_population_variance" if distance_scale != self.EMBEDDING_DISTANCE_NORMALIZATION_FALLBACK else "fallback_constant_degenerate_reference_variance",
                         **frechet,
                     }
                     embedding_computed = True

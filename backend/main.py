@@ -5,6 +5,7 @@ from .api.routes_audit import router as audit_router
 from .api.routes_auth import router as auth_router
 from .api.routes_dataset import router as dataset_router
 from .api.routes_drift import router as drift_router
+from .api.routes_federated import router as federated_router
 from .api.routes_inference import router as inference_router
 from .api.routes_model import router as model_router
 from .api.routes_report import router as report_router
@@ -42,6 +43,7 @@ app.include_router(dataset_router, dependencies=_auth_dep)
 app.include_router(model_router, dependencies=_auth_dep)
 app.include_router(inference_router, dependencies=_auth_dep)
 app.include_router(drift_router, dependencies=_auth_dep)
+app.include_router(federated_router, dependencies=_auth_dep)
 app.include_router(audit_router, dependencies=_auth_dep)
 app.include_router(report_router, dependencies=_auth_dep)
 app.include_router(uploads_router, dependencies=_auth_dep)
