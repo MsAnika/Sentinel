@@ -14,7 +14,7 @@ import {
   TrendSummary,
 } from '@/shared/types/assurance'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 const API_KEY_STORAGE_KEY = 'intelx_station_api_key'
 
 function loadStoredApiKey(): string | null {

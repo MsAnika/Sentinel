@@ -33,7 +33,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#f8fafc] text-[#0f172a] font-sans flex flex-col">{children}</body>
+      <body suppressHydrationWarning className="min-h-full bg-[#f8fafc] text-[#0f172a] font-sans flex flex-col">{children}</body>
     </html>
   );
 }

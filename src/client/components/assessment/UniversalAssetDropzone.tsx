@@ -124,8 +124,18 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    if (files.length > 1) {
+      setSelectedAsset(null);
+      setErrorMessage("Please upload a dataset ZIP from pitch_dataset/zips, not the dataset folder itself.");
+      return;
+    }
     const file = files[0];
     const detected = detectAssetType(file);
+    if (detected.type === "unknown") {
+      setSelectedAsset(null);
+      setErrorMessage("Unsupported asset. Upload a .zip dataset archive, model file, or inference record.");
+      return;
+    }
     setSelectedAsset(detected);
     setErrorMessage(null);
   };

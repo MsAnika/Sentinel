@@ -5,8 +5,7 @@
   "main": "desktop/main.js",
   "scripts": {
     "dev": "next dev",
-    "backend": "backend/.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
-    "desktop": "electron .",
+    "backend": "backend/.venv/Scripts/python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
     "desktop:dev": "concurrently -k -n \"BACKEND,FRONTEND,DESKTOP\" -c \"magenta,cyan,green\" \"npm run backend\" \"npm run dev\" \"wait-on -t 30000 http://127.0.0.1:3000 && electron .\"",
     "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
     "start": "next start",
