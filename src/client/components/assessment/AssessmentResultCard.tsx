@@ -228,7 +228,7 @@ export const AssessmentResultCard: React.FC<AssessmentResultCardProps> = ({
 
       <div className="mt-5 flex flex-col gap-3 border-t border-zinc-800/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-zinc-500">Recommended Action</div>
+          <div className="text-[10px] uppercase tracking-widest text-zinc-500">Recommended Action (LEAD MLOPS ENGINEER SIGN-OFF)</div>
           <p className="mt-0.5 text-sm text-zinc-300">{guidance}</p>
         </div>
         {onInvestigate && (

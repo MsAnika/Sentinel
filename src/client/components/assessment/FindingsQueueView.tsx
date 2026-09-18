@@ -40,6 +40,20 @@ interface FindingItem {
   };
 }
 
+function sentinelFindingTitle(findingType: string): string {
+  const normalized = findingType.toLowerCase();
+  if (normalized.includes("trigger") || normalized.includes("patch")) {
+    return "LOCALIZED PATCH ANOMALY (LAPLACIAN KURTOSIS)";
+  }
+  if (normalized.includes("duplicate")) {
+    return "REDUNDANT VIDEO FRAME BURST (dHash CLUSTER)";
+  }
+  if (normalized.includes("label") || normalized.includes("poison")) {
+    return "SYSTEMATIC ANNOTATION CORRUPTION";
+  }
+  return findingType.replace(/_/g, " ").toUpperCase();
+}
+
 export interface FindingsQueueViewProps {
   findings?: Array<FindingSchema & { report_id?: string }>;
   activeReportId?: string;
@@ -72,7 +86,7 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
       code: rawFid,
       reportId: f.report_id || activeReportId,
       severity: f.severity,
-      title: f.finding_type.replace(/_/g, " ").toUpperCase(),
+      title: sentinelFindingTitle(f.finding_type),
       description: f.reason,
       affectedAsset: `${f.asset_type}: ${f.asset}`,
       category:
@@ -81,7 +95,9 @@ export const FindingsQueueView: React.FC<FindingsQueueViewProps> = ({
         type.includes("trigger") ||
         type.includes("poison") ||
         type.includes("signature")
-          ? "Security / Evasion"
+          ? type.includes("poison") || type.includes("label")
+            ? "QUALITY ANOMALY"
+            : "SUSPECT CONTRIBUTOR"
           : type.includes("drift") ||
               type.includes("shift") ||
               type.includes("covariate") ||

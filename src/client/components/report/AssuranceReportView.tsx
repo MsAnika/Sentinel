@@ -21,7 +21,7 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute(
       "download",
-      `IntelX_ASSURANCE_REPORT_${report.report_id}.json`,
+      `SENTINEL_ASSURANCE_REPORT_${report.report_id}.json`,
     );
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
@@ -36,7 +36,7 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({
             <div className="flex items-center gap-3">
               <Image
                 src="/logo_withoutlabel.png"
-                alt="IntelX Assurance"
+                alt="Sentinel Assurance"
                 width={24}
                 height={24}
                 className="h-6 w-auto object-contain"
@@ -59,7 +59,7 @@ export const AssuranceReportView: React.FC<AssuranceReportViewProps> = ({
               className="flex items-center gap-1.5 rounded border border-rose-600/50 bg-rose-950/70 px-3 py-1.5 text-xs font-bold text-rose-200 hover:bg-rose-900/80 transition-colors cursor-pointer shadow-[0_0_12px_rgba(244,63,94,0.25)]"
             >
               <FileType className="h-3.5 w-3.5 text-rose-400" />
-              EXPORT PDF (FR-14)
+              Export Signed Sentinel Assurance Report (PDF)
             </a>
             <a
               href={AssuranceApiClient.reportExportUrl(

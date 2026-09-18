@@ -56,7 +56,7 @@ export default function NewAssessmentPage() {
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
-                  MoD Problem Statement 26228 • Automated Evaluation Engine
+                  TRACK 02: TRUST, SAFETY & DIGITAL SECURITY
                 </span>
               </div>
               <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">

@@ -139,7 +139,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           >
             <Image
               src="/logo.png"
-              alt="IntelX — CV Integrity Assurance"
+              alt="Sentinel — Pre-Training Vision AI Data Firewall"
               width={172}
               height={38}
               priority

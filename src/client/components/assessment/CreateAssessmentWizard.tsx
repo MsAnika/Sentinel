@@ -238,12 +238,12 @@ export const CreateAssessmentWizard: React.FC<CreateAssessmentWizardProps> = ({
         <div className="flex items-center gap-2.5 mb-1 text-xs font-mono text-slate-500">
           <Image
             src="/logo_withoutlabel.png"
-            alt="IntelX Logo"
+            alt="Sentinel Logo"
             width={16}
             height={16}
             className="h-4 w-auto object-contain"
           />
-          <span>INTELX ASSURANCE PIPELINE INGESTION</span>
+          <span>SENTINEL PRE-TRAINING DATA FIREWALL</span>
         </div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
           Create New Assessment

@@ -352,8 +352,7 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
                   Drop any asset here for instant assurance evaluation
                 </div>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Drag & drop your <strong>ONNX/PyTorch model</strong>, <strong>COCO/YOLO dataset .zip</strong>, or{" "}
-                  <strong>inference record .json</strong>
+                  Drop raw unverified training archives (COCO JSON or YOLO TXT) to run Sentinel pre-GPU verification
                 </p>
               </div>
             )}
@@ -568,7 +567,7 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
               <span className="text-[10px] font-mono text-slate-400">Baseline</span>
             </div>
             <div className="font-bold text-xs text-slate-900 group-hover:text-emerald-700">
-              Clean Verified Baseline
+              Vendor Clean Batch (COCO)
             </div>
             <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
               Zero findings • Acceptable disposition
@@ -588,7 +587,7 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
               <span className="text-[10px] font-mono text-rose-500">Poisoning</span>
             </div>
             <div className="font-bold text-xs text-slate-900 group-hover:text-rose-700">
-              Poisoned Contributor Dataset
+              Edge Robotics Feed (YOLO)
             </div>
             <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
               Flags malicious contributor & label anomalies
@@ -608,7 +607,7 @@ export const UniversalAssetDropzone: React.FC<UniversalAssetDropzoneProps> = ({
               <span className="text-[10px] font-mono text-rose-500">Backdoor</span>
             </div>
             <div className="font-bold text-xs text-slate-900 group-hover:text-rose-700">
-              Backdoored ONNX Model
+              Contractor BPO Fraud Batch (COCO)
             </div>
             <div className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
               Neural Cleanse trigger & weight anomaly

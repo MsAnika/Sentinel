@@ -217,7 +217,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
       <header className="w-full px-6 py-4 flex items-center justify-between border-b border-slate-200/80 bg-white/70 backdrop-blur-xs">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200 tracking-wider">
-            AIR-GAP ENFORCED / DEFENSE ASSURANCE CLEARANCE
+            ZERO-TRUST INGESTION // PRE-TRAINING DATA FIREWALL
           </span>
         </div>
         <div className="text-xs font-mono text-slate-500 font-medium">
@@ -236,7 +236,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             <div className="flex justify-center pb-1">
               <Image
                 src="/logo.png"
-                alt="IntelX Logo"
+                alt="Sentinel Logo"
                 width={220}
                 height={50}
                 priority
@@ -247,7 +247,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             {/* Title & Subtitle */}
             <div className="text-center space-y-1">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Sign in to IntelX
+                Sign in to Sentinel
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed font-sans">
                 Enter your credentials to access the assurance platform
@@ -368,7 +368,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             <div className="flex justify-center pb-1">
               <Image
                 src="/logo_withoutlabel.png"
-                alt="IntelX Verify"
+                alt="Sentinel Verify"
                 width={48}
                 height={48}
                 priority
@@ -469,7 +469,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             <div className="flex justify-center pb-1">
               <Image
                 src="/logo.png"
-                alt="IntelX Logo"
+                alt="Sentinel Logo"
                 width={210}
                 height={48}
                 priority
@@ -483,7 +483,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
                 Create your account
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                Join IntelX to inspect and evaluate vision models
+                Join Sentinel to inspect and evaluate vision models
               </p>
             </div>
 
@@ -670,7 +670,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             <div className="flex justify-center pb-1">
               <Image
                 src="/logo_withoutlabel.png"
-                alt="IntelX Security"
+                alt="Sentinel Security"
                 width={48}
                 height={48}
                 className="h-12 w-auto object-contain"
@@ -747,7 +747,7 @@ export const AuthStationLogin: React.FC<AuthStationLoginProps> = ({
             <div className="flex justify-center pb-1">
               <Image
                 src="/logo_withoutlabel.png"
-                alt="IntelX Security"
+                alt="Sentinel Security"
                 width={48}
                 height={48}
                 className="h-12 w-auto object-contain"

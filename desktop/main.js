@@ -6,8 +6,8 @@ const { spawn } = require("child_process");
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const BACKEND_PORT = 8000;
-const FRONTEND_PORT = 3000;
-const FRONTEND_URL = `http://127.0.0.1:${FRONTEND_PORT}`;
+const FRONTEND_PORT = 3001;
+const FRONTEND_URL = `http://localhost:${FRONTEND_PORT}`;
 const HEALTH_URL = `http://127.0.0.1:${BACKEND_PORT}/health`;
 
 let mainWindow = null;
@@ -89,14 +89,14 @@ let frontendProcess = null;
 async function ensureFrontendRunning() {
   const isFrontendAlreadyRunning = await checkUrlLive(FRONTEND_URL, 1500);
   if (isFrontendAlreadyRunning) {
-    console.log("[IntelX Desktop] Next.js frontend already running on port 3000.");
+    console.log(`[IntelX Desktop] Next.js frontend already running on port ${FRONTEND_PORT}.`);
     return;
   }
 
   const standaloneServer = path.join(PROJECT_ROOT, ".next", "standalone", "server.js");
   let cmd;
   let args;
-  const env = { ...process.env, PORT: "3000", HOSTNAME: "127.0.0.1" };
+  const env = { ...process.env, PORT: String(FRONTEND_PORT), HOSTNAME: "127.0.0.1" };
 
   if (fs.existsSync(standaloneServer)) {
     console.log("[IntelX Desktop] Spawning high-performance standalone Next.js server...");
@@ -105,7 +105,7 @@ async function ensureFrontendRunning() {
   } else {
     console.log("[IntelX Desktop] Spawning Next.js development server...");
     cmd = path.join(PROJECT_ROOT, "node_modules", ".bin", "next");
-    args = ["dev", "-p", "3000"];
+    args = ["dev", "-p", String(FRONTEND_PORT)];
   }
 
   try {

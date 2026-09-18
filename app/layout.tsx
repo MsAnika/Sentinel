@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IntelX — CV Integrity Assurance Platform",
-  description: "Offline Air-Gapped Computer Vision Integrity Assurance Platform for MoD / Indian Army DGIS",
+  title: "Sentinel | Pre-Training Vision AI Data Firewall",
+  description: "Sentinel pre-training vision AI data firewall",
   icons: {
     icon: "/logo_withoutlabel.png",
     apple: "/logo_withoutlabel.png",

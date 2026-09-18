@@ -102,7 +102,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
         <div className="flex items-center gap-4">
           <Image
             src="/logo_withoutlabel.png"
-            alt="IntelX Core"
+            alt="Sentinel Core"
             width={56}
             height={56}
             priority
@@ -111,7 +111,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           <div>
             <div className="flex items-center gap-2 text-xs font-mono text-slate-500 mb-1">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>INTELX OPERATIONAL INTEGRITY CORE</span>
+              <span>SENTINEL OPERATIONAL INTEGRITY CORE</span>
               <span>•</span>
               <span className="text-slate-700 font-semibold">100% AIR-GAPPED</span>
             </div>
@@ -142,7 +142,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           <div className="flex items-center justify-center sm:justify-start gap-2">
             <Sparkles className="h-4 w-4 text-sky-600" />
             <span className="font-mono text-xs font-bold text-sky-900 uppercase tracking-wider">
-              MoD Problem Statement 26228 • Instant Multi-Vector Assessment
+              TRACK 02: TRUST, SAFETY & DIGITAL SECURITY
             </span>
           </div>
           <p className="text-xs text-slate-600 font-sans">

@@ -630,7 +630,7 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
         )}
       </div>
 
-      {/* 5. RECOMMENDED ACTION (HUMAN ANALYST DISPOSITION & AUDIT TRAIL) */}
+      {/* 5. RECOMMENDED ACTION (LEAD MLOPS ENGINEER DISPOSITION & AUDIT TRAIL) */}
       <div
         className={clsx(
           "rounded-2xl border p-6 sm:p-8 bg-white shadow-xs space-y-5 border-t-4",
@@ -645,7 +645,7 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
           <div>
             <div className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-wider text-slate-500">
               <Lock className="h-3.5 w-3.5 text-slate-600" />
-              <span>RECOMMENDED ACTION (MoD Human Analyst Sign-Off)</span>
+              <span>RECOMMENDED ACTION (LEAD MLOPS ENGINEER SIGN-OFF)</span>
             </div>
             <p className="text-xs text-slate-600 mt-1 font-sans">
               System automated recommendation:{" "}
@@ -686,7 +686,7 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
             <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             <span className="font-mono text-sm font-bold text-slate-900">[ ACCEPT ]</span>
             <span className="text-[11px] text-slate-500 font-sans">
-              Approved for operational deployment
+              CLEARED FOR GPU CLUSTER (SENTINEL SLA PASS)
             </span>
           </button>
 
@@ -705,7 +705,7 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
             <AlertTriangle className="h-6 w-6 text-amber-600" />
             <span className="font-mono text-sm font-bold text-slate-900">[ REVIEW ]</span>
             <span className="text-[11px] text-slate-500 font-sans">
-              Marginal risks; secondary review needed
+              FLAGGED FOR SECONDARY AUDIT
             </span>
           </button>
 
@@ -724,7 +724,7 @@ export const AssessmentExplorerView: React.FC<AssessmentExplorerViewProps> = ({
             <Ban className="h-6 w-6 text-rose-600" />
             <span className="font-mono text-sm font-bold text-slate-900">[ QUARANTINE ]</span>
             <span className="text-[11px] text-slate-500 font-sans">
-              Critical integrity violation; halt deployment
+              TRAINING BLOCKED // CONTRACTOR PENALTY RECOMMENDED
             </span>
           </button>
         </div>

@@ -16,17 +16,17 @@ export const AuthPageLayout: React.FC<AuthPageLayoutProps> = ({ children }) => {
         <div className="flex items-center gap-3">
           <Image
             src="/logo_withoutlabel.png"
-            alt="IntelX Logo"
+            alt="Sentinel Logo"
             width={24}
             height={24}
             className="h-6 w-auto object-contain"
           />
           <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200 tracking-wider">
-            AIR-GAP ENFORCED / DEFENSE ASSURANCE CLEARANCE
+            ZERO-TRUST INGESTION // PRE-TRAINING DATA FIREWALL
           </span>
         </div>
         <div className="text-xs font-mono text-slate-500 font-medium">
-          IntelX Assurance Platform
+          Sentinel AI
         </div>
       </header>
 

@@ -40,7 +40,7 @@ export const AssessmentFinalDecisionView: React.FC<
   );
 
   const [notes, setNotes] = useState(
-    "Evaluated against neural parameter statistics, trigger inversion, label anomalies, and cryptographic provenance checks. Structural disposition confirmed for operational deployment."
+    "Evaluated against neural parameter statistics, trigger inversion, label anomalies, and cryptographic provenance checks. Structural disposition confirmed for cloud GPU training gate clearance."
   );
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -209,10 +209,10 @@ export const AssessmentFinalDecisionView: React.FC<
           </div>
           <p className="text-[11px] text-slate-600 font-sans leading-relaxed">
             {report.overall_disposition === "ACCEPT"
-              ? "All baseline checks passed under declared coverage. No blocking vulnerabilities detected."
+              ? "CLEARED FOR GPU CLUSTER (SENTINEL SLA PASS)"
               : report.overall_disposition === "REVIEW"
-                ? "Moderate anomalies or distribution drift detected. Requires human validation before approval."
-                : "Critical integrity failure or attack vector flagged. Automated quarantine recommendation issued."}
+                ? "FLAGGED FOR SECONDARY AUDIT"
+                : "TRAINING BLOCKED // CONTRACTOR PENALTY RECOMMENDED"}
           </p>
         </div>
 
@@ -266,7 +266,7 @@ export const AssessmentFinalDecisionView: React.FC<
                 ACCEPT
               </div>
               <p className="text-[11px] text-slate-500 mt-1 leading-tight font-sans">
-                Model meets all structural requirements. Proceed to deployment.
+                CLEARED FOR GPU CLUSTER (SENTINEL SLA PASS)
               </p>
             </div>
           </div>
@@ -292,7 +292,7 @@ export const AssessmentFinalDecisionView: React.FC<
                 REVIEW
               </div>
               <p className="text-[11px] text-slate-700 mt-1 leading-tight font-sans">
-                Marginal score. Requires secondary sign-off or mitigation plan.
+                FLAGGED FOR SECONDARY AUDIT
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ export const AssessmentFinalDecisionView: React.FC<
                 QUARANTINE
               </div>
               <p className="text-[11px] text-slate-500 mt-1 leading-tight font-sans">
-                Critical failure. Halt deployment and return to engineering.
+                TRAINING BLOCKED // CONTRACTOR PENALTY RECOMMENDED
               </p>
             </div>
           </div>

@@ -103,7 +103,7 @@ export const ProvenanceStudioView: React.FC<ProvenanceStudioViewProps> = ({
           <div className="rounded border border-emerald-800/40 bg-emerald-950/30 p-2.5 space-y-1">
             <div className="text-emerald-400 font-semibold uppercase text-[9px]">5. PROVENANCE DIGEST</div>
             <div className="truncate text-emerald-300 font-mono font-bold">{activeRecord.provenance_hash}</div>
-            <div className="text-[10px] text-emerald-400/80">Canonical DAG Root</div>
+            <div className="text-[10px] text-emerald-400/80">Ed25519 Linear Hash-Chain Signer (SHA-256 Link)</div>
           </div>
         </div>
 
